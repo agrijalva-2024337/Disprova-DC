@@ -1,0 +1,45 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: disprova-postgres
+    environment:
+      POSTGRES_USER: disprova
+      POSTGRES_PASSWORD: disprova_dev_password
+      POSTGRES_DB: disprova
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U disprova -d disprova"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+    container_name: disprova-backend
+    env_file:
+      - ./backend/.env
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_USER: disprova
+      POSTGRES_PASSWORD: disprova_dev_password
+      POSTGRES_DB: disprova
+      PORT: 3000
+      NODE_ENV: development
+      DATABASE_URL: postgresql://disprova:disprova_dev_password@postgres:5432/disprova
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./backend/src:/app/src
+      - ./backend/tsconfig.json:/app/tsconfig.json
+      - ./backend/prisma:/app/prisma
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  postgres_data:
