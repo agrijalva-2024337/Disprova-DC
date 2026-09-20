@@ -20,4 +20,8 @@ export const env = {
     password: required('POSTGRES_PASSWORD'),
     database: required('POSTGRES_DB'),
   },
+  jwt: {
+    accessSecret: required('JWT_ACCESS_SECRET'),
+    refreshSecret: required('JWT_REFRESH_SECRET'),
+  },
 } as const;
