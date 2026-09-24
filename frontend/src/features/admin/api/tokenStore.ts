@@ -41,9 +41,9 @@ export function isAccessTokenExpiring(token: string, skewMs = 30_000): boolean {
     if (!payloadPart) {
       return true
     }
-    const payload = JSON.parse(atob(payloadPart.replace(/-/g, '+').replace(/_/g, '/'))) as {
-      exp?: number
-    }
+    const base64 = payloadPart.replace(/-/g, '+').replace(/_/g, '/')
+    const padded = base64.padEnd(base64.length + ((4 - (base64.length % 4)) % 4), '=')
+    const payload = JSON.parse(atob(padded)) as { exp?: number }
     if (!payload.exp) {
       return true
     }

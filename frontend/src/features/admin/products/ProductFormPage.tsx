@@ -250,6 +250,11 @@ export function ProductFormPage() {
                     className="w-full rounded border border-slate-300 px-3 py-2 text-sm"
                     {...form.register(`units.${index}.factor`)}
                   />
+                  {form.formState.errors.units?.[index]?.factor ? (
+                    <span className="text-xs text-red-700">
+                      {form.formState.errors.units[index]?.factor?.message}
+                    </span>
+                  ) : null}
                 </label>
                 <label className="block text-sm">
                   <span className="mb-1 block font-medium">Código de barras</span>
@@ -264,6 +269,11 @@ export function ProductFormPage() {
                     className="w-full rounded border border-slate-300 px-3 py-2 text-sm"
                     {...form.register(`units.${index}.precioBase`)}
                   />
+                  {form.formState.errors.units?.[index]?.precioBase ? (
+                    <span className="text-xs text-red-700">
+                      {form.formState.errors.units[index]?.precioBase?.message}
+                    </span>
+                  ) : null}
                 </label>
                 {fields.length > 1 ? (
                   <button
