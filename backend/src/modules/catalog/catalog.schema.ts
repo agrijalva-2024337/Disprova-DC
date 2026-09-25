@@ -4,6 +4,20 @@ export const idParamSchema = z.object({
   id: z.coerce.number().int().positive(),
 });
 
+export const productIdParamSchema = z.object({
+  productId: z.coerce.number().int().positive(),
+});
+
+export const productChildParamSchema = z.object({
+  productId: z.coerce.number().int().positive(),
+  id: z.coerce.number().int().positive(),
+});
+
+const positiveDecimal = z.union([z.string(), z.number()]).refine(
+  (value) => value !== '' && !Number.isNaN(Number(value)) && Number(value) > 0,
+  'Debe ser mayor a cero',
+);
+
 const decimalValue = z.union([z.string(), z.number()]).refine(
   (value) => value !== '' && !Number.isNaN(Number(value)),
   'Número inválido',
@@ -76,3 +90,26 @@ export type CreatePriceListInput = z.infer<typeof createPriceListSchema>;
 export type UpdatePriceListInput = z.infer<typeof updatePriceListSchema>;
 export type CreatePriceListItemInput = z.infer<typeof createPriceListItemSchema>;
 export type UpdatePriceListItemInput = z.infer<typeof updatePriceListItemSchema>;
+
+export const createProductUnitSchema = z.object({
+  nombre: z.string().min(1),
+  factor: positiveDecimal,
+  codigoBarras: z.string().min(1).nullable().optional(),
+  precioBase: decimalValue.optional(),
+  activo: z.boolean().optional(),
+});
+
+export const updateProductUnitSchema = createProductUnitSchema.partial();
+
+export const createProductImageSchema = z.object({
+  url: z.string().min(1),
+  orden: z.number().int().optional(),
+  esPrincipal: z.boolean().optional(),
+});
+
+export const updateProductImageSchema = createProductImageSchema.partial();
+
+export type CreateProductUnitInput = z.infer<typeof createProductUnitSchema>;
+export type UpdateProductUnitInput = z.infer<typeof updateProductUnitSchema>;
+export type CreateProductImageInput = z.infer<typeof createProductImageSchema>;
+export type UpdateProductImageInput = z.infer<typeof updateProductImageSchema>;
