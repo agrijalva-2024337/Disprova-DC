@@ -2,11 +2,13 @@ import { isAccessTokenExpiring, tokenStore } from './tokenStore.ts'
 
 export class ApiError extends Error {
   status: number
+  code?: string
 
-  constructor(message: string, status: number) {
+  constructor(message: string, status: number, code?: string) {
     super(message)
     this.name = 'ApiError'
     this.status = status
+    this.code = code
   }
 }
 
@@ -18,12 +20,15 @@ type RequestOptions = {
 
 let refreshInFlight: Promise<boolean> | null = null
 
-async function readErrorMessage(response: Response): Promise<string> {
+async function readError(response: Response): Promise<{ message: string; code?: string }> {
   try {
-    const data = (await response.json()) as { error?: { message?: string } }
-    return data.error?.message ?? `Error ${response.status}`
+    const data = (await response.json()) as { error?: { message?: string; code?: string } }
+    return {
+      message: data.error?.message ?? `Error ${response.status}`,
+      code: data.error?.code,
+    }
   } catch {
-    return `Error ${response.status}`
+    return { message: `Error ${response.status}` }
   }
 }
 
@@ -114,7 +119,8 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
   }
 
   if (!response.ok) {
-    throw new ApiError(await readErrorMessage(response), response.status)
+    const error = await readError(response)
+    throw new ApiError(error.message, response.status, error.code)
   }
 
   return (await response.json()) as T

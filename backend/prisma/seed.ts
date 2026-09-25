@@ -5,6 +5,10 @@ import { registerMovement } from '../src/modules/inventory/inventory.service.js'
 const prisma = new PrismaClient();
 
 async function main() {
+  await prisma.deliveryItem.deleteMany();
+  await prisma.delivery.deleteMany();
+  await prisma.orderItem.deleteMany();
+  await prisma.order.deleteMany();
   await prisma.inventoryMovement.deleteMany();
   await prisma.stock.deleteMany();
   await prisma.productBatch.deleteMany();

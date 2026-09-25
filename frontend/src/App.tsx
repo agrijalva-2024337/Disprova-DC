@@ -11,7 +11,9 @@ import { KardexPage } from './features/admin/inventory/KardexPage.tsx'
 import { InventoryPage } from './features/admin/inventory/InventoryPage.tsx'
 import { ZonesPage } from './features/admin/zones/ZonesPage.tsx'
 import { FieldGate } from './features/field/FieldGate.tsx'
-import { OrderPlaceholderPage } from './features/field/OrderPlaceholderPage.tsx'
+import { DeliveriesPage } from './features/field/DeliveriesPage.tsx'
+import { DeliveryPage } from './features/field/DeliveryPage.tsx'
+import { NewOrderPage } from './features/field/NewOrderPage.tsx'
 import { TodayRoutePage } from './features/field/TodayRoutePage.tsx'
 
 export default function App() {
@@ -34,7 +36,9 @@ export default function App() {
       </Route>
       <Route path="/ruta" element={<FieldGate />}>
         <Route index element={<TodayRoutePage />} />
-        <Route path="pedido/:clientId" element={<OrderPlaceholderPage />} />
+        <Route path="pedido/:clientId" element={<NewOrderPage />} />
+        <Route path="entregas" element={<DeliveriesPage />} />
+        <Route path="entregas/:orderId" element={<DeliveryPage />} />
       </Route>
       <Route path="*" element={<Navigate to="/login" replace />} />
     </Routes>
