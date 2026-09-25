@@ -88,7 +88,32 @@ export async function getOrder(orderId: number) {
   return order;
 }
 
+const orderWithItems = { items: true } as const;
+
+function idempotencySince() {
+  return new Date(Date.now() - 24 * 60 * 60 * 1000);
+}
+
+async function existingIdempotentOrder(clientId: number, userId: number, idempotencyKey: string) {
+  return prisma.order.findFirst({
+    where: {
+      clientId,
+      userId,
+      idempotencyKey,
+      createdAt: { gte: idempotencySince() },
+    },
+    include: orderWithItems,
+  });
+}
+
 export async function createOrder(input: CreateOrderInput, userId: number) {
+  if (input.idempotencyKey) {
+    const existing = await existingIdempotentOrder(input.clientId, userId, input.idempotencyKey);
+    if (existing) {
+      return { order: existing, created: false as const };
+    }
+  }
+
   const client = await prisma.client.findUnique({ where: { id: input.clientId } });
   if (!client) {
     throw new AppError('Cliente no encontrado', 404, 'NOT_FOUND');
@@ -132,21 +157,37 @@ export async function createOrder(input: CreateOrderInput, userId: number) {
   const impuesto = money(lines.reduce((sum, line) => sum.add(line.impuesto), new Prisma.Decimal(0)));
   const total = money(subtotal.sub(descuento).add(impuesto));
 
-  return prisma.order.create({
-    data: {
-      clientId: client.id,
-      userId,
-      canal: input.canal,
-      estado: 'borrador',
-      condicionPago: input.condicionPago,
-      subtotal,
-      descuento,
-      impuesto,
-      total,
-      items: { create: lines },
-    },
-    include: { items: true },
-  });
+  try {
+    const order = await prisma.order.create({
+      data: {
+        clientId: client.id,
+        userId,
+        canal: input.canal,
+        estado: 'borrador',
+        condicionPago: input.condicionPago,
+        idempotencyKey: input.idempotencyKey ?? null,
+        subtotal,
+        descuento,
+        impuesto,
+        total,
+        items: { create: lines },
+      },
+      include: orderWithItems,
+    });
+    return { order, created: true as const };
+  } catch (error) {
+    if (
+      input.idempotencyKey &&
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === 'P2002'
+    ) {
+      const existing = await existingIdempotentOrder(input.clientId, userId, input.idempotencyKey);
+      if (existing) {
+        return { order: existing, created: false as const };
+      }
+    }
+    throw error;
+  }
 }
 
 async function lockOrder(tx: Prisma.TransactionClient, orderId: number) {

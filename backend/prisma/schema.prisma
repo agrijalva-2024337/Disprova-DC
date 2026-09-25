@@ -384,6 +384,8 @@ model Order {
   impuesto             Decimal        @db.Decimal(12, 2)
   total                Decimal        @db.Decimal(12, 2)
   fechaEntregaPrevista DateTime?      @map("fecha_entrega_prevista") @db.Date
+  /// NULL cuando el alta no trae clave. Varios NULL conviven: el índice único no los trata como iguales.
+  idempotencyKey       String?        @map("idempotency_key")
   createdAt            DateTime       @default(now()) @map("created_at")
 
   client     Client      @relation(fields: [clientId], references: [id], onDelete: Restrict)
@@ -392,6 +394,7 @@ model Order {
   deliveries           Delivery[]
   paymentApplications  PaymentApplication[]
 
+  @@unique([clientId, userId, idempotencyKey], map: "orders_client_user_idempotency_key")
   @@map("orders")
 }
 
