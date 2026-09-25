@@ -39,6 +39,7 @@ model User {
   cashSessions        CashSession[]
   payments            Payment[]
   collectionVisits    CollectionVisit[]
+  returns             Return[]
 
   @@map("users")
 }
@@ -104,6 +105,7 @@ model ProductUnit {
   factor       Decimal @db.Decimal(12, 4)
   codigoBarras String? @unique @map("codigo_barras")
   precioBase   Decimal @map("precio_base") @db.Decimal(12, 2)
+  activo       Boolean @default(true)
 
   product        Product         @relation(fields: [productId], references: [id], onDelete: Restrict)
   priceListItems PriceListItem[]
@@ -207,6 +209,7 @@ model Client {
   accountMovements  AccountMovement[]
   payments          Payment[]
   collectionVisits  CollectionVisit[]
+  returns           Return[]
 
   @@unique([zoneId, ordenRuta])
   @@map("clients")
@@ -292,6 +295,7 @@ model ProductBatch {
   stocks         Stock[]
   movements      InventoryMovement[]
   deliveryItems  DeliveryItem[]
+  returnItems    ReturnItem[]
 
   @@map("product_batches")
 }
@@ -384,6 +388,8 @@ model Order {
   impuesto             Decimal        @db.Decimal(12, 2)
   total                Decimal        @db.Decimal(12, 2)
   fechaEntregaPrevista DateTime?      @map("fecha_entrega_prevista") @db.Date
+  /// NULL cuando el alta no trae clave. Varios NULL conviven: el índice único no los trata como iguales.
+  idempotencyKey       String?        @map("idempotency_key")
   createdAt            DateTime       @default(now()) @map("created_at")
 
   client     Client      @relation(fields: [clientId], references: [id], onDelete: Restrict)
@@ -391,7 +397,9 @@ model Order {
   items                OrderItem[]
   deliveries           Delivery[]
   paymentApplications  PaymentApplication[]
+  returns              Return[]
 
+  @@unique([clientId, userId, idempotencyKey], map: "orders_client_user_idempotency_key")
   @@map("orders")
 }
 
@@ -411,6 +419,7 @@ model OrderItem {
   order          Order          @relation(fields: [orderId], references: [id], onDelete: Restrict)
   productUnit    ProductUnit    @relation(fields: [productUnitId], references: [id], onDelete: Restrict)
   deliveryItems  DeliveryItem[]
+  returnItems    ReturnItem[]
 
   @@map("order_items")
 }
@@ -560,4 +569,54 @@ model CollectionVisit {
   user   User   @relation(fields: [userId], references: [id], onDelete: Restrict)
 
   @@map("collection_visits")
+}
+
+enum EstadoDevolucion {
+  pendiente
+  aceptada
+  rechazada
+
+  @@map("estado_devolucion")
+}
+
+enum DestinoDevolucion {
+  reingreso
+  merma
+
+  @@map("destino_devolucion")
+}
+
+model Return {
+  id         Int              @id @default(autoincrement())
+  clientId   Int              @map("client_id")
+  orderId    Int              @map("order_id")
+  userId     Int              @map("user_id")
+  fecha      DateTime
+  motivo     String
+  estado     EstadoDevolucion @default(pendiente)
+  /// Se calcula al aceptar, con el precio y el impuesto congelados en la línea. Mientras está pendiente queda en 0.
+  total      Decimal          @default(0) @db.Decimal(12, 2)
+  createdAt  DateTime         @default(now()) @map("created_at")
+
+  client Client       @relation(fields: [clientId], references: [id], onDelete: Restrict)
+  order  Order        @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  user   User         @relation(fields: [userId], references: [id], onDelete: Restrict)
+  items  ReturnItem[]
+
+  @@map("returns")
+}
+
+model ReturnItem {
+  id           Int               @id @default(autoincrement())
+  returnId     Int               @map("return_id")
+  orderItemId  Int               @map("order_item_id")
+  cantidad     Decimal           @db.Decimal(12, 4)
+  batchId      Int?              @map("batch_id")
+  destino      DestinoDevolucion
+
+  returnOrder Return        @relation(fields: [returnId], references: [id], onDelete: Restrict)
+  orderItem   OrderItem     @relation(fields: [orderItemId], references: [id], onDelete: Restrict)
+  batch       ProductBatch? @relation(fields: [batchId], references: [id], onDelete: Restrict)
+
+  @@map("return_items")
 }

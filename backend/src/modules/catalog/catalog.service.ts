@@ -10,6 +10,10 @@ import type {
   UpdatePriceListInput,
   UpdatePriceListItemInput,
   UpdateProductInput,
+  CreateProductImageInput,
+  CreateProductUnitInput,
+  UpdateProductImageInput,
+  UpdateProductUnitInput,
 } from './catalog.schema.js';
 
 const productInclude = {
@@ -472,4 +476,208 @@ export async function deletePriceListItem(id: number, userId: number) {
   } catch (err) {
     rethrowPrisma(err);
   }
+}
+
+async function requireProduct(productId: number) {
+  const product = await prisma.product.findUnique({ where: { id: productId } });
+  if (!product) {
+    throw new AppError('Producto no encontrado', 404, 'NOT_FOUND');
+  }
+  return product;
+}
+
+export async function listProductUnits(productId: number) {
+  await requireProduct(productId);
+  return prisma.productUnit.findMany({
+    where: { productId },
+    orderBy: { id: 'asc' },
+  });
+}
+
+export async function getProductUnit(productId: number, id: number) {
+  const unit = await prisma.productUnit.findFirst({ where: { id, productId } });
+  if (!unit) {
+    throw new AppError('Presentación no encontrada', 404, 'NOT_FOUND');
+  }
+  return unit;
+}
+
+export async function createProductUnit(productId: number, input: CreateProductUnitInput, userId: number) {
+  await requireProduct(productId);
+  try {
+    return await prisma.$transaction(async (tx) => {
+      const created = await tx.productUnit.create({
+        data: {
+          productId,
+          nombre: input.nombre,
+          factor: String(input.factor),
+          codigoBarras: input.codigoBarras ?? null,
+          precioBase: String(input.precioBase ?? 0),
+          activo: input.activo ?? true,
+        },
+      });
+      await writeAudit(tx, {
+        userId,
+        entidad: 'ProductUnit',
+        entidadId: String(created.id),
+        accion: 'create',
+        datosDespues: created,
+      });
+      return created;
+    });
+  } catch (err) {
+    rethrowPrisma(err);
+  }
+}
+
+export async function updateProductUnit(
+  productId: number,
+  id: number,
+  input: UpdateProductUnitInput,
+  userId: number,
+) {
+  try {
+    return await prisma.$transaction(async (tx) => {
+      const existing = await tx.productUnit.findFirst({ where: { id, productId } });
+      if (!existing) {
+        throw new AppError('Presentación no encontrada', 404, 'NOT_FOUND');
+      }
+      const updated = await tx.productUnit.update({
+        where: { id },
+        data: {
+          nombre: input.nombre,
+          factor: input.factor === undefined ? undefined : String(input.factor),
+          codigoBarras: input.codigoBarras,
+          precioBase: input.precioBase === undefined ? undefined : String(input.precioBase),
+          activo: input.activo,
+        },
+      });
+      await writeAudit(tx, {
+        userId,
+        entidad: 'ProductUnit',
+        entidadId: String(id),
+        accion: 'update',
+        datosAntes: existing,
+        datosDespues: updated,
+      });
+      return updated;
+    });
+  } catch (err) {
+    rethrowPrisma(err);
+  }
+}
+
+export async function deactivateProductUnit(productId: number, id: number, userId: number) {
+  return prisma.$transaction(async (tx) => {
+    const existing = await tx.productUnit.findFirst({ where: { id, productId } });
+    if (!existing) {
+      throw new AppError('Presentación no encontrada', 404, 'NOT_FOUND');
+    }
+    const updated = await tx.productUnit.update({
+      where: { id },
+      data: { activo: false },
+    });
+    await writeAudit(tx, {
+      userId,
+      entidad: 'ProductUnit',
+      entidadId: String(id),
+      accion: 'deactivate',
+      datosAntes: existing,
+      datosDespues: updated,
+    });
+    return updated;
+  });
+}
+
+async function clearPrincipal(tx: Prisma.TransactionClient, productId: number, exceptId?: number) {
+  await tx.productImage.updateMany({
+    where: { productId, ...(exceptId === undefined ? {} : { id: { not: exceptId } }) },
+    data: { esPrincipal: false },
+  });
+}
+
+export async function listProductImages(productId: number) {
+  await requireProduct(productId);
+  return prisma.productImage.findMany({
+    where: { productId },
+    orderBy: [{ orden: 'asc' }, { id: 'asc' }],
+  });
+}
+
+export async function getProductImage(productId: number, id: number) {
+  const image = await prisma.productImage.findFirst({ where: { id, productId } });
+  if (!image) {
+    throw new AppError('Imagen no encontrada', 404, 'NOT_FOUND');
+  }
+  return image;
+}
+
+export async function createProductImage(productId: number, input: CreateProductImageInput, userId: number) {
+  await requireProduct(productId);
+  return prisma.$transaction(async (tx) => {
+    if (input.esPrincipal) {
+      await clearPrincipal(tx, productId);
+    }
+    const created = await tx.productImage.create({
+      data: {
+        productId,
+        url: input.url,
+        orden: input.orden ?? 0,
+        esPrincipal: input.esPrincipal ?? false,
+      },
+    });
+    await writeAudit(tx, {
+      userId,
+      entidad: 'ProductImage',
+      entidadId: String(created.id),
+      accion: 'create',
+      datosDespues: created,
+    });
+    return created;
+  });
+}
+
+export async function updateProductImage(
+  productId: number,
+  id: number,
+  input: UpdateProductImageInput,
+  userId: number,
+) {
+  return prisma.$transaction(async (tx) => {
+    const existing = await tx.productImage.findFirst({ where: { id, productId } });
+    if (!existing) {
+      throw new AppError('Imagen no encontrada', 404, 'NOT_FOUND');
+    }
+    if (input.esPrincipal) {
+      await clearPrincipal(tx, productId, id);
+    }
+    const updated = await tx.productImage.update({ where: { id }, data: input });
+    await writeAudit(tx, {
+      userId,
+      entidad: 'ProductImage',
+      entidadId: String(id),
+      accion: 'update',
+      datosAntes: existing,
+      datosDespues: updated,
+    });
+    return updated;
+  });
+}
+
+export async function deleteProductImage(productId: number, id: number, userId: number) {
+  return prisma.$transaction(async (tx) => {
+    const existing = await tx.productImage.findFirst({ where: { id, productId } });
+    if (!existing) {
+      throw new AppError('Imagen no encontrada', 404, 'NOT_FOUND');
+    }
+    await tx.productImage.delete({ where: { id } });
+    await writeAudit(tx, {
+      userId,
+      entidad: 'ProductImage',
+      entidadId: String(id),
+      accion: 'delete',
+      datosAntes: existing,
+    });
+    return existing;
+  });
 }

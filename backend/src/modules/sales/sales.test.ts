@@ -235,4 +235,37 @@ describe('orders', () => {
     const after = new Prisma.Decimal((await stockRow(beb.product.id, vehicle.id))!.cantidadReservada);
     expect(after.toString()).toBe(before.toString());
   });
+
+  it('la misma idempotencyKey dos veces crea un solo pedido', async () => {
+    const { token, userId } = await loginAsAdmin();
+    const client = await prisma.client.findFirstOrThrow();
+    const { unit } = await unitOf('HIG-001', 'Unidad');
+    const idempotencyKey = `idem-${Date.now()}`;
+    const body = {
+      clientId: client.id,
+      canal: 'campo',
+      condicionPago: 'contado',
+      idempotencyKey,
+      items: [{ productUnitId: unit.id, cantidad: '1' }],
+    };
+
+    const first = await request(app)
+      .post('/api/orders')
+      .set('Authorization', `Bearer ${token}`)
+      .send(body);
+    expect(first.status).toBe(201);
+
+    const second = await request(app)
+      .post('/api/orders')
+      .set('Authorization', `Bearer ${token}`)
+      .send(body);
+    expect(second.status).toBe(200);
+    expect(second.body.id).toBe(first.body.id);
+    expect(second.body.total).toBe(first.body.total);
+
+    const count = await prisma.order.count({
+      where: { clientId: client.id, userId, idempotencyKey },
+    });
+    expect(count).toBe(1);
+  });
 });
