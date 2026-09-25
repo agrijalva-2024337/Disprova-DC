@@ -144,7 +144,7 @@ async function main() {
   ] as const;
 
   const createdUnits: { id: number; precioLista: string }[] = [];
-  const createdProducts: { id: number; sku: string }[] = [];
+  const createdProducts: { id: number; sku: string; controlado: boolean }[] = [];
 
   for (const p of productsSeed) {
     const product = await prisma.product.create({
@@ -176,7 +176,7 @@ async function main() {
       include: { units: true },
     });
 
-    createdProducts.push({ id: product.id, sku: product.sku });
+    createdProducts.push({ id: product.id, sku: product.sku, controlado: p.controlado });
 
     for (const unit of product.units) {
       createdUnits.push({
@@ -355,6 +355,16 @@ async function main() {
   };
 
   for (const product of createdProducts) {
+    const batch = product.controlado
+      ? await prisma.productBatch.create({
+          data: {
+            productId: product.id,
+            lote: 'LOTE-INICIAL-001',
+            fechaVencimiento: new Date('2027-12-31'),
+          },
+        })
+      : null;
+
     await registerMovement({
       productId: product.id,
       warehouseId: bodega.id,
@@ -363,6 +373,7 @@ async function main() {
       referenciaTipo: 'seed',
       referenciaId: 'stock-inicial',
       userId: admin.id,
+      ...(batch ? { batchId: batch.id } : {}),
     });
   }
 
