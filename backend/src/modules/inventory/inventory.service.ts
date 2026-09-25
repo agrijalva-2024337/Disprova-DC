@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { Prisma, type TipoMovimientoInventario } from '@prisma/client';
 import { prisma } from '../../config/prisma.js';
 import { AppError } from '../../shared/errors/AppError.js';
+import type { CreateBatchInput, CreateWarehouseInput, EntradaInput } from './inventory.schema.js';
 
 /**
  * ÚNICA puerta de escritura de la tabla `stock` en todo el sistema.
@@ -229,6 +230,70 @@ export async function adjustStock(input: {
     referenciaTipo: 'motivo',
     referenciaId: input.motivo,
     userId: input.userId,
+  });
+}
+
+export async function createWarehouse(input: CreateWarehouseInput) {
+  if (input.tipo === 'vehiculo' && input.responsableUserId) {
+    const existing = await prisma.warehouse.findFirst({
+      where: {
+        tipo: 'vehiculo',
+        activo: true,
+        responsableUserId: input.responsableUserId,
+      },
+    });
+    if (existing) {
+      throw new AppError('El usuario ya tiene un vehículo activo', 409, 'VEHICLE_ALREADY_ASSIGNED');
+    }
+  }
+
+  return prisma.warehouse.create({
+    data: {
+      nombre: input.nombre,
+      tipo: input.tipo,
+      responsableUserId: input.responsableUserId ?? null,
+      activo: true,
+    },
+  });
+}
+
+export async function createBatch(input: CreateBatchInput) {
+  const product = await prisma.product.findUnique({ where: { id: input.productId } });
+  if (!product) {
+    throw new AppError('Producto no encontrado', 404, 'NOT_FOUND');
+  }
+  if (!product.controlado) {
+    throw new AppError('Solo los productos controlados llevan lote', 422, 'NOT_CONTROLLED');
+  }
+
+  return prisma.productBatch.create({
+    data: {
+      productId: input.productId,
+      lote: input.lote,
+      fechaVencimiento: input.fechaVencimiento,
+      costo: String(input.costo),
+    },
+  });
+}
+
+export async function receiveStock(input: EntradaInput, userId: number) {
+  const bodega = await prisma.warehouse.findFirst({
+    where: { tipo: 'bodega', activo: true, nombre: 'Bodega central' },
+    orderBy: { id: 'asc' },
+  });
+  if (!bodega) {
+    throw new AppError('No hay una bodega central activa para recibir la mercadería', 422, 'NO_CENTRAL_WAREHOUSE');
+  }
+
+  return registerMovement({
+    productId: input.productId,
+    warehouseId: bodega.id,
+    batchId: input.batchId,
+    tipo: 'entrada',
+    cantidad: input.cantidad,
+    referenciaTipo: 'entrada',
+    referenciaId: 'bodega-central',
+    userId,
   });
 }
 
