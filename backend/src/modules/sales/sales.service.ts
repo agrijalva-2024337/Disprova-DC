@@ -1,5 +1,6 @@
 import { Prisma } from '@prisma/client';
 import { prisma } from '../../config/prisma.js';
+import { postMovement } from '../collections/account.service.js';
 import { registerMovement } from '../inventory/inventory.service.js';
 import { AppError } from '../../shared/errors/AppError.js';
 import type { CreateOrderInput, DeliverOrderInput } from './sales.schema.js';
@@ -177,6 +178,15 @@ export async function confirmOrder(orderId: number, userId: number) {
     }
 
     if (order.condicionPago === 'credito') {
+      // Comprometido = deuda ya cargada (último saldo de account_movements)
+      // más el total de otros pedidos a crédito en pendiente o confirmado,
+      // que todavía no se entregaron y por eso aún no son un cargo.
+      // Este pedido no entra en esa suma: se compara aparte contra el límite.
+      const lastMovement = await tx.accountMovement.findFirst({
+        where: { clientId: order.clientId },
+        orderBy: [{ fecha: 'desc' }, { id: 'desc' }],
+      });
+      const saldo = new Prisma.Decimal(lastMovement?.saldoResultante ?? 0);
       const open = await tx.order.aggregate({
         where: {
           clientId: order.clientId,
@@ -186,7 +196,7 @@ export async function confirmOrder(orderId: number, userId: number) {
         },
         _sum: { total: true },
       });
-      const comprometido = new Prisma.Decimal(open._sum.total ?? 0);
+      const comprometido = saldo.add(open._sum.total ?? 0);
       const limite = new Prisma.Decimal(order.client.limiteCredito);
       const disponible = money(limite.sub(comprometido));
       if (new Prisma.Decimal(order.total).greaterThan(disponible)) {
@@ -331,12 +341,6 @@ export async function deliverOrder(orderId: number, input: DeliverOrderInput, us
       return ya.add(entregada).greaterThanOrEqualTo(item.cantidad);
     });
 
-    if (order.condicionPago === 'credito') {
-      // TODO: cuando exista account_movements, registrar aquí el cargo del cliente
-      // por el valor de lo realmente entregado en esta visita (no por el total del
-      // pedido si la entrega fue parcial). No crear esa tabla en este módulo.
-    }
-
     const delivery = await tx.delivery.create({
       data: {
         orderId: order.id,
@@ -355,6 +359,42 @@ export async function deliverOrder(orderId: number, input: DeliverOrderInput, us
       },
       include: { items: true },
     });
+
+    if (order.condicionPago === 'credito') {
+      // Cargo de esta visita: precioUnitario * cantidad entregada ahora
+      // más la parte proporcional del impuesto de la línea. No usa el total
+      // del pedido cuando la entrega es parcial.
+      let cargo = new Prisma.Decimal(0);
+      for (const line of deliveryLines) {
+        if (line.cantidadEntregada.lessThanOrEqualTo(0)) {
+          continue;
+        }
+        const item = order.items.find((row) => row.id === line.orderItemId);
+        if (!item || new Prisma.Decimal(item.cantidad).lessThanOrEqualTo(0)) {
+          continue;
+        }
+        const share = line.cantidadEntregada.div(item.cantidad);
+        cargo = cargo.add(
+          money(
+            new Prisma.Decimal(item.precioUnitario)
+              .mul(line.cantidadEntregada)
+              .add(new Prisma.Decimal(item.impuesto).mul(share)),
+          ),
+        );
+      }
+      cargo = money(cargo);
+      if (cargo.greaterThan(0)) {
+        await postMovement(tx, {
+          clientId: order.clientId,
+          tipo: 'cargo',
+          referenciaTipo: 'delivery',
+          referenciaId: String(delivery.id),
+          monto: cargo,
+          fecha: new Date(),
+          userId,
+        });
+      }
+    }
 
     const updated = await tx.order.update({
       where: { id: order.id },
