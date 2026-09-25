@@ -5,6 +5,7 @@ import { errorHandler } from './shared/errors/errorHandler.js';
 import { authRouter } from './modules/auth/auth.routes.js';
 import { catalogRouter } from './modules/catalog/catalog.routes.js';
 import { inventoryRouter } from './modules/inventory/inventory.routes.js';
+import { cashRouter } from './modules/cash/cash.routes.js';
 import { salesRouter } from './modules/sales/sales.routes.js';
 import { salesTerritoryRouter } from './modules/sales-territory/sales-territory.routes.js';
 
@@ -41,5 +42,6 @@ app.use('/api/catalog', catalogRouter);
 app.use('/api/inventory', inventoryRouter);
 app.use('/api', salesTerritoryRouter);
 app.use('/api/orders', salesRouter);
+app.use('/api/cash-sessions', cashRouter);
 
 app.use(errorHandler);
