@@ -31,7 +31,9 @@ export const getOrder = asyncHandler(async (req: Request, res: Response) => {
 });
 
 export const createOrder = asyncHandler(async (req: Request, res: Response) => {
-  res.status(201).json(await salesService.createOrder(req.body, userId(req)));
+  const result = await salesService.createOrder(req.body, userId(req));
+  // La misma idempotencyKey en 24 h devuelve el pedido ya creado (200). Un alta nueva responde 201.
+  res.status(result.created ? 201 : 200).json(result.order);
 });
 
 export const confirmOrder = asyncHandler(async (req: Request, res: Response) => {

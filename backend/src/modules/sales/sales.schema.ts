@@ -23,6 +23,7 @@ export const createOrderSchema = z.object({
   clientId: z.number().int().positive(),
   canal: z.enum(['campo', 'web', 'whatsapp']),
   condicionPago: z.enum(['contado', 'credito']),
+  idempotencyKey: z.string().min(1).optional(),
   items: z
     .array(
       z.object({
