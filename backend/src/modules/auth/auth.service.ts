@@ -34,7 +34,7 @@ function invalidCredentials(): never {
 }
 
 export async function login(email: string, password: string) {
-  const user = await prisma.user.findUnique({ where: { email } });
+  const user = await prisma.user.findUnique({ where: { email }, include: { role: true } });
 
   if (!user || !user.activo) {
     invalidCredentials();
@@ -54,6 +54,7 @@ export async function login(email: string, password: string) {
       nombre: user.nombre,
       email: user.email,
       roleId: user.roleId,
+      rol: user.role.nombre,
       activo: user.activo,
     },
   };

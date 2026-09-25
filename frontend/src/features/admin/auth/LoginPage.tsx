@@ -1,3 +1,4 @@
+import { useMutation } from '@tanstack/react-query'
 import { useState, type FormEvent } from 'react'
 import { Navigate, useNavigate } from 'react-router-dom'
 import { ApiError } from '../api/http.ts'
@@ -9,24 +10,25 @@ export function LoginPage() {
   const [email, setEmail] = useState('admin@disprova.local')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
-  const [submitting, setSubmitting] = useState(false)
+
+  const loginMutation = useMutation({
+    mutationFn: () => login(email, password),
+    onSuccess: () => {
+      navigate('/admin/productos', { replace: true })
+    },
+    onError: (err) => {
+      setError(err instanceof ApiError ? err.message : 'No se pudo iniciar sesión')
+    },
+  })
 
   if (isAuthenticated) {
     return <Navigate to="/admin/productos" replace />
   }
 
-  async function onSubmit(event: FormEvent) {
+  function onSubmit(event: FormEvent) {
     event.preventDefault()
     setError(null)
-    setSubmitting(true)
-    try {
-      await login(email, password)
-      navigate('/admin/productos', { replace: true })
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'No se pudo iniciar sesión')
-    } finally {
-      setSubmitting(false)
-    }
+    loginMutation.mutate()
   }
 
   return (
@@ -68,10 +70,10 @@ export function LoginPage() {
         </label>
         <button
           type="submit"
-          disabled={submitting}
+          disabled={loginMutation.isPending}
           className="w-full rounded bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-60"
         >
-          {submitting ? 'Ingresando…' : 'Ingresar'}
+          {loginMutation.isPending ? 'Ingresando…' : 'Ingresar'}
         </button>
       </form>
     </div>

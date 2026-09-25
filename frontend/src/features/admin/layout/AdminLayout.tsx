@@ -5,6 +5,10 @@ const links = [
   { to: '/admin/categorias', label: 'Categorías' },
   { to: '/admin/productos', label: 'Productos' },
   { to: '/admin/listas-precio', label: 'Listas de precio' },
+  { to: '/admin/inventario', label: 'Inventario' },
+  { to: '/admin/zonas', label: 'Zonas' },
+  { to: '/admin/clientes', label: 'Clientes' },
+  { to: '/ruta', label: 'Mi ruta' },
 ]
 
 export function AdminLayout() {

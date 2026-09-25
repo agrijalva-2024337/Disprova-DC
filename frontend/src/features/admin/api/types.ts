@@ -3,6 +3,7 @@ export type AuthUser = {
   nombre: string
   email: string
   roleId: number
+  rol: string
   activo: boolean
 }
 
@@ -96,4 +97,89 @@ export type PriceListInput = {
   nombre: string
   descripcion?: string | null
   activo?: boolean
+}
+
+export type Zone = {
+  id: number
+  nombre: string
+  semanaMes: number
+  diasSemana: number[]
+  vendedorUserId: number | null
+  activo: boolean
+}
+
+export type ZoneInput = {
+  nombre: string
+  semanaMes: number
+  diasSemana: number[]
+  vendedorUserId?: number | null
+  activo?: boolean
+}
+
+export type ClientContact = {
+  id: number
+  clientId: number
+  nombre: string
+  telefono: string
+  esWhatsapp: boolean
+  aceptaMensajes: boolean
+  esPrincipal: boolean
+}
+
+export type ClientContactInput = {
+  nombre: string
+  telefono: string
+  esWhatsapp: boolean
+  aceptaMensajes?: boolean
+  esPrincipal?: boolean
+}
+
+export type Client = {
+  id: number
+  nombreComercial: string
+  nit: string | null
+  tipoNegocio: 'tienda' | 'farmacia' | 'mercado' | 'otro'
+  zoneId: number
+  ordenRuta: number
+  direccion: string
+  lat: string | null
+  lng: string | null
+  priceListId: number
+  limiteCredito: string
+  plazoDias: number
+  activo: boolean
+  createdAt: string
+  contacts?: ClientContact[]
+}
+
+export type ClientInput = {
+  nombreComercial: string
+  nit?: string | null
+  tipoNegocio: Client['tipoNegocio']
+  zoneId: number
+  ordenRuta: number
+  direccion: string
+  priceListId: number
+  limiteCredito?: string
+  plazoDias?: number
+  activo?: boolean
+}
+
+export type TodayRouteClient = Client & {
+  saldoActual: number
+  visitadoHoy: boolean
+}
+
+export type TodayRoute = {
+  fecha: string
+  semanaMes: number
+  diaSemana: number
+  zones: Zone[]
+  clients: TodayRouteClient[]
+}
+
+export type RouteVisitInput = {
+  clientId: number
+  resultado: 'pedido' | 'no_compro' | 'cerrado'
+  motivo?: string | null
 }

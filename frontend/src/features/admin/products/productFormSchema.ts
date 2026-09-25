@@ -1,10 +1,16 @@
 import { z } from 'zod'
 
+const decimalText = z
+  .string()
+  .trim()
+  .min(1, 'Indica un número')
+  .refine((value) => /^\d+(\.\d+)?$/.test(value), 'Usa un número válido, por ejemplo 1 o 12.50')
+
 export const productUnitFormSchema = z.object({
   nombre: z.string().min(1, 'Indica el nombre de la presentación'),
-  factor: z.string().min(1, 'Indica el factor'),
+  factor: decimalText,
   codigoBarras: z.string().optional(),
-  precioBase: z.string().min(1, 'Indica el precio base'),
+  precioBase: decimalText,
 })
 
 export const productFormSchema = z.object({
