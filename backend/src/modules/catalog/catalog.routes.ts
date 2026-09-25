@@ -7,12 +7,18 @@ import {
   createCategorySchema,
   createPriceListItemSchema,
   createPriceListSchema,
+  createProductImageSchema,
   createProductSchema,
+  createProductUnitSchema,
   idParamSchema,
+  productChildParamSchema,
+  productIdParamSchema,
   updateCategorySchema,
   updatePriceListItemSchema,
   updatePriceListSchema,
+  updateProductImageSchema,
   updateProductSchema,
+  updateProductUnitSchema,
 } from './catalog.schema.js';
 
 export const catalogRouter = Router();
@@ -20,6 +26,8 @@ export const catalogRouter = Router();
 const adminWrite = [requireAuth, requireRole('admin')] as const;
 const readAuth = [requireAuth] as const;
 const idParams = validateParams(idParamSchema);
+const productParams = validateParams(productIdParamSchema);
+const childParams = validateParams(productChildParamSchema);
 
 catalogRouter.get('/categories', ...readAuth, catalogController.listCategories);
 catalogRouter.get('/categories/:id', ...readAuth, idParams, catalogController.getCategory);
@@ -54,6 +62,62 @@ catalogRouter.put(
   catalogController.updateProduct,
 );
 catalogRouter.delete('/products/:id', ...adminWrite, idParams, catalogController.deleteProduct);
+
+catalogRouter.get('/products/:productId/units', ...readAuth, productParams, catalogController.listProductUnits);
+catalogRouter.get(
+  '/products/:productId/units/:id',
+  ...readAuth,
+  childParams,
+  catalogController.getProductUnit,
+);
+catalogRouter.post(
+  '/products/:productId/units',
+  ...adminWrite,
+  productParams,
+  validateBody(createProductUnitSchema),
+  catalogController.createProductUnit,
+);
+catalogRouter.put(
+  '/products/:productId/units/:id',
+  ...adminWrite,
+  childParams,
+  validateBody(updateProductUnitSchema),
+  catalogController.updateProductUnit,
+);
+catalogRouter.delete(
+  '/products/:productId/units/:id',
+  ...adminWrite,
+  childParams,
+  catalogController.deactivateProductUnit,
+);
+
+catalogRouter.get('/products/:productId/images', ...readAuth, productParams, catalogController.listProductImages);
+catalogRouter.get(
+  '/products/:productId/images/:id',
+  ...readAuth,
+  childParams,
+  catalogController.getProductImage,
+);
+catalogRouter.post(
+  '/products/:productId/images',
+  ...adminWrite,
+  productParams,
+  validateBody(createProductImageSchema),
+  catalogController.createProductImage,
+);
+catalogRouter.put(
+  '/products/:productId/images/:id',
+  ...adminWrite,
+  childParams,
+  validateBody(updateProductImageSchema),
+  catalogController.updateProductImage,
+);
+catalogRouter.delete(
+  '/products/:productId/images/:id',
+  ...adminWrite,
+  childParams,
+  catalogController.deleteProductImage,
+);
 
 catalogRouter.get('/price-lists', ...readAuth, catalogController.listPriceLists);
 catalogRouter.get('/price-lists/:id', ...readAuth, idParams, catalogController.getPriceList);

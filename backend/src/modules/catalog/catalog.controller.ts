@@ -93,3 +93,48 @@ export const deletePriceListItem = asyncHandler(async (req: Request, res: Respon
   await catalogService.deletePriceListItem(paramId(req), userId(req));
   res.status(204).send();
 });
+
+function productId(req: Request): number {
+  return Number(req.params.productId);
+}
+
+export const listProductUnits = asyncHandler(async (req: Request, res: Response) => {
+  res.status(200).json(await catalogService.listProductUnits(productId(req)));
+});
+
+export const getProductUnit = asyncHandler(async (req: Request, res: Response) => {
+  res.status(200).json(await catalogService.getProductUnit(productId(req), paramId(req)));
+});
+
+export const createProductUnit = asyncHandler(async (req: Request, res: Response) => {
+  res.status(201).json(await catalogService.createProductUnit(productId(req), req.body, userId(req)));
+});
+
+export const updateProductUnit = asyncHandler(async (req: Request, res: Response) => {
+  res.status(200).json(await catalogService.updateProductUnit(productId(req), paramId(req), req.body, userId(req)));
+});
+
+export const deactivateProductUnit = asyncHandler(async (req: Request, res: Response) => {
+  res.status(200).json(await catalogService.deactivateProductUnit(productId(req), paramId(req), userId(req)));
+});
+
+export const listProductImages = asyncHandler(async (req: Request, res: Response) => {
+  res.status(200).json(await catalogService.listProductImages(productId(req)));
+});
+
+export const getProductImage = asyncHandler(async (req: Request, res: Response) => {
+  res.status(200).json(await catalogService.getProductImage(productId(req), paramId(req)));
+});
+
+export const createProductImage = asyncHandler(async (req: Request, res: Response) => {
+  res.status(201).json(await catalogService.createProductImage(productId(req), req.body, userId(req)));
+});
+
+export const updateProductImage = asyncHandler(async (req: Request, res: Response) => {
+  res.status(200).json(await catalogService.updateProductImage(productId(req), paramId(req), req.body, userId(req)));
+});
+
+export const deleteProductImage = asyncHandler(async (req: Request, res: Response) => {
+  await catalogService.deleteProductImage(productId(req), paramId(req), userId(req));
+  res.status(204).send();
+});

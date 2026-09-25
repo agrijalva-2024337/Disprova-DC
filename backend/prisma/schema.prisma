@@ -101,6 +101,7 @@ model ProductUnit {
   factor       Decimal @db.Decimal(12, 4)
   codigoBarras String? @unique @map("codigo_barras")
   precioBase   Decimal @map("precio_base") @db.Decimal(12, 2)
+  activo       Boolean @default(true)
 
   product        Product         @relation(fields: [productId], references: [id], onDelete: Restrict)
   priceListItems PriceListItem[]
