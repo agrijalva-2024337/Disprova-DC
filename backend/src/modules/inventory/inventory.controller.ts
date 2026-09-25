@@ -1,7 +1,15 @@
 import type { Request, Response } from 'express';
 import { AppError } from '../../shared/errors/AppError.js';
 import { asyncHandler } from '../../shared/http/asyncHandler.js';
-import { adjustmentSchema, movementQuerySchema, stockQuerySchema, transferSchema } from './inventory.schema.js';
+import {
+  adjustmentSchema,
+  createBatchSchema,
+  createWarehouseSchema,
+  entradaSchema,
+  movementQuerySchema,
+  stockQuerySchema,
+  transferSchema,
+} from './inventory.schema.js';
 import * as inventoryService from './inventory.service.js';
 
 function userId(req: Request): number {
@@ -44,4 +52,19 @@ export const transfer = asyncHandler(async (req: Request, res: Response) => {
 export const adjust = asyncHandler(async (req: Request, res: Response) => {
   const body = adjustmentSchema.parse(req.body);
   res.status(201).json(await inventoryService.adjustStock({ ...body, userId: userId(req) }));
+});
+
+export const createWarehouse = asyncHandler(async (req: Request, res: Response) => {
+  const body = createWarehouseSchema.parse(req.body);
+  res.status(201).json(await inventoryService.createWarehouse(body));
+});
+
+export const createBatch = asyncHandler(async (req: Request, res: Response) => {
+  const body = createBatchSchema.parse(req.body);
+  res.status(201).json(await inventoryService.createBatch(body));
+});
+
+export const receiveStock = asyncHandler(async (req: Request, res: Response) => {
+  const body = entradaSchema.parse(req.body);
+  res.status(201).json(await inventoryService.receiveStock(body, userId(req)));
 });

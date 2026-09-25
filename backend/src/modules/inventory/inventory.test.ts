@@ -190,3 +190,64 @@ describe('inventory registerMovement', () => {
     expect(reserved.toString()).toBe(new Prisma.Decimal(stock.cantidadReservada).toString());
   });
 });
+
+describe('bodegas, lotes y entradas', () => {
+  it('no asigna un segundo vehículo activo al mismo usuario', async () => {
+    const { token, userId } = await loginAsAdmin();
+    const auth = { Authorization: `Bearer ${token}` };
+    const response = await request(app).post('/api/inventory/warehouses').set(auth).send({
+      nombre: `Vehículo extra ${Date.now()}`,
+      tipo: 'vehiculo',
+      responsableUserId: userId,
+    });
+    expect(response.status).toBe(409);
+    expect(response.body.error.code).toBe('VEHICLE_ALREADY_ASSIGNED');
+  });
+
+  it('crea lote solo para un producto controlado', async () => {
+    const { token } = await loginAsAdmin();
+    const auth = { Authorization: `Bearer ${token}` };
+    const controlled = await prisma.product.findFirstOrThrow({ where: { controlado: true } });
+    const plain = await prisma.product.findFirstOrThrow({ where: { controlado: false } });
+
+    const created = await request(app).post('/api/inventory/batches').set(auth).send({
+      productId: controlled.id,
+      lote: `LOTE-${Date.now()}`,
+      fechaVencimiento: '2027-12-31',
+      costo: '12.50',
+    });
+    expect(created.status).toBe(201);
+
+    const rejected = await request(app).post('/api/inventory/batches').set(auth).send({
+      productId: plain.id,
+      lote: `LOTE-NO-${Date.now()}`,
+      fechaVencimiento: '2027-12-31',
+      costo: '1.00',
+    });
+    expect(rejected.status).toBe(422);
+    expect(rejected.body.error.code).toBe('NOT_CONTROLLED');
+  });
+
+  it('registra una entrada en la bodega central', async () => {
+    const { token, userId } = await loginAsAdmin();
+    const product = await prisma.product.findFirstOrThrow({ where: { sku: 'HIG-001' } });
+    const bodega = await prisma.warehouse.findFirstOrThrow({ where: { nombre: 'Bodega central' } });
+    const before = new Prisma.Decimal(
+      (await prisma.stock.findFirst({ where: { productId: product.id, warehouseId: bodega.id, batchId: null } }))
+        ?.cantidad ?? 0,
+    );
+
+    const response = await request(app)
+      .post('/api/inventory/movements/entrada')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ productId: product.id, cantidad: '3' });
+    expect(response.status).toBe(201);
+    expect(response.body.tipo).toBe('entrada');
+
+    const after = await prisma.stock.findFirstOrThrow({
+      where: { productId: product.id, warehouseId: bodega.id, batchId: null },
+    });
+    expect(new Prisma.Decimal(after.cantidad).toString()).toBe(before.add(3).toString());
+    expect(userId).toBeGreaterThan(0);
+  });
+});
