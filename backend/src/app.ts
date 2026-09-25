@@ -7,6 +7,7 @@ import { catalogRouter } from './modules/catalog/catalog.routes.js';
 import { inventoryRouter } from './modules/inventory/inventory.routes.js';
 import { cashRouter } from './modules/cash/cash.routes.js';
 import { collectionsRouter } from './modules/collections/collections.routes.js';
+import { returnsRouter } from './modules/returns/returns.routes.js';
 import { salesRouter } from './modules/sales/sales.routes.js';
 import { salesTerritoryRouter } from './modules/sales-territory/sales-territory.routes.js';
 
@@ -45,5 +46,6 @@ app.use('/api', salesTerritoryRouter);
 app.use('/api/orders', salesRouter);
 app.use('/api/cash-sessions', cashRouter);
 app.use('/api', collectionsRouter);
+app.use('/api/returns', returnsRouter);
 
 app.use(errorHandler);
