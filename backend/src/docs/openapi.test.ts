@@ -15,10 +15,10 @@ type PathItem = Record<string, Operation>;
 const spec = openApiSpec as unknown as { paths: Record<string, PathItem> };
 
 describe('documentación OpenAPI', () => {
-  it('el spec es válido y tiene los 12 tags del backend', () => {
+  it('el spec es válido y tiene los 13 tags del backend', () => {
     expect(spec.openapi).toBe('3.0.3');
     expect(spec.paths).toBeTypeOf('object');
-    expect(TAGS).toHaveLength(12);
+    expect(TAGS).toHaveLength(13);
     expect(openApiSpec.tags?.map((t) => t.name)).toEqual([...TAGS]);
   });
 
