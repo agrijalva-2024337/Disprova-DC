@@ -150,6 +150,16 @@ import {
  *       409: { description: "El código de barras ya existe." }
  *
  * /catalog/products/{productId}/units/{id}:
+ *   get:
+ *     tags: [Catálogo]
+ *     summary: "Obtiene una presentación"
+ *     security: [{ bearerAuth: [] }]
+ *     parameters:
+ *       - { in: path, name: productId, required: true, schema: { type: integer } }
+ *       - { in: path, name: id, required: true, schema: { type: integer } }
+ *     responses:
+ *       200: { description: "La presentación con su producto." }
+ *       404: { description: "Presentación no encontrada." }
  *   put:
  *     tags: [Catálogo]
  *     summary: "Actualiza una presentación"
@@ -195,6 +205,46 @@ import {
  *       201: { description: "Imagen agregada." }
  *       403: { description: "Solo admin." }
  *       404: { description: "Producto no encontrado." }
+ *
+ * /catalog/products/{productId}/images/{id}:
+ *   get:
+ *     tags: [Catálogo]
+ *     summary: "Obtiene una imagen"
+ *     security: [{ bearerAuth: [] }]
+ *     parameters:
+ *       - { in: path, name: productId, required: true, schema: { type: integer } }
+ *       - { in: path, name: id, required: true, schema: { type: integer } }
+ *     responses:
+ *       200: { description: "La imagen con su url, orden y marca de principal." }
+ *       404: { description: "Imagen no encontrada." }
+ *   put:
+ *     tags: [Catálogo]
+ *     summary: "Actualiza una imagen"
+ *     description: "Solo admin. Si se marca como principal, el servicio baja la principal anterior del mismo producto."
+ *     security: [{ bearerAuth: [] }]
+ *     parameters:
+ *       - { in: path, name: productId, required: true, schema: { type: integer } }
+ *       - { in: path, name: id, required: true, schema: { type: integer } }
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema: { type: object, required: [url], properties: { url: { type: string }, orden: { type: integer }, esPrincipal: { type: boolean } } }
+ *     responses:
+ *       200: { description: "Imagen actualizada." }
+ *       403: { description: "Solo admin." }
+ *       404: { description: "Imagen no encontrada." }
+ *   delete:
+ *     tags: [Catálogo]
+ *     summary: "Elimina una imagen"
+ *     security: [{ bearerAuth: [] }]
+ *     parameters:
+ *       - { in: path, name: productId, required: true, schema: { type: integer } }
+ *       - { in: path, name: id, required: true, schema: { type: integer } }
+ *     responses:
+ *       204: { description: "Imagen eliminada." }
+ *       403: { description: "Solo admin." }
+ *       404: { description: "Imagen no encontrada." }
  *
  * /catalog/price-lists:
  *   get:
@@ -252,8 +302,31 @@ import {
  *     security: [{ bearerAuth: [] }]
  *     responses:
  *       200: { description: "Precios por presentación y vigencia." }
+ *   post:
+ *     tags: [Catálogo]
+ *     summary: "Agrega un precio a una lista"
+ *     description: "Solo admin. `vigenteDesde` define desde cuándo aplica: para cambiar un precio se agrega uno nuevo, no se edita el viejo."
+ *     security: [{ bearerAuth: [] }]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema: { type: object, required: [priceListId, productUnitId, precio], properties: { priceListId: { type: integer }, productUnitId: { type: integer }, precio: { oneOf: [{ type: string }, { type: number }] }, vigenteDesde: { type: string, format: date-time } } }
+ *     responses:
+ *       201: { description: "Precio agregado." }
+ *       403: { description: "Solo admin." }
+ *       404: { description: "Lista de precios o presentación no encontrada." }
+ *       409: { description: "La lista ya tiene un precio para esa presentación." }
  *
  * /catalog/price-list-items/{id}:
+ *   get:
+ *     tags: [Catálogo]
+ *     summary: "Obtiene un ítem de precio"
+ *     security: [{ bearerAuth: [] }]
+ *     parameters: [{ in: path, name: id, required: true, schema: { type: integer } }]
+ *     responses:
+ *       200: { description: "El ítem con su lista, presentación y vigencia." }
+ *       404: { description: "Ítem no encontrado." }
  *   put:
  *     tags: [Catálogo]
  *     summary: "Actualiza un precio"

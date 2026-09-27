@@ -31,6 +31,7 @@ function modulosDir(): string {
  */
 export const TAGS = [
   'Auth',
+  'Usuarios',
   'Auditoría',
   'Catálogo',
   'Zonas y Clientes',
@@ -46,6 +47,7 @@ export const TAGS = [
 ] as const;
 
 const TAGS_DESCRIPCION: Record<string, string> = {
+  'Usuarios': 'Alta y edición de usuarios, y catálogo de roles.',
   'Auditoría': 'Consulta del rastro de cambios, solo admin.',
   Auth: 'Inicio de sesión y refresco de token.',
   'Catálogo': 'Categorías, productos, presentaciones, imágenes y listas de precios.',

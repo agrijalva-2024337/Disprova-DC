@@ -31,7 +31,7 @@ afterEach(async () => {
   if (ids.length === 0) {
     return;
   }
-  await prisma.auditLog.deleteMany({ where: { entidad: 'users', entidadId: { in: ids.map(String) } } });
+  await prisma.auditLog.deleteMany({ where: { entidad: 'User', entidadId: { in: ids.map(String) } } });
   await prisma.user.deleteMany({ where: { id: { in: ids } } });
 });
 
@@ -118,7 +118,7 @@ describe('POST /api/users', () => {
     expect(await bcrypt.compare('Secreto123', enBase.passwordHash)).toBe(true);
 
     const audit = await prisma.auditLog.findFirstOrThrow({
-      where: { entidad: 'users', entidadId: String(response.body.id), accion: 'create' },
+      where: { entidad: 'User', entidadId: String(response.body.id), accion: 'create' },
     });
     expect(audit.userId).toBe(userId);
   });
@@ -176,7 +176,7 @@ describe('PUT /api/users/:id', () => {
     expect(response.body.passwordHash).toBeUndefined();
 
     const audit = await prisma.auditLog.findFirstOrThrow({
-      where: { entidad: 'users', entidadId: String(user.id), accion: 'update' },
+      where: { entidad: 'User', entidadId: String(user.id), accion: 'update' },
     });
     expect(audit.userId).toBe(userId);
     expect((audit.datosAntes as { email: string }).email).toBe(user.email);
