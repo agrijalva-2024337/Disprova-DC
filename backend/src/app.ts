@@ -19,6 +19,7 @@ import { messagingRouter } from './modules/messaging/messaging.routes.js';
 import { clientTokenRouter, publicStoreRouter } from './modules/public-store/public-store.routes.js';
 import { invoicesRouter, orderInvoiceRouter } from './modules/billing/billing.routes.js';
 import { rolesRouter, usersRouter } from './modules/users/users.routes.js';
+import { auditRouter } from './modules/audit/audit.routes.js';
 import { openApiSpec } from './docs/openapi.js';
 
 export const app = express();
@@ -90,6 +91,7 @@ app.use('/api/orders', orderInvoiceRouter);
 app.use('/api/invoices', invoicesRouter);
 app.use('/api/users', usersRouter);
 app.use('/api/roles', rolesRouter);
+app.use('/api/audit-log', auditRouter);
 
 // Documentación: es documentación, no datos. Sin requireAuth a propósito.
 app.get('/api/docs.json', (_req, res) => {
