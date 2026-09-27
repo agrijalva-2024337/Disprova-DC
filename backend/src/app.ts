@@ -18,6 +18,7 @@ import { reportsRouter } from './modules/reports/reports.routes.js';
 import { messagingRouter } from './modules/messaging/messaging.routes.js';
 import { clientTokenRouter, publicStoreRouter } from './modules/public-store/public-store.routes.js';
 import { invoicesRouter, orderInvoiceRouter } from './modules/billing/billing.routes.js';
+import { rolesRouter, usersRouter } from './modules/users/users.routes.js';
 import { openApiSpec } from './docs/openapi.js';
 
 export const app = express();
@@ -87,6 +88,8 @@ app.use('/api/public', publicStoreRouter);
 // La factura cuelga del pedido: /api/orders/:id/invoice
 app.use('/api/orders', orderInvoiceRouter);
 app.use('/api/invoices', invoicesRouter);
+app.use('/api/users', usersRouter);
+app.use('/api/roles', rolesRouter);
 
 // Documentación: es documentación, no datos. Sin requireAuth a propósito.
 app.get('/api/docs.json', (_req, res) => {
