@@ -41,6 +41,7 @@ model User {
   collectionVisits    CollectionVisit[]
   returns             Return[]
   messageLogs          MessageLog[]
+  clientAccessTokens   ClientAccessToken[]
 
   @@map("users")
 }
@@ -212,6 +213,7 @@ model Client {
   collectionVisits  CollectionVisit[]
   returns           Return[]
   messageLogs        MessageLog[]
+  accessTokens       ClientAccessToken[]
 
   @@unique([zoneId, ordenRuta])
   @@map("clients")
@@ -673,4 +675,30 @@ model MessageLog {
 
   @@index([clientId])
   @@map("message_logs")
+}
+
+// --- Catálogo web público por token ---
+
+/// Token opaco de acceso al catálogo web de UN cliente puntual.
+/// No es una sesión de usuario: no lleva rol ni permisos de admin, no
+/// habilita ningún otro endpoint y solo autoriza ver el catálogo con la
+/// lista de precios de ese cliente y crear pedidos a su nombre.
+/// Un cliente puede tener varios vigentes a la vez.
+model ClientAccessToken {
+  id              Int      @id @default(autoincrement())
+  clientId        Int      @map("client_id")
+  /// 128 bits de randomBytes codificados en base64url. Nunca un id
+  /// secuencial ni un valor adivinable.
+  token           String   @unique
+  expiresAt       DateTime @map("expires_at")
+  createdAt       DateTime @default(now()) @map("created_at")
+  /// Quién lo generó. Es trazabilidad del usuario interno, no autorización.
+  createdByUserId Int      @map("created_by_user_id")
+
+  client    Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  createdBy User   @relation(fields: [createdByUserId], references: [id], onDelete: Restrict)
+
+  @@index([clientId])
+  @@index([expiresAt])
+  @@map("client_access_tokens")
 }
