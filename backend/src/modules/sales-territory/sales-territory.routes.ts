@@ -139,6 +139,16 @@ import {
  *       404: { description: "Cliente no encontrado." }
  *
  * /clients/{id}/contacts/{contactId}:
+ *   get:
+ *     tags: [Zonas y Clientes]
+ *     summary: "Obtiene un contacto"
+ *     security: [{ bearerAuth: [] }]
+ *     parameters:
+ *       - { in: path, name: id, required: true, schema: { type: integer } }
+ *       - { in: path, name: contactId, required: true, schema: { type: integer } }
+ *     responses:
+ *       200: { description: "El contacto del cliente." }
+ *       404: { description: "Contacto no encontrado." }
  *   put:
  *     tags: [Zonas y Clientes]
  *     summary: "Actualiza un contacto"

@@ -13,7 +13,7 @@
 | DISP-021 | CRUD de Usuarios y Roles | Listo |
 | DISP-022 | Auditoría en módulos faltantes (Ventas, Inventario, Cobranzas, Devoluciones, Caja) | Listo |
 | DISP-023 | Endpoint de lectura de Auditoría (GET /api/audit-log) | Listo |
-| DISP-024 | Documentación Swagger: 7 endpoints faltantes | Pendiente |
+| DISP-024 | Documentación Swagger: 11 endpoints faltantes | Listo |
 
 ## Definition of Done
 

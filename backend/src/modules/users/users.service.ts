@@ -91,7 +91,7 @@ export async function createUser(input: CreateUserInput, userId: number) {
       });
       await writeAudit(tx, {
         userId,
-        entidad: 'users',
+        entidad: 'User',
         entidadId: String(created.id),
         accion: 'create',
         // El hash nunca va al log: no sirve para nada y filtra información.
@@ -131,7 +131,7 @@ export async function updateUser(id: number, input: UpdateUserInput, userId: num
 
       await writeAudit(tx, {
         userId,
-        entidad: 'users',
+        entidad: 'User',
         entidadId: String(id),
         accion: 'update',
         datosAntes: { nombre: existing.nombre, email: existing.email, roleId: existing.roleId, activo: existing.activo },
