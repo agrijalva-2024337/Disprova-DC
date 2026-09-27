@@ -11,7 +11,9 @@ Monorepo inicial para pedidos, inventario y cobranza (distribución).
 ## Requisitos
 
 - [Docker Desktop](https://www.docker.com/products/docker-desktop/) (o Docker Engine + Compose)
-- Node.js 20+ (solo para el frontend en desarrollo local)
+- Node.js 20+ y pnpm (solo para el frontend en desarrollo local)
+- El backend dentro de Docker usa pnpm vía `corepack`; en tu máquina podés
+  activarlo igual con `corepack enable`
 
 ## Primer arranque
 
@@ -47,8 +49,8 @@ Monorepo inicial para pedidos, inventario y cobranza (distribución).
 
 ```bash
 cd frontend
-npm install
-npm run dev
+pnpm install
+pnpm dev
 ```
 
 Abre [http://localhost:5173](http://localhost:5173).
@@ -59,15 +61,59 @@ Con PostgreSQL en marcha (`docker compose up -d postgres`):
 
 ```bash
 cd backend
-npm install
-npx prisma migrate dev
-npx prisma db seed
-npx prisma studio
+pnpm install
+pnpm exec prisma migrate dev
+pnpm exec prisma db seed
+pnpm exec prisma studio
 ```
 
 Datos de prueba del seed: roles `admin` y `vendedor`, usuario `admin@disprova.local` / `Admin123!`, 3 categorías (con jerarquía), 5 productos, 8 presentaciones y lista **Lista general** con un precio por presentación.
 
 `DATABASE_URL` en `backend/.env` debe apuntar a `localhost:5432` cuando ejecutas Prisma desde tu máquina.
+
+## Variables de entorno
+
+El backend lee todo desde `backend/.env` (copiado de `backend/.env.example`).
+La imagen de Docker la carga con `env_file` y sobreescribe los valores de
+PostgreSQL con los del servicio `postgres`.
+
+### Base y servidor
+
+| Variable | Qué es |
+|----------|--------|
+| `NODE_ENV` | Modo de ejecución: `development`, `production` o `test`. |
+| `PORT` | Puerto HTTP del servidor Express (3000 por defecto). |
+
+### PostgreSQL
+
+| Variable | Qué es |
+|----------|--------|
+| `POSTGRES_HOST` | Host de PostgreSQL: `postgres` dentro de Docker, `localhost` desde tu máquina. |
+| `POSTGRES_PORT` | Puerto de PostgreSQL (5432). |
+| `POSTGRES_USER` | Usuario de la base de datos. |
+| `POSTGRES_PASSWORD` | Contraseña del usuario; debe coincidir con la de `docker-compose.yml`. |
+| `POSTGRES_DB` | Nombre de la base de datos. |
+| `DATABASE_URL` | Cadena de conexión que usa Prisma. |
+
+### Autenticación
+
+| Variable | Qué es |
+|----------|--------|
+| `JWT_ACCESS_SECRET` | Secreto para firmar los tokens de acceso (caducan a los 15 minutos). |
+| `JWT_REFRESH_SECRET` | Secreto para firmar los tokens de refresco. |
+
+### Próximos módulos — no configurado aún
+
+Estas variables todavía no existen en el código: se agregarán a
+`backend/.env.example` en sus tickets correspondientes. Dejalas vacías por
+ahora; el backend no las lee hasta que se implemente cada módulo.
+
+| Variable | Qué es | Estado |
+|----------|--------|--------|
+| `WHATSAPP_PROVIDER` | Proveedor de mensajería (DISP-014). | No configurado aún |
+| `WHATSAPP_TOKEN` | Token de acceso de la API de WhatsApp (DISP-014). | No configurado aún |
+| `WHATSAPP_PHONE_NUMBER_ID` | Identificador del número emisor en WhatsApp Cloud API (DISP-014). | No configurado aún |
+| `FEL_PROVIDER_API_KEY` | Credencial del proveedor de facturación electrónica (DISP-018). | No configurado aún |
 
 ## Estructura
 
@@ -92,3 +138,8 @@ frontend/src
 | `docker compose up -d` | Servicios en segundo plano |
 | `docker compose down` | Detener contenedores |
 | `docker compose down -v` | Detener y borrar volumen de Postgres |
+| `docker compose build` | Reconstruir las imágenes (backend con pnpm) |
+| `cd backend && pnpm dev` | Backend con recarga en caliente |
+| `cd backend && pnpm test` | Tests del backend (Vitest) |
+| `cd backend && pnpm exec prisma studio` | Explorar la base de datos |
+| `cd frontend && pnpm dev` | Frontend en desarrollo |

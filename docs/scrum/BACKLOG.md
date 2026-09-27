@@ -1,0 +1,21 @@
+# Backlog — Disprova GyG (cierre de backend)
+
+| Ticket | Título | Estado |
+|--------|--------|--------|
+| DISP-013 | Limpieza: pnpm en Docker, borrar residuos de la raíz, README | Listo |
+| DISP-014 | Esquema y proveedor de mensajería (WhatsApp) | Pendiente |
+| DISP-015 | Endpoints de mensajería y envío por WhatsApp | Pendiente |
+| DISP-016 | Esquema: catálogo web público por token | Pendiente |
+| DISP-017 | Endpoints: catálogo público y pedido web por token | Pendiente |
+| DISP-018 | Esquema y proveedor de facturación (FEL) | Pendiente |
+| DISP-019 | Endpoints de facturación | Pendiente |
+| DISP-020 | Documentación: Swagger y README final | Pendiente |
+
+## Definition of Done
+
+1. Los tests del módulo pasan (pnpm test).
+2. Errores de negocio devuelven un AppError con código claro, nunca
+   un throw genérico.
+3. Toda escritura queda en AuditLog cuando corresponde.
+4. El PR de la tarea está mergeado en main antes de arrancar la
+   siguiente.
