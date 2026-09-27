@@ -2,6 +2,7 @@ import cors from 'cors';
 import express from 'express';
 import rateLimit from 'express-rate-limit';
 import helmet from 'helmet';
+import swaggerUi from 'swagger-ui-express';
 import { checkDatabaseConnection } from './config/database.js';
 import { errorHandler } from './shared/errors/errorHandler.js';
 import { authRouter } from './modules/auth/auth.routes.js';
@@ -17,6 +18,7 @@ import { reportsRouter } from './modules/reports/reports.routes.js';
 import { messagingRouter } from './modules/messaging/messaging.routes.js';
 import { clientTokenRouter, publicStoreRouter } from './modules/public-store/public-store.routes.js';
 import { invoicesRouter, orderInvoiceRouter } from './modules/billing/billing.routes.js';
+import { openApiSpec } from './docs/openapi.js';
 
 export const app = express();
 
@@ -85,5 +87,14 @@ app.use('/api/public', publicStoreRouter);
 // La factura cuelga del pedido: /api/orders/:id/invoice
 app.use('/api/orders', orderInvoiceRouter);
 app.use('/api/invoices', invoicesRouter);
+
+// Documentación: es documentación, no datos. Sin requireAuth a propósito.
+app.get('/api/docs.json', (_req, res) => {
+  res.status(200).json(openApiSpec);
+});
+app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(openApiSpec, {
+  customSiteTitle: 'Disprova GyG — API',
+  swaggerOptions: { persistAuthorization: true, docExpansion: 'none' },
+}));
 
 app.use(errorHandler);

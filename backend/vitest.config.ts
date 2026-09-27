@@ -6,7 +6,7 @@ export default defineConfig({
     env: {
       NODE_ENV: 'test',
     },
-    include: ['src/modules/**/*.test.ts'],
+    include: ['src/modules/**/*.test.ts', 'src/docs/**/*.test.ts'],
     fileParallelism: false,
   },
 });
