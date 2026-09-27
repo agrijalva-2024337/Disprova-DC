@@ -25,3 +25,15 @@ export function validateParams(schema: ZodType): RequestHandler {
     next();
   };
 }
+
+export function validateQuery(schema: ZodType): RequestHandler {
+  return (req, _res, next) => {
+    const result = schema.safeParse(req.query);
+    if (!result.success) {
+      next(new AppError('Parámetro inválido', 400, 'VALIDATION_ERROR'));
+      return;
+    }
+    Object.assign(req.query, result.data);
+    next();
+  };
+}
