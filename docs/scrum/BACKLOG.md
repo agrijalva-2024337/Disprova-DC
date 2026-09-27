@@ -11,7 +11,7 @@
 | DISP-019 | Endpoints de facturación | Listo |
 | DISP-020 | Documentación: Swagger y README final | Listo |
 | DISP-021 | CRUD de Usuarios y Roles | Listo |
-| DISP-022 | Auditoría en módulos faltantes (Ventas, Inventario, Cobranzas, Devoluciones, Caja) | Pendiente |
+| DISP-022 | Auditoría en módulos faltantes (Ventas, Inventario, Cobranzas, Devoluciones, Caja) | Listo |
 | DISP-023 | Endpoint de lectura de Auditoría (GET /api/audit-log) | Pendiente |
 | DISP-024 | Documentación Swagger: 7 endpoints faltantes | Pendiente |
 

@@ -2,18 +2,12 @@ import { Prisma } from '@prisma/client';
 import { prisma } from '../../config/prisma.js';
 import { env } from '../../config/env.js';
 import { AppError } from '../../shared/errors/AppError.js';
+import { writeAudit } from '../../shared/audit/writeAudit.js';
 import { importeEntregado, importeLineaEntregada } from '../sales/sales.service.js';
 import { getFelProvider } from './providers/fel.provider.js';
 import type { CreateInvoiceInput } from './billing.schema.js';
 
 const FACTURABLE_STATES = ['entregado', 'entregado_parcial'] as const;
-
-function toJson(value: unknown): Prisma.InputJsonValue | undefined {
-  if (value === undefined || value === null) {
-    return undefined;
-  }
-  return JSON.parse(JSON.stringify(value)) as Prisma.InputJsonValue;
-}
 
 function money(value: Prisma.Decimal | string | number) {
   return new Prisma.Decimal(value).toDecimalPlaces(2, Prisma.Decimal.ROUND_HALF_UP);
@@ -98,14 +92,12 @@ export async function createInvoiceForOrder(
         estado: 'pendiente_certificacion',
       },
     });
-    await tx.auditLog.create({
-      data: {
-        userId,
-        entidad: 'Invoice',
-        entidadId: String(created.id),
-        accion: 'create',
-        datosDespues: toJson({ orderId: order.id, serie, total: total.toFixed(2) }),
-      },
+    await writeAudit(tx, {
+      userId,
+      entidad: 'Invoice',
+      entidadId: String(created.id),
+      accion: 'create',
+      datosDespues: { orderId: order.id, serie, total: total.toFixed(2) },
     });
     return created;
   });

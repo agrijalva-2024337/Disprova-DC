@@ -1,6 +1,7 @@
 import { Prisma } from '@prisma/client';
 import { prisma } from '../../config/prisma.js';
 import { AppError } from '../../shared/errors/AppError.js';
+import { writeAudit } from '../../shared/audit/writeAudit.js';
 import { routeCalendar } from './routeCalendar.js';
 import type {
   CreateClientInput,
@@ -12,12 +13,6 @@ import type {
   UpdateZoneInput,
 } from './sales-territory.schema.js';
 
-function toJson(value: unknown): Prisma.InputJsonValue | undefined {
-  if (value === undefined || value === null) {
-    return undefined;
-  }
-  return JSON.parse(JSON.stringify(value)) as Prisma.InputJsonValue;
-}
 
 function rethrowPrisma(err: unknown): never {
   if (err instanceof AppError) {
@@ -39,29 +34,6 @@ function rethrowPrisma(err: unknown): never {
     }
   }
   throw err;
-}
-
-async function writeAudit(
-  tx: Prisma.TransactionClient,
-  data: {
-    userId: number;
-    entidad: string;
-    entidadId: string;
-    accion: string;
-    datosAntes?: unknown;
-    datosDespues?: unknown;
-  },
-) {
-  await tx.auditLog.create({
-    data: {
-      userId: data.userId,
-      entidad: data.entidad,
-      entidadId: data.entidadId,
-      accion: data.accion,
-      datosAntes: toJson(data.datosAntes),
-      datosDespues: toJson(data.datosDespues),
-    },
-  });
 }
 
 function decimalOrNull(value: string | number | null | undefined) {

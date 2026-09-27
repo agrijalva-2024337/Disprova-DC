@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { Prisma, type TipoMovimientoInventario } from '@prisma/client';
 import { prisma } from '../../config/prisma.js';
 import { AppError } from '../../shared/errors/AppError.js';
+import { writeAudit } from '../../shared/audit/writeAudit.js';
 import type { CreateBatchInput, CreateWarehouseInput, EntradaInput } from './inventory.schema.js';
 
 /**
@@ -170,6 +171,23 @@ export async function registerMovement(input: RegisterMovementInput, tx?: Tx) {
   return prisma.$transaction((inner) => applyMovement(inner, input));
 }
 
+/**
+ * Existencia de un producto en una bodega, tal como está antes o después del
+ * movimiento que se está auditando. Es lo que un auditor quiere ver: la foto
+ * de la bodega antes del cambio y la de después. Si esa combinación
+ * producto/bodega/lote todavía no tiene fila en `stock`, la existencia es cero.
+ */
+async function existencia(tx: Tx, productId: number, warehouseId: number, batchId: number | null) {
+  const row = await tx.stock.findFirst({ where: { productId, warehouseId, batchId } });
+  if (!row) {
+    return { cantidad: '0.00', reservada: '0.00' };
+  }
+  return {
+    cantidad: new Prisma.Decimal(row.cantidad).toFixed(2),
+    reservada: new Prisma.Decimal(row.cantidadReservada).toFixed(2),
+  };
+}
+
 export async function transferStock(input: {
   productId: number;
   warehouseIdOrigen: number;
@@ -183,6 +201,10 @@ export async function transferStock(input: {
   }
   const referenciaId = randomUUID();
   return prisma.$transaction(async (tx) => {
+    const batchId = input.batchId ?? null;
+    const origenAntes = await existencia(tx, input.productId, input.warehouseIdOrigen, batchId);
+    const destinoAntes = await existencia(tx, input.productId, input.warehouseIdDestino, batchId);
+
     const salida = await registerMovement(
       {
         productId: input.productId,
@@ -209,6 +231,27 @@ export async function transferStock(input: {
       },
       tx,
     );
+
+    await writeAudit(tx, {
+      userId: input.userId,
+      entidad: 'InventoryMovement',
+      entidadId: String(salida.id),
+      accion: 'transfer',
+      datosAntes: {
+        origen: { warehouseId: input.warehouseIdOrigen, ...origenAntes },
+        destino: { warehouseId: input.warehouseIdDestino, ...destinoAntes },
+      },
+      datosDespues: {
+        origen: { warehouseId: input.warehouseIdOrigen, ...(await existencia(tx, input.productId, input.warehouseIdOrigen, batchId)) },
+        destino: { warehouseId: input.warehouseIdDestino, ...(await existencia(tx, input.productId, input.warehouseIdDestino, batchId)) },
+        batchId,
+        cantidad: new Prisma.Decimal(input.cantidad).toFixed(2),
+        referenciaId,
+        movimientoSalidaId: salida.id,
+        movimientoEntradaId: entrada.id,
+      },
+    });
+
     return { referenciaId, salida, entrada };
   });
 }
@@ -221,15 +264,43 @@ export async function adjustStock(input: {
   motivo: string;
   userId: number;
 }) {
-  return registerMovement({
-    productId: input.productId,
-    warehouseId: input.warehouseId,
-    batchId: input.batchId,
-    tipo: 'ajuste',
-    cantidad: input.cantidad,
-    referenciaTipo: 'motivo',
-    referenciaId: input.motivo,
-    userId: input.userId,
+  const batchId = input.batchId ?? null;
+  return prisma.$transaction(async (tx) => {
+    const antes = await existencia(tx, input.productId, input.warehouseId, batchId);
+    const movement = await registerMovement(
+      {
+        productId: input.productId,
+        warehouseId: input.warehouseId,
+        batchId: input.batchId,
+        tipo: 'ajuste',
+        cantidad: input.cantidad,
+        referenciaTipo: 'motivo',
+        referenciaId: input.motivo,
+        userId: input.userId,
+      },
+      tx,
+    );
+    const despues = await existencia(tx, input.productId, input.warehouseId, batchId);
+
+    await writeAudit(tx, {
+      userId: input.userId,
+      entidad: 'InventoryMovement',
+      entidadId: String(movement.id),
+      accion: 'adjust',
+      datosAntes: { warehouseId: input.warehouseId, batchId, ...antes },
+      datosDespues: {
+        warehouseId: input.warehouseId,
+        batchId,
+        ...despues,
+        movimientoId: movement.id,
+        // Ojo con el nombre: `cantidad` ya es la existencia de la bodega.
+        // El monto del movimiento va con otro nombre o se pisan entre sí.
+        cantidadMovimiento: new Prisma.Decimal(input.cantidad).toFixed(2),
+        motivo: input.motivo,
+      },
+    });
+
+    return movement;
   });
 }
 

@@ -1,6 +1,7 @@
 import { Prisma } from '@prisma/client';
 import { prisma } from '../../config/prisma.js';
 import { AppError } from '../../shared/errors/AppError.js';
+import { writeAudit } from '../../shared/audit/writeAudit.js';
 import { postMovement } from './account.service.js';
 import type { ApplyPaymentInput, CreateCollectionVisitInput, CreatePaymentInput } from './collections.schema.js';
 
@@ -63,11 +64,25 @@ export async function createPayment(input: CreatePaymentInput, userId: number) {
       userId,
     });
 
+    await writeAudit(tx, {
+      userId,
+      entidad: 'Payment',
+      entidadId: String(payment.id),
+      accion: 'create',
+      datosDespues: {
+        clientId: payment.clientId,
+        metodo: payment.metodo,
+        monto: money(payment.monto).toFixed(2),
+        referencia: payment.referencia,
+        cashSessionId: payment.cashSessionId,
+      },
+    });
+
     return payment;
   });
 }
 
-export async function applyPayment(paymentId: number, input: ApplyPaymentInput) {
+export async function applyPayment(paymentId: number, input: ApplyPaymentInput, userId: number) {
   return prisma.$transaction(async (tx) => {
     const payment = await tx.payment.findUnique({
       where: { id: paymentId },
@@ -109,10 +124,38 @@ export async function applyPayment(paymentId: number, input: ApplyPaymentInput) 
       })),
     });
 
-    return tx.payment.findUniqueOrThrow({
+    const applied = await tx.payment.findUniqueOrThrow({
       where: { id: payment.id },
       include: { applications: true },
     });
+
+    const totalAplicado = applied.applications.reduce(
+      (sum, row) => sum.add(row.montoAplicado),
+      new Prisma.Decimal(0),
+    );
+
+    await writeAudit(tx, {
+      userId,
+      entidad: 'Payment',
+      entidadId: String(payment.id),
+      accion: 'apply',
+      datosAntes: {
+        monto: money(payment.monto).toFixed(2),
+        aplicado: money(yaAplicado).toFixed(2),
+        pendiente: pendiente.toFixed(2),
+      },
+      datosDespues: {
+        monto: money(payment.monto).toFixed(2),
+        aplicado: money(totalAplicado).toFixed(2),
+        pendiente: money(new Prisma.Decimal(payment.monto).sub(totalAplicado)).toFixed(2),
+        aplicaciones: input.applications.map((row) => ({
+          orderId: row.orderId,
+          montoAplicado: money(row.monto).toFixed(2),
+        })),
+      },
+    });
+
+    return applied;
   });
 }
 

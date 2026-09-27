@@ -135,6 +135,83 @@ describe('inventory registerMovement', () => {
     );
     const destinoAntes = beforeDestino ? new Prisma.Decimal(beforeDestino.cantidad) : new Prisma.Decimal(0);
     expect(new Prisma.Decimal(afterDestino.cantidad).toString()).toBe(destinoAntes.add(4).toString());
+
+    const audit = await prisma.auditLog.findFirstOrThrow({
+      where: {
+        entidad: 'InventoryMovement',
+        entidadId: String(response.body.salida.id),
+        accion: 'transfer',
+      },
+    });
+    expect(audit.userId).toBe(userId);
+    const antes = audit.datosAntes as { origen: { cantidad: string }; destino: { cantidad: string } };
+    const despues = audit.datosDespues as {
+      origen: { cantidad: string };
+      destino: { cantidad: string };
+      cantidad: string;
+      movimientoEntradaId: number;
+    };
+    expect(antes.origen.cantidad).toBe(new Prisma.Decimal(beforeOrigen.cantidad).toFixed(2));
+    expect(despues.origen.cantidad).toBe(new Prisma.Decimal(afterOrigen.cantidad).toFixed(2));
+    expect(despues.destino.cantidad).toBe(new Prisma.Decimal(afterDestino.cantidad).toFixed(2));
+    expect(despues.cantidad).toBe('4.00');
+    expect(despues.movimientoEntradaId).toBe(response.body.entrada.id);
+
+    await prisma.auditLog.deleteMany({
+      where: { entidad: 'InventoryMovement', entidadId: String(response.body.salida.id) },
+    });
+  });
+
+  it('un ajuste manual deja la existencia antes y después', async () => {
+    const { token, userId } = await loginAsAdmin();
+    const auth = { Authorization: `Bearer ${token}` };
+    const product = await prisma.product.findFirstOrThrow({
+      where: { controlado: false, sku: 'BEB-001' },
+    });
+    const warehouse = await prisma.warehouse.create({
+      data: { nombre: `Bodega ajuste ${Date.now()}`, tipo: 'bodega', activo: true },
+    });
+    await registerMovement({
+      productId: product.id,
+      warehouseId: warehouse.id,
+      tipo: 'entrada',
+      cantidad: '10',
+      userId,
+      referenciaTipo: 'test',
+      referenciaId: 'setup-ajuste',
+    });
+
+    const response = await request(app)
+      .post('/api/inventory/movements/ajuste')
+      .set(auth)
+      .send({ productId: product.id, warehouseId: warehouse.id, cantidad: '-3', motivo: 'Merma fisica' });
+
+    expect(response.status).toBe(201);
+
+    const audit = await prisma.auditLog.findFirstOrThrow({
+      where: {
+        entidad: 'InventoryMovement',
+        entidadId: String(response.body.id),
+        accion: 'adjust',
+      },
+    });
+    expect(audit.userId).toBe(userId);
+    const antes = audit.datosAntes as { cantidad: string; reservada: string };
+    const despues = audit.datosDespues as {
+      cantidad: string;
+      cantidadMovimiento: string;
+      motivo: string;
+      movimientoId: number;
+    };
+    expect(antes.cantidad).toBe('10.00');
+    expect(despues.cantidad).toBe('7.00');
+    expect(despues.cantidadMovimiento).toBe('-3.00');
+    expect(despues.motivo).toBe('Merma fisica');
+    expect(despues.movimientoId).toBe(response.body.id);
+
+    await prisma.auditLog.deleteMany({
+      where: { entidad: 'InventoryMovement', entidadId: String(response.body.id) },
+    });
   });
 
   it('la columna cacheada coincide con la suma de movimientos', async () => {

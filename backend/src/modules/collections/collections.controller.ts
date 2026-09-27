@@ -15,7 +15,7 @@ export const createPayment = asyncHandler(async (req: Request, res: Response) =>
 });
 
 export const applyPayment = asyncHandler(async (req: Request, res: Response) => {
-  res.status(201).json(await collectionsService.applyPayment(paramId(req), req.body));
+  res.status(201).json(await collectionsService.applyPayment(paramId(req), req.body, userId(req)));
 });
 
 export const getAccount = asyncHandler(async (req: Request, res: Response) => {

@@ -2,43 +2,10 @@ import { Prisma } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 import { prisma } from '../../config/prisma.js';
 import { AppError } from '../../shared/errors/AppError.js';
+import { writeAudit } from '../../shared/audit/writeAudit.js';
 import type { CreateUserInput, UpdateUserInput } from './users.schema.js';
 
 const BCRYPT_ROUNDS = 10;
-
-function toJson(value: unknown): Prisma.InputJsonValue | undefined {
-  if (value === undefined || value === null) {
-    return undefined;
-  }
-  return JSON.parse(JSON.stringify(value)) as Prisma.InputJsonValue;
-}
-
-/**
- * Alta y baja de auditoría de usuarios. `datosAntes` lleva el estado previo
- * y `datosDespues` el nuevo, para que se pueda reconstruir el cambio.
- */
-async function writeAudit(
-  tx: Prisma.TransactionClient,
-  data: {
-    userId: number;
-    entidad: string;
-    entidadId: string;
-    accion: string;
-    datosAntes?: unknown;
-    datosDespues?: unknown;
-  },
-) {
-  await tx.auditLog.create({
-    data: {
-      userId: data.userId,
-      entidad: data.entidad,
-      entidadId: data.entidadId,
-      accion: data.accion,
-      datosAntes: toJson(data.datosAntes),
-      datosDespues: toJson(data.datosDespues),
-    },
-  });
-}
 
 /** Nunca sale `passwordHash` hacia la API. */
 function toDto(user: {
