@@ -13,6 +13,8 @@ import { collectionsRouter } from './modules/collections/collections.routes.js';
 import { returnsRouter } from './modules/returns/returns.routes.js';
 import { salesRouter } from './modules/sales/sales.routes.js';
 import { salesTerritoryRouter } from './modules/sales-territory/sales-territory.routes.js';
+import { reportsRouter } from './modules/reports/reports.routes.js';
+import { messagingRouter } from './modules/messaging/messaging.routes.js';
 
 export const app = express();
 
@@ -75,5 +77,6 @@ app.use('/api/reports', reportsRouter);
 app.use('/api/cash-sessions', cashRouter);
 app.use('/api', collectionsRouter);
 app.use('/api/returns', returnsRouter);
+app.use('/api/messaging', messagingRouter);
 
 app.use(errorHandler);
