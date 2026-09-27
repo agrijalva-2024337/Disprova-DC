@@ -130,6 +130,35 @@ frontend/src
   shared/
 ```
 
+## Documentación de la API
+
+Un solo Swagger para todo el backend (es un monolito, no hay servicios separados):
+
+- **UI:** http://localhost:3000/api/docs
+- **Spec en JSON:** http://localhost:3000/api/docs.json
+
+Ambos son públicos a propósito: es documentación, no datos. La spec se arma con
+`swagger-jsdoc` leyendo comentarios `#swagger` que están arriba de las rutas, en el
+archivo de rutas de cada módulo, y se configuran en `backend/src/docs/openapi.ts`.
+
+## Estado de las integraciones externas
+
+| Integración | Estado | Qué falta |
+|---|---|---|
+| WhatsApp (enlaces wa.me) | Activo, no requiere configuración | — |
+| WhatsApp Business API | Apagado por defecto | `WHATSAPP_PROVIDER=business_api` + `WHATSAPP_TOKEN` + `WHATSAPP_PHONE_NUMBER_ID` |
+| Facturación FEL | No implementado (stub) | Elegir certificador y programar su integración |
+
+Los dos proveedores usan el mismo patrón: una interfaz, una implementación por
+integración y **una sola función factory** que decide cuál usar según una variable
+de entorno. Activar uno no requiere tocar el resto del sistema.
+
+`/api/messaging/clients/:id/send` responde **422** mientras el proveedor siga en
+`wa_link`, porque ese modo no envía desde el servidor: el flujo de trabajo hoy es
+que el administrador use el link. Las facturas quedan en
+`pendiente_certificacion` hasta que se elija un certificador, y eso tampoco es un
+error.
+
 ## Comandos útiles
 
 | Comando | Descripción |
