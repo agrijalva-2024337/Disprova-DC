@@ -40,7 +40,12 @@ async function sellerVehicle(tx: Prisma.TransactionClient, userId: number) {
   return warehouse;
 }
 
-async function currentPrice(priceListId: number, productUnitId: number) {
+/**
+ * Precio vigente de una presentación en una lista de precios: el ítem más
+ * reciente cuyo `vigenteDesde` ya pasó. Lo usan tanto el pedido de campo
+ * (createOrder) como el catálogo público por token.
+ */
+export async function currentPrice(priceListId: number, productUnitId: number) {
   return prisma.priceListItem.findFirst({
     where: {
       priceListId,

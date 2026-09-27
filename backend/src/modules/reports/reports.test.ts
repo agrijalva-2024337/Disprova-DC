@@ -1,6 +1,6 @@
 import { Prisma } from '@prisma/client';
 import request from 'supertest';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 import { app } from '../../app.js';
 import { prisma } from '../../config/prisma.js';
 import { todayDate } from '../sales/sales.service.js';
@@ -18,13 +18,50 @@ async function loginAsAdmin() {
   return response.body.accessToken as string;
 }
 
-async function sellerAndClient(suffix: string) {
+/**
+ * Estos tests corren contra la base compartida. Sin esta limpieza los
+ * clientes de prueba quedan y `sales-territory.test.ts`, que exige que la
+ * zona de la semana 1 tenga exactamente los 4 clientes del seed, falla
+ * según el orden en que corren los archivos.
+ */
+const creados = { users: [] as number[], clients: [] as number[] };
+
+afterEach(async () => {
+  const { users, clients } = creados;
+  creados.users = [];
+  creados.clients = [];
+
+  if (clients.length > 0) {
+    await prisma.orderItem.deleteMany({ where: { order: { clientId: { in: clients } } } });
+    await prisma.order.deleteMany({ where: { clientId: { in: clients } } });
+    await prisma.paymentApplication.deleteMany({ where: { payment: { clientId: { in: clients } } } });
+    await prisma.payment.deleteMany({ where: { clientId: { in: clients } } });
+    await prisma.collectionVisit.deleteMany({ where: { clientId: { in: clients } } });
+    await prisma.accountMovement.deleteMany({ where: { clientId: { in: clients } } });
+    await prisma.clientContact.deleteMany({ where: { clientId: { in: clients } } });
+    await prisma.client.deleteMany({ where: { id: { in: clients } } });
+  }
+  if (users.length > 0) {
+    await prisma.order.deleteMany({ where: { userId: { in: users } } });
+    await prisma.auditLog.deleteMany({ where: { userId: { in: users } } });
+    await prisma.user.deleteMany({ where: { id: { in: users } } });
+  }
+});
+
+let contador = 0;
+function sufijo() {
+  contador += 1;
+  return `${Math.floor(Math.random() * 1e9)}-${contador}`;
+}
+
+async function sellerAndClient(_suffix: string) {
   const role = await prisma.role.findFirstOrThrow({ where: { nombre: 'admin' } });
   const sample = await prisma.client.findFirstOrThrow();
+  const suffix = sufijo();
   const seller = await prisma.user.create({
     data: {
       nombre: `Vendedor ${suffix}`,
-      email: `reporte-${suffix}-${Date.now()}@disprova.local`,
+      email: `reporte-${suffix}@disprova.local`,
       passwordHash: 'no-login',
       roleId: role.id,
     },
@@ -41,6 +78,8 @@ async function sellerAndClient(suffix: string) {
       plazoDias: 0,
     },
   });
+  creados.users.push(seller.id);
+  creados.clients.push(client.id);
   return { seller, client };
 }
 

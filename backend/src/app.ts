@@ -15,6 +15,7 @@ import { salesRouter } from './modules/sales/sales.routes.js';
 import { salesTerritoryRouter } from './modules/sales-territory/sales-territory.routes.js';
 import { reportsRouter } from './modules/reports/reports.routes.js';
 import { messagingRouter } from './modules/messaging/messaging.routes.js';
+import { clientTokenRouter, publicStoreRouter } from './modules/public-store/public-store.routes.js';
 
 export const app = express();
 
@@ -78,5 +79,7 @@ app.use('/api/cash-sessions', cashRouter);
 app.use('/api', collectionsRouter);
 app.use('/api/returns', returnsRouter);
 app.use('/api/messaging', messagingRouter);
+app.use('/api/tokens', clientTokenRouter);
+app.use('/api/public', publicStoreRouter);
 
 app.use(errorHandler);

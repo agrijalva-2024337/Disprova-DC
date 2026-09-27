@@ -1,5 +1,6 @@
 import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcryptjs';
+import { randomBytes } from 'node:crypto';
 import { registerMovement } from '../src/modules/inventory/inventory.service.js';
 
 const prisma = new PrismaClient();
@@ -45,6 +46,32 @@ async function main() {
         modulos: ['catalogo', 'ventas'],
         acciones: ['read', 'create_pedido'],
       },
+    },
+  });
+
+  /**
+   * Usuario de sistema para los pedidos que entran por el catálogo público.
+   * No es una persona: existe solo para que `orders.user_id` sea una FK
+   * válida. Va inactivo y con un hash de una contraseña aleatoria, así que
+   * `login` lo rechaza siempre y no se puede usar para obtener un JWT.
+   */
+  const sistemaRole = await prisma.role.create({
+    data: {
+      nombre: 'sistema',
+      permisos: {
+        modulos: [],
+        acciones: [],
+      },
+    },
+  });
+
+  const usuarioPedidosWeb = await prisma.user.create({
+    data: {
+      nombre: 'Pedidos Web',
+      email: 'pedidos-web@disprova.local',
+      passwordHash: await bcrypt.hash(randomBytes(32).toString('hex'), 10),
+      roleId: sistemaRole.id,
+      activo: false,
     },
   });
 
@@ -378,8 +405,9 @@ async function main() {
   }
 
   console.log('Seed OK:', {
-    roles: [adminRole.nombre, vendedorRole.nombre],
+    roles: [adminRole.nombre, vendedorRole.nombre, sistemaRole.nombre],
     adminEmail: 'admin@disprova.local',
+    usuarioSistema: usuarioPedidosWeb.email,
     categories: 3,
     products: productsSeed.length,
     productUnits: createdUnits.length,
