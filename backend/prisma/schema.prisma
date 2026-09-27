@@ -402,6 +402,7 @@ model Order {
   deliveries           Delivery[]
   paymentApplications  PaymentApplication[]
   returns              Return[]
+  invoice              Invoice?
 
   @@unique([clientId, userId, idempotencyKey], map: "orders_client_user_idempotency_key")
   @@map("orders")
@@ -701,4 +702,43 @@ model ClientAccessToken {
   @@index([clientId])
   @@index([expiresAt])
   @@map("client_access_tokens")
+}
+
+// --- Facturación electrónica (FEL) ---
+
+enum EstadoFactura {
+  pendiente_certificacion
+  certificada
+  error
+
+  @@map("estado_factura")
+}
+
+/// Factura de un pedido. Una sola por pedido (`orderId` es único).
+/// La certificación ante la SAT la hace un certificador autorizado
+/// (Digifact, Infile, Megaprint, ...) que todavía no está elegido: ver
+/// `modules/billing/providers/fel.provider.ts`.
+model Invoice {
+  id     Int @id @default(autoincrement())
+  /// Una factura por pedido.
+  orderId Int            @unique @map("order_id")
+  serie  String
+  /// Correlativo interno de la secuencia PostgreSQL invoice_numero_seq.
+  /// No es el número fiscal: ese lo asigna el certificador.
+  numero          Int       @unique @default(dbgenerated("nextval('invoice_numero_seq')"))
+  /// UUID que devuelve la SAT al certificar. NULL hasta entonces.
+  uuidFel         String?   @map("uuid_fel")
+  fechaCertificacion DateTime? @map("fecha_certificacion")
+  estado          EstadoFactura @default(pendiente_certificacion)
+  total           Decimal      @db.Decimal(12, 2)
+  xmlUrl          String?      @map("xml_url")
+  pdfUrl          String?      @map("pdf_url")
+  /// Motivo por el que la certificación falló, si falló.
+  error           String?
+  createdAt       DateTime     @default(now()) @map("created_at")
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Restrict)
+
+  @@index([estado])
+  @@map("invoices")
 }

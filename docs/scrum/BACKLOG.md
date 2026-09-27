@@ -7,7 +7,7 @@
 | DISP-015 | Endpoints de mensajería y envío por WhatsApp | Listo |
 | DISP-016 | Esquema: catálogo web público por token | Listo |
 | DISP-017 | Endpoints: catálogo público y pedido web por token | Listo |
-| DISP-018 | Esquema y proveedor de facturación (FEL) | Pendiente |
+| DISP-018 | Esquema y proveedor de facturación (FEL) | Listo |
 | DISP-019 | Endpoints de facturación | Pendiente |
 | DISP-020 | Documentación: Swagger y README final | Pendiente |
 

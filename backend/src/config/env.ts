@@ -29,4 +29,10 @@ export const env = {
     token: process.env.WHATSAPP_TOKEN,
     phoneNumberId: process.env.WHATSAPP_PHONE_NUMBER_ID,
   },
+  /// Opcional: el certificador FEL todavía no está elegido. La clave sola
+  /// no habilita nada; hace falta además implementar el proveedor real.
+  fel: {
+    provider: process.env.FEL_PROVIDER,
+    apiKey: process.env.FEL_PROVIDER_API_KEY,
+  },
 } as const;
