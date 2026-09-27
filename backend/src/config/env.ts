@@ -24,4 +24,9 @@ export const env = {
     accessSecret: required('JWT_ACCESS_SECRET'),
     refreshSecret: required('JWT_REFRESH_SECRET'),
   },
+  whatsapp: {
+    provider: process.env.WHATSAPP_PROVIDER ?? 'wa_link',
+    token: process.env.WHATSAPP_TOKEN,
+    phoneNumberId: process.env.WHATSAPP_PHONE_NUMBER_ID,
+  },
 } as const;

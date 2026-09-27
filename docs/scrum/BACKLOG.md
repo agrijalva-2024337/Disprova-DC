@@ -3,7 +3,7 @@
 | Ticket | Título | Estado |
 |--------|--------|--------|
 | DISP-013 | Limpieza: pnpm en Docker, borrar residuos de la raíz, README | Listo |
-| DISP-014 | Esquema y proveedor de mensajería (WhatsApp) | Pendiente |
+| DISP-014 | Esquema y proveedor de mensajería (WhatsApp) | Listo |
 | DISP-015 | Endpoints de mensajería y envío por WhatsApp | Pendiente |
 | DISP-016 | Esquema: catálogo web público por token | Pendiente |
 | DISP-017 | Endpoints: catálogo público y pedido web por token | Pendiente |
