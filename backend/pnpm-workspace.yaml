@@ -1,0 +1,8 @@
+# pnpm 10+ no corre los scripts de instalacion de las dependencias y falla
+# el build si los ignora (ERR_PNPM_IGNORED_BUILDS). Prisma y esbuild los
+# necesitan: sin esto `prisma generate` no puede descargar las engines.
+onlyBuiltDependencies:
+  - '@prisma/client'
+  - '@prisma/engines'
+  - prisma
+  - esbuild

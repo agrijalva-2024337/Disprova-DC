@@ -40,6 +40,7 @@ model User {
   payments            Payment[]
   collectionVisits    CollectionVisit[]
   returns             Return[]
+  messageLogs          MessageLog[]
 
   @@map("users")
 }
@@ -210,6 +211,7 @@ model Client {
   payments          Payment[]
   collectionVisits  CollectionVisit[]
   returns           Return[]
+  messageLogs        MessageLog[]
 
   @@unique([zoneId, ordenRuta])
   @@map("clients")
@@ -619,4 +621,56 @@ model ReturnItem {
   batch       ProductBatch? @relation(fields: [batchId], references: [id], onDelete: Restrict)
 
   @@map("return_items")
+}
+
+// --- Mensajería ---
+
+enum CanalMensaje {
+  wa_link
+  whatsapp_api
+
+  @@map("canal_mensaje")
+}
+
+enum EstadoMensaje {
+  generado
+  enviado
+  fallido
+
+  @@map("estado_mensaje")
+}
+
+model MessageTemplate {
+  id     Int           @id @default(autoincrement())
+  nombre String        @unique
+  canal  CanalMensaje
+  /// Texto con variables tipo {nombre}, {saldo}, {ultimoPedidoUrl}
+  cuerpo String
+  activo Boolean       @default(true)
+  createdAt DateTime   @default(now()) @map("created_at")
+
+  logs MessageLog[]
+
+  @@map("message_templates")
+}
+
+model MessageLog {
+  id         Int           @id @default(autoincrement())
+  clientId   Int           @map("client_id")
+  templateId Int?          @map("template_id")
+  telefono   String
+  /// Texto ya resuelto con las variables
+  contenido  String
+  canal      CanalMensaje
+  estado     EstadoMensaje @default(generado)
+  error      String?
+  userId     Int           @map("user_id")
+  createdAt  DateTime      @default(now()) @map("created_at")
+
+  client   Client           @relation(fields: [clientId], references: [id], onDelete: Restrict)
+  template MessageTemplate? @relation(fields: [templateId], references: [id], onDelete: Restrict)
+  user     User             @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  @@index([clientId])
+  @@map("message_logs")
 }
