@@ -1,9 +1,41 @@
 import { Prisma } from '@prisma/client';
 import request from 'supertest';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 import { app } from '../../app.js';
 import { prisma } from '../../config/prisma.js';
 import { registerMovement } from '../inventory/inventory.service.js';
+
+/**
+ * Estos tests corren contra la base compartida. Sin limpiar, los clientes de
+ * prueba quedan y `sales-territory.test.ts` —que exige que la zona de la
+ * semana 1 tenga exactamente los 4 clientes del seed— falla según el orden
+ * en que corren los archivos.
+ */
+const clientsCreados: number[] = [];
+
+afterEach(async () => {
+  const ids = clientsCreados.splice(0, clientsCreados.length);
+  if (ids.length === 0) {
+    return;
+  }
+  // No se puede filtrar por la relación anidada `return: { order: ... }`
+  // porque el nombre choca con la palabra reservada: se resuelve en dos pasos.
+  const devoluciones = await prisma.return.findMany({
+    where: { order: { clientId: { in: ids } } },
+    select: { id: true },
+  });
+  const returnIds = devoluciones.map((row) => row.id);
+  if (returnIds.length > 0) {
+    await prisma.returnItem.deleteMany({ where: { returnId: { in: returnIds } } });
+    await prisma.return.deleteMany({ where: { id: { in: returnIds } } });
+  }
+  await prisma.deliveryItem.deleteMany({ where: { delivery: { order: { clientId: { in: ids } } } } });
+  await prisma.delivery.deleteMany({ where: { order: { clientId: { in: ids } } } });
+  await prisma.orderItem.deleteMany({ where: { order: { clientId: { in: ids } } } });
+  await prisma.order.deleteMany({ where: { clientId: { in: ids } } });
+  await prisma.accountMovement.deleteMany({ where: { clientId: { in: ids } } });
+  await prisma.client.deleteMany({ where: { id: { in: ids } } });
+});
 
 async function loginAsAdmin() {
   const response = await request(app).post('/api/auth/login').send({
@@ -32,6 +64,7 @@ async function deliveredOrder() {
       plazoDias: 15,
     },
   });
+  clientsCreados.push(client.id);
   const unit = await prisma.productUnit.findFirstOrThrow({
     where: { product: { sku: 'HIG-001' }, nombre: 'Unidad' },
   });

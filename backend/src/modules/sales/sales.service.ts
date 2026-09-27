@@ -56,6 +56,52 @@ export async function currentPrice(priceListId: number, productUnitId: number) {
   });
 }
 
+/**
+ * Importe de UNA línea según lo realmente entregado: precioUnitario x
+ * cantidad entregada más la parte proporcional del impuesto de la línea.
+ * No usa el total del pedido, así que una entrega parcial vale solo lo
+ * entregado. Es la misma fórmula que usa el cargo de cobranza al entregar.
+ */
+export function importeLineaEntregada(
+  item: { cantidad: Prisma.Decimal; precioUnitario: Prisma.Decimal; impuesto: Prisma.Decimal },
+  cantidadEntregada: Prisma.Decimal,
+): Prisma.Decimal {
+  if (cantidadEntregada.lessThanOrEqualTo(0)) {
+    return new Prisma.Decimal(0);
+  }
+  const cantidad = new Prisma.Decimal(item.cantidad);
+  if (cantidad.lessThanOrEqualTo(0)) {
+    return new Prisma.Decimal(0);
+  }
+
+  const share = cantidadEntregada.div(cantidad);
+  return money(
+    new Prisma.Decimal(item.precioUnitario)
+      .mul(cantidadEntregada)
+      .add(new Prisma.Decimal(item.impuesto).mul(share)),
+  );
+}
+
+export type LineaEntregada = { orderItemId: number; cantidadEntregada: Prisma.Decimal };
+
+/** Suma de lo entregado. Lo comparten el cargo de cobranza y la factura. */
+export function importeEntregado(
+  items: Array<{
+    id: number;
+    cantidad: Prisma.Decimal;
+    precioUnitario: Prisma.Decimal;
+    impuesto: Prisma.Decimal;
+  }>,
+  lines: LineaEntregada[],
+): Prisma.Decimal {
+  return money(
+    lines.reduce((sum, line) => {
+      const item = items.find((row) => row.id === line.orderItemId);
+      return item ? sum.add(importeLineaEntregada(item, line.cantidadEntregada)) : sum;
+    }, new Prisma.Decimal(0)),
+  );
+}
+
 export async function listOrders(filters: { clientId?: number; userId?: number; pendientes?: boolean }) {
   const start = todayDate();
   const end = new Date(start);
@@ -407,28 +453,9 @@ export async function deliverOrder(orderId: number, input: DeliverOrderInput, us
     });
 
     if (order.condicionPago === 'credito') {
-      // Cargo de esta visita: precioUnitario * cantidad entregada ahora
-      // más la parte proporcional del impuesto de la línea. No usa el total
-      // del pedido cuando la entrega es parcial.
-      let cargo = new Prisma.Decimal(0);
-      for (const line of deliveryLines) {
-        if (line.cantidadEntregada.lessThanOrEqualTo(0)) {
-          continue;
-        }
-        const item = order.items.find((row) => row.id === line.orderItemId);
-        if (!item || new Prisma.Decimal(item.cantidad).lessThanOrEqualTo(0)) {
-          continue;
-        }
-        const share = line.cantidadEntregada.div(item.cantidad);
-        cargo = cargo.add(
-          money(
-            new Prisma.Decimal(item.precioUnitario)
-              .mul(line.cantidadEntregada)
-              .add(new Prisma.Decimal(item.impuesto).mul(share)),
-          ),
-        );
-      }
-      cargo = money(cargo);
+      // Cargo de esta visita sobre lo REALMENTE entregado: la fórmula vive
+      // en importeEntregado y la comparte también la facturación.
+      const cargo = importeEntregado(order.items, deliveryLines);
       if (cargo.greaterThan(0)) {
         await postMovement(tx, {
           clientId: order.clientId,

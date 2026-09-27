@@ -16,6 +16,7 @@ import { salesTerritoryRouter } from './modules/sales-territory/sales-territory.
 import { reportsRouter } from './modules/reports/reports.routes.js';
 import { messagingRouter } from './modules/messaging/messaging.routes.js';
 import { clientTokenRouter, publicStoreRouter } from './modules/public-store/public-store.routes.js';
+import { invoicesRouter, orderInvoiceRouter } from './modules/billing/billing.routes.js';
 
 export const app = express();
 
@@ -81,5 +82,8 @@ app.use('/api/returns', returnsRouter);
 app.use('/api/messaging', messagingRouter);
 app.use('/api/tokens', clientTokenRouter);
 app.use('/api/public', publicStoreRouter);
+// La factura cuelga del pedido: /api/orders/:id/invoice
+app.use('/api/orders', orderInvoiceRouter);
+app.use('/api/invoices', invoicesRouter);
 
 app.use(errorHandler);

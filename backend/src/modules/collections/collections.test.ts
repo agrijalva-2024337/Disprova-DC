@@ -1,9 +1,34 @@
 import { Prisma } from '@prisma/client';
 import request from 'supertest';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 import { app } from '../../app.js';
 import { prisma } from '../../config/prisma.js';
 import { registerMovement } from '../inventory/inventory.service.js';
+
+/**
+ * Estos tests corren contra la base compartida. Sin limpiar, el cliente de
+ * cobranza queda y `sales-territory.test.ts` —que exige que la zona de la
+ * semana 1 tenga exactamente los 4 clientes del seed— falla según el orden
+ * en que corren los archivos.
+ */
+const clientsCreados: number[] = [];
+
+afterEach(async () => {
+  const ids = clientsCreados.splice(0, clientsCreados.length);
+  if (ids.length === 0) {
+    return;
+  }
+  await prisma.paymentApplication.deleteMany({ where: { payment: { clientId: { in: ids } } } });
+  await prisma.payment.deleteMany({ where: { clientId: { in: ids } } });
+  await prisma.collectionVisit.deleteMany({ where: { clientId: { in: ids } } });
+  await prisma.cashSession.deleteMany({ where: { payments: { some: { clientId: { in: ids } } } } }).catch(() => undefined);
+  await prisma.deliveryItem.deleteMany({ where: { delivery: { order: { clientId: { in: ids } } } } });
+  await prisma.delivery.deleteMany({ where: { order: { clientId: { in: ids } } } });
+  await prisma.orderItem.deleteMany({ where: { order: { clientId: { in: ids } } } });
+  await prisma.order.deleteMany({ where: { clientId: { in: ids } } });
+  await prisma.accountMovement.deleteMany({ where: { clientId: { in: ids } } });
+  await prisma.client.deleteMany({ where: { id: { in: ids } } });
+});
 
 function equalsMoney(actual: string, expected: string) {
   return new Prisma.Decimal(actual).equals(new Prisma.Decimal(expected));
@@ -37,6 +62,7 @@ describe('cobranza', () => {
         plazoDias: 15,
       },
     });
+    clientsCreados.push(client.id);
     const unit = await prisma.productUnit.findFirstOrThrow({
       where: { product: { sku: 'HIG-001' }, nombre: 'Unidad' },
       include: { product: true },

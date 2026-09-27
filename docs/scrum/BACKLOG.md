@@ -8,7 +8,7 @@
 | DISP-016 | Esquema: catálogo web público por token | Listo |
 | DISP-017 | Endpoints: catálogo público y pedido web por token | Listo |
 | DISP-018 | Esquema y proveedor de facturación (FEL) | Listo |
-| DISP-019 | Endpoints de facturación | Pendiente |
+| DISP-019 | Endpoints de facturación | Listo |
 | DISP-020 | Documentación: Swagger y README final | Pendiente |
 
 ## Definition of Done

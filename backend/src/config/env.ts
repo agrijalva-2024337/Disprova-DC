@@ -34,5 +34,6 @@ export const env = {
   fel: {
     provider: process.env.FEL_PROVIDER,
     apiKey: process.env.FEL_PROVIDER_API_KEY,
+    serie: process.env.FEL_SERIE ?? 'A',
   },
 } as const;
