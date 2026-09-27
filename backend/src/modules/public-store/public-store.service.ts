@@ -1,6 +1,7 @@
 import { Prisma } from '@prisma/client';
 import { prisma } from '../../config/prisma.js';
 import { AppError } from '../../shared/errors/AppError.js';
+import { toJson, writeAudit } from '../../shared/audit/writeAudit.js';
 import { DEFAULT_TOKEN_TTL_DAYS, generateClientAccessToken } from '../catalog-public/clientAccessToken.js';
 import { createOrder, currentPrice } from '../sales/sales.service.js';
 import type { CreateTokenInput, PublicOrderInput } from './public-store.schema.js';
@@ -11,36 +12,6 @@ import type { CreateTokenInput, PublicOrderInput } from './public-store.schema.j
  * puede iniciar sesión, solo sirve para que `orders.user_id` sea válido.
  */
 export const USUARIO_PEDIDOS_WEB_EMAIL = 'pedidos-web@disprova.local';
-
-function toJson(value: unknown): Prisma.InputJsonValue | undefined {
-  if (value === undefined || value === null) {
-    return undefined;
-  }
-  return JSON.parse(JSON.stringify(value)) as Prisma.InputJsonValue;
-}
-
-async function writeAudit(
-  tx: Prisma.TransactionClient,
-  data: {
-    userId: number;
-    entidad: string;
-    entidadId: string;
-    accion: string;
-    datosAntes?: unknown;
-    datosDespues?: unknown;
-  },
-) {
-  await tx.auditLog.create({
-    data: {
-      userId: data.userId,
-      entidad: data.entidad,
-      entidadId: data.entidadId,
-      accion: data.accion,
-      datosAntes: toJson(data.datosAntes),
-      datosDespues: toJson(data.datosDespues),
-    },
-  });
-}
 
 function money(value: Prisma.Decimal | string | number) {
   return new Prisma.Decimal(value).toDecimalPlaces(2, Prisma.Decimal.ROUND_HALF_UP);

@@ -3,6 +3,7 @@ import { prisma } from '../../config/prisma.js';
 import { postMovement } from '../collections/account.service.js';
 import { registerMovement } from '../inventory/inventory.service.js';
 import { AppError } from '../../shared/errors/AppError.js';
+import { writeAudit } from '../../shared/audit/writeAudit.js';
 import type { CreateOrderInput, DeliverOrderInput } from './sales.schema.js';
 
 /** IVA copiado en cada línea al crear el pedido. No se vuelve a leer después. */
@@ -173,7 +174,14 @@ export async function createOrder(input: CreateOrderInput, userId: number) {
     throw new AppError('El cliente no tiene lista de precios', 422, 'NO_PRICE_LIST');
   }
 
-  const lines = [];
+  const lines: Array<{
+    productUnitId: number;
+    cantidad: Prisma.Decimal;
+    precioUnitario: Prisma.Decimal;
+    descuento: Prisma.Decimal;
+    impuesto: Prisma.Decimal;
+    totalLinea: Prisma.Decimal;
+  }> = [];
   for (const line of input.items) {
     const unit = await prisma.productUnit.findUnique({ where: { id: line.productUnitId } });
     if (!unit) {
@@ -209,21 +217,38 @@ export async function createOrder(input: CreateOrderInput, userId: number) {
   const total = money(subtotal.sub(descuento).add(impuesto));
 
   try {
-    const order = await prisma.order.create({
-      data: {
-        clientId: client.id,
+    const order = await prisma.$transaction(async (tx) => {
+      const created = await tx.order.create({
+        data: {
+          clientId: client.id,
+          userId,
+          canal: input.canal,
+          estado: 'borrador',
+          condicionPago: input.condicionPago,
+          idempotencyKey: input.idempotencyKey ?? null,
+          subtotal,
+          descuento,
+          impuesto,
+          total,
+          items: { create: lines },
+        },
+        include: orderWithItems,
+      });
+      await writeAudit(tx, {
         userId,
-        canal: input.canal,
-        estado: 'borrador',
-        condicionPago: input.condicionPago,
-        idempotencyKey: input.idempotencyKey ?? null,
-        subtotal,
-        descuento,
-        impuesto,
-        total,
-        items: { create: lines },
-      },
-      include: orderWithItems,
+        entidad: 'Order',
+        entidadId: String(created.id),
+        accion: 'create',
+        datosDespues: {
+          clientId: created.clientId,
+          canal: created.canal,
+          estado: created.estado,
+          condicionPago: created.condicionPago,
+          total: money(new Prisma.Decimal(created.total)).toFixed(2),
+          lineas: created.items.length,
+        },
+      });
+      return created;
     });
     return { order, created: true as const };
   } catch (error) {
@@ -341,11 +366,20 @@ export async function confirmOrder(orderId: number, userId: number) {
       );
     }
 
-    return tx.order.update({
+    const updated = await tx.order.update({
       where: { id: order.id },
       data: { estado: 'confirmado' },
       include: { items: true },
     });
+    await writeAudit(tx, {
+      userId,
+      entidad: 'Order',
+      entidadId: String(order.id),
+      accion: 'confirm',
+      datosAntes: { estado: order.estado },
+      datosDespues: { estado: updated.estado, total: money(new Prisma.Decimal(updated.total)).toFixed(2) },
+    });
+    return updated;
   });
 }
 
@@ -475,6 +509,25 @@ export async function deliverOrder(orderId: number, input: DeliverOrderInput, us
       include: { items: true },
     });
 
+    await writeAudit(tx, {
+      userId,
+      entidad: 'Order',
+      entidadId: String(order.id),
+      accion: 'deliver',
+      datosAntes: { estado: order.estado },
+      datosDespues: {
+        estado: updated.estado,
+        deliveryId: delivery.id,
+        tipoEntrega: delivery.estado,
+        recibidoPor: input.recibidoPor,
+        lineas: deliveryLines.map((line) => ({
+          orderItemId: line.orderItemId,
+          cantidadEntregada: line.cantidadEntregada.toString(),
+        })),
+        cargo: order.condicionPago === 'credito' ? importeEntregado(order.items, deliveryLines).toFixed(2) : null,
+      },
+    });
+
     return { order: updated, delivery };
   });
 }
@@ -522,10 +575,19 @@ export async function cancelOrder(orderId: number, userId: number) {
       }
     }
 
-    return tx.order.update({
+    const updated = await tx.order.update({
       where: { id: order.id },
       data: { estado: 'cancelado' },
       include: { items: true },
     });
+    await writeAudit(tx, {
+      userId,
+      entidad: 'Order',
+      entidadId: String(order.id),
+      accion: 'cancel',
+      datosAntes: { estado: order.estado },
+      datosDespues: { estado: updated.estado, total: money(new Prisma.Decimal(updated.total)).toFixed(2) },
+    });
+    return updated;
   });
 }

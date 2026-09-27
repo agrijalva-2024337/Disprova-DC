@@ -41,6 +41,12 @@ describe('sesiones de caja', () => {
     expect(equalsMoney(opened.body.totalCobrado, '0')).toBe(true);
     expect(equalsMoney(opened.body.totalGastos, '0')).toBe(true);
 
+    const openAudit = await prisma.auditLog.findFirstOrThrow({
+      where: { entidad: 'CashSession', entidadId: String(opened.body.id), accion: 'open' },
+    });
+    expect(openAudit.userId).toBe(userId);
+    expect((openAudit.datosDespues as { fondoInicial: string }).fondoInicial).toBe('150.50');
+
     const duplicate = await request(app).post('/api/cash-sessions').set(auth).send({ fondoInicial: '10' });
     expect(duplicate.status).toBe(409);
     expect(duplicate.body.error.code).toBe('CASH_SESSION_OPEN');
@@ -53,6 +59,18 @@ describe('sesiones de caja', () => {
     expect(positive.body.estado).toBe('cerrada');
     expect(equalsMoney(positive.body.diferencia, '10.25')).toBe(true);
 
+    const closeAudit = await prisma.auditLog.findFirstOrThrow({
+      where: { entidad: 'CashSession', entidadId: String(opened.body.id), accion: 'close' },
+    });
+    expect(closeAudit.userId).toBe(userId);
+    const antes = closeAudit.datosAntes as { estado: string; esperado: string };
+    const despues = closeAudit.datosDespues as { estado: string; conteoFinal: string; diferencia: string };
+    expect(antes.estado).toBe('abierta');
+    expect(antes.esperado).toBe('150.50');
+    expect(despues.estado).toBe('cerrada');
+    expect(despues.conteoFinal).toBe('160.75');
+    expect(despues.diferencia).toBe('10.25');
+
     const reopened = await request(app).post('/api/cash-sessions').set(auth).send({ fondoInicial: '200.00' });
     expect(reopened.status).toBe(201);
 
@@ -62,5 +80,12 @@ describe('sesiones de caja', () => {
       .send({ conteoFinal: '199.99' });
     expect(negative.status).toBe(200);
     expect(equalsMoney(negative.body.diferencia, '-0.01')).toBe(true);
+
+    // Las cajas que abre y cierra el test no deben quedar en la base.
+    const sesiones = [opened.body.id as number, reopened.body.id as number];
+    await prisma.auditLog.deleteMany({
+      where: { entidad: 'CashSession', entidadId: { in: sesiones.map(String) } },
+    });
+    await prisma.cashSession.deleteMany({ where: { id: { in: sesiones } } });
   });
 });

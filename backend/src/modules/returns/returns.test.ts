@@ -25,6 +25,18 @@ afterEach(async () => {
     select: { id: true },
   });
   const returnIds = devoluciones.map((row) => row.id);
+  const pedidos = await prisma.order.findMany({
+    where: { clientId: { in: ids } },
+    select: { id: true },
+  });
+  // El rastro de auditoría no tiene llave foránea contra devoluciones ni
+  // pedidos: se limpia por entidad+id, que es como lo escribió cada módulo.
+  await prisma.auditLog.deleteMany({
+    where: { entidad: 'Return', entidadId: { in: returnIds.map(String) } },
+  });
+  await prisma.auditLog.deleteMany({
+    where: { entidad: 'Order', entidadId: { in: pedidos.map((row) => String(row.id)) } },
+  });
   if (returnIds.length > 0) {
     await prisma.returnItem.deleteMany({ where: { returnId: { in: returnIds } } });
     await prisma.return.deleteMany({ where: { id: { in: returnIds } } });
@@ -98,7 +110,7 @@ async function deliveredOrder() {
     .set(auth)
     .send({ items: [{ orderItemId: created.body.items[0].id, cantidadEntregada: '2' }] });
   expect(delivered.status).toBe(201);
-  return { auth, client, vehicle, unit, orderItemId: created.body.items[0].id as number, orderId: created.body.id as number };
+  return { auth, userId, client, vehicle, unit, orderItemId: created.body.items[0].id as number, orderId: created.body.id as number };
 }
 
 async function onHand(productId: number, warehouseId: number) {
@@ -128,7 +140,7 @@ describe('devoluciones', () => {
   });
 
   it('reingresa al inventario la cantidad devuelta', async () => {
-    const { auth, client, orderId, orderItemId, vehicle, unit } = await deliveredOrder();
+    const { auth, userId, client, orderId, orderItemId, vehicle, unit } = await deliveredOrder();
     const before = await onHand(unit.productId, vehicle.id);
     const created = await request(app).post('/api/returns').set(auth).send({
       clientId: client.id,
@@ -137,6 +149,15 @@ describe('devoluciones', () => {
       items: [{ orderItemId, cantidad: '1', destino: 'reingreso' }],
     });
     expect(created.status).toBe(201);
+
+    const audit = await prisma.auditLog.findFirstOrThrow({
+      where: { entidad: 'Return', entidadId: String(created.body.id), accion: 'create' },
+    });
+    expect(audit.userId).toBe(userId);
+    expect((audit.datosDespues as { estado: string }).estado).toBe('pendiente');
+    expect((audit.datosDespues as { motivo: string }).motivo).toBe('Buen estado');
+    expect((audit.datosDespues as { items: Array<{ destino: string }> }).items[0].destino).toBe('reingreso');
+
     const accepted = await request(app).post(`/api/returns/${created.body.id}/accept`).set(auth);
     expect(accepted.status).toBe(200);
     expect(accepted.body.estado).toBe('aceptada');

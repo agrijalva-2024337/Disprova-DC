@@ -1,6 +1,6 @@
 import { Prisma } from '@prisma/client';
 import request from 'supertest';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 import { app } from '../../app.js';
 import { prisma } from '../../config/prisma.js';
 import { registerMovement } from '../inventory/inventory.service.js';
@@ -267,5 +267,137 @@ describe('orders', () => {
       where: { clientId: client.id, userId, idempotencyKey },
     });
     expect(count).toBe(1);
+  });
+});
+
+describe('auditoría de pedidos', () => {
+  const orderIds: number[] = [];
+
+  afterEach(async () => {
+    const ids = orderIds.splice(0, orderIds.length);
+    if (ids.length === 0) {
+      return;
+    }
+    await prisma.auditLog.deleteMany({ where: { entidad: 'Order', entidadId: { in: ids.map(String) } } });
+    await prisma.deliveryItem.deleteMany({ where: { delivery: { orderId: { in: ids } } } });
+    await prisma.delivery.deleteMany({ where: { orderId: { in: ids } } });
+    await prisma.orderItem.deleteMany({ where: { orderId: { in: ids } } });
+    await prisma.order.deleteMany({ where: { id: { in: ids } } });
+  });
+
+  async function crearOrden(token: string, clientId: number, unitId: number) {
+    const created = await request(app)
+      .post('/api/orders')
+      .set('Authorization', `Bearer ${token}`)
+      .send({
+        clientId,
+        canal: 'campo',
+        condicionPago: 'contado',
+        items: [{ productUnitId: unitId, cantidad: '2' }],
+      });
+    expect(created.status).toBe(201);
+    orderIds.push(created.body.id);
+    return created;
+  }
+
+  async function auditDe(orderId: number, accion: string) {
+    return prisma.auditLog.findFirstOrThrow({
+      where: { entidad: 'Order', entidadId: String(orderId), accion },
+    });
+  }
+
+  it('deja rastro al crear y al confirmar', async () => {
+    const { token, userId } = await loginAsAdmin();
+    const vehicle = await vehicleOf(userId);
+    const client = await prisma.client.findFirstOrThrow();
+    const { product, unit } = await unitOf('HIG-001', 'Unidad');
+    await registerMovement({
+      productId: product.id,
+      warehouseId: vehicle.id,
+      tipo: 'entrada',
+      cantidad: '20',
+      userId,
+      referenciaTipo: 'test',
+      referenciaId: 'audit-sales',
+    });
+
+    const created = await crearOrden(token, client.id, unit.id);
+
+    const create = await auditDe(created.body.id, 'create');
+    expect(create.userId).toBe(userId);
+    expect((create.datosDespues as { estado: string }).estado).toBe('borrador');
+
+    const confirmed = await request(app)
+      .post(`/api/orders/${created.body.id}/confirm`)
+      .set('Authorization', `Bearer ${token}`);
+    expect(confirmed.status).toBe(200);
+
+    const confirm = await auditDe(created.body.id, 'confirm');
+    expect(confirm.userId).toBe(userId);
+    expect((confirm.datosAntes as { estado: string }).estado).toBe('borrador');
+    expect((confirm.datosDespues as { estado: string }).estado).toBe('confirmado');
+  });
+
+  it('deja rastro al entregar y guarda el cargo de la visita', async () => {
+    const { token, userId } = await loginAsAdmin();
+    const vehicle = await vehicleOf(userId);
+    const client = await prisma.client.findFirstOrThrow();
+    const { product, unit } = await unitOf('HIG-001', 'Unidad');
+    await registerMovement({
+      productId: product.id,
+      warehouseId: vehicle.id,
+      tipo: 'entrada',
+      cantidad: '20',
+      userId,
+      referenciaTipo: 'test',
+      referenciaId: 'audit-sales',
+    });
+
+    const created = await crearOrden(token, client.id, unit.id);
+    await request(app).post(`/api/orders/${created.body.id}/confirm`).set('Authorization', `Bearer ${token}`);
+
+    const delivered = await request(app)
+      .post(`/api/orders/${created.body.id}/deliver`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ items: [{ orderItemId: created.body.items[0].id, cantidadEntregada: '1' }] });
+    expect(delivered.status).toBe(201);
+
+    const deliver = await auditDe(created.body.id, 'deliver');
+    expect(deliver.userId).toBe(userId);
+    const antes = deliver.datosAntes as { estado: string };
+    const despues = deliver.datosDespues as { estado: string; deliveryId: number; lineas: unknown[] };
+    expect(antes.estado).toBe('confirmado');
+    expect(despues.estado).toBe('entregado_parcial');
+    expect(despues.deliveryId).toBeGreaterThan(0);
+    expect(despues.lineas).toHaveLength(1);
+  });
+
+  it('deja rastro al cancelar con el estado anterior', async () => {
+    const { token, userId } = await loginAsAdmin();
+    const vehicle = await vehicleOf(userId);
+    const client = await prisma.client.findFirstOrThrow();
+    const { product, unit } = await unitOf('BEB-001', 'Unidad');
+    await registerMovement({
+      productId: product.id,
+      warehouseId: vehicle.id,
+      tipo: 'entrada',
+      cantidad: '20',
+      userId,
+      referenciaTipo: 'test',
+      referenciaId: 'audit-sales-cancel',
+    });
+
+    const created = await crearOrden(token, client.id, unit.id);
+    await request(app).post(`/api/orders/${created.body.id}/confirm`).set('Authorization', `Bearer ${token}`);
+
+    const cancelled = await request(app)
+      .post(`/api/orders/${created.body.id}/cancel`)
+      .set('Authorization', `Bearer ${token}`);
+    expect(cancelled.status).toBe(200);
+
+    const cancel = await auditDe(created.body.id, 'cancel');
+    expect(cancel.userId).toBe(userId);
+    expect((cancel.datosAntes as { estado: string }).estado).toBe('confirmado');
+    expect((cancel.datosDespues as { estado: string }).estado).toBe('cancelado');
   });
 });

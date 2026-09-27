@@ -1,6 +1,7 @@
 import { Prisma } from '@prisma/client';
 import { prisma } from '../../config/prisma.js';
 import { AppError } from '../../shared/errors/AppError.js';
+import { writeAudit } from '../../shared/audit/writeAudit.js';
 import { postMovement } from '../collections/account.service.js';
 import { registerMovement } from '../inventory/inventory.service.js';
 import type { CreateReturnInput } from './returns.schema.js';
@@ -49,25 +50,47 @@ export async function createReturn(input: CreateReturnInput, userId: number) {
     }
   }
 
-  return prisma.return.create({
-    data: {
-      clientId: input.clientId,
-      orderId: input.orderId,
+  return prisma.$transaction(async (tx) => {
+    const created = await tx.return.create({
+      data: {
+        clientId: input.clientId,
+        orderId: input.orderId,
+        userId,
+        fecha: new Date(),
+        motivo: input.motivo,
+        estado: 'pendiente',
+        total: new Prisma.Decimal(0),
+        items: {
+          create: input.items.map((line) => ({
+            orderItemId: line.orderItemId,
+            cantidad: line.cantidad,
+            batchId: line.batchId ?? null,
+            destino: line.destino,
+          })),
+        },
+      },
+      include: { items: true },
+    });
+
+    await writeAudit(tx, {
       userId,
-      fecha: new Date(),
-      motivo: input.motivo,
-      estado: 'pendiente',
-      total: new Prisma.Decimal(0),
-      items: {
-        create: input.items.map((line) => ({
+      entidad: 'Return',
+      entidadId: String(created.id),
+      accion: 'create',
+      datosDespues: {
+        clientId: created.clientId,
+        orderId: created.orderId,
+        estado: created.estado,
+        motivo: created.motivo,
+        items: created.items.map((line) => ({
           orderItemId: line.orderItemId,
-          cantidad: line.cantidad,
-          batchId: line.batchId ?? null,
+          cantidad: new Prisma.Decimal(line.cantidad).toString(),
           destino: line.destino,
         })),
       },
-    },
-    include: { items: true },
+    });
+
+    return created;
   });
 }
 

@@ -18,6 +18,16 @@ afterEach(async () => {
   if (ids.length === 0) {
     return;
   }
+  // Los rastro de auditoría se limpian por entidad+id, que es como los escribió
+  // el módulo: el log no tiene llave foránea contra pagos ni pedidos.
+  const pagos = await prisma.payment.findMany({ where: { clientId: { in: ids } }, select: { id: true } });
+  const pedidos = await prisma.order.findMany({ where: { clientId: { in: ids } }, select: { id: true } });
+  await prisma.auditLog.deleteMany({
+    where: { entidad: 'Payment', entidadId: { in: pagos.map((p) => String(p.id)) } },
+  });
+  await prisma.auditLog.deleteMany({
+    where: { entidad: 'Order', entidadId: { in: pedidos.map((p) => String(p.id)) } },
+  });
   await prisma.paymentApplication.deleteMany({ where: { payment: { clientId: { in: ids } } } });
   await prisma.payment.deleteMany({ where: { clientId: { in: ids } } });
   await prisma.collectionVisit.deleteMany({ where: { clientId: { in: ids } } });
@@ -151,11 +161,34 @@ describe('cobranza', () => {
     });
     expect(payment.status).toBe(201);
 
+    const paymentAudit = await prisma.auditLog.findFirstOrThrow({
+      where: { entidad: 'Payment', entidadId: String(payment.body.id), accion: 'create' },
+    });
+    expect(paymentAudit.userId).toBe(userId);
+    expect((paymentAudit.datosDespues as { monto: string; metodo: string }).monto).toBe('60.00');
+    expect((paymentAudit.datosDespues as { metodo: string }).metodo).toBe('transferencia');
+
     const applied = await request(app)
       .post(`/api/payments/${payment.body.id}/apply`)
       .set(auth)
       .send({ applications: [{ orderId: order.id, monto: '50.00' }] });
     expect(applied.status).toBe(201);
+
+    const applyAudit = await prisma.auditLog.findFirstOrThrow({
+      where: { entidad: 'Payment', entidadId: String(payment.body.id), accion: 'apply' },
+    });
+    expect(applyAudit.userId).toBe(userId);
+    const aplicadoAntes = applyAudit.datosAntes as { aplicado: string; pendiente: string };
+    const aplicadoDespues = applyAudit.datosDespues as {
+      aplicado: string;
+      pendiente: string;
+      aplicaciones: Array<{ orderId: number }>;
+    };
+    expect(aplicadoAntes.aplicado).toBe('0.00');
+    expect(aplicadoAntes.pendiente).toBe('60.00');
+    expect(aplicadoDespues.aplicado).toBe('50.00');
+    expect(aplicadoDespues.pendiente).toBe('10.00');
+    expect(aplicadoDespues.aplicaciones).toEqual([{ orderId: order.id, montoAplicado: '50.00' }]);
 
     const over = await request(app)
       .post(`/api/payments/${payment.body.id}/apply`)
