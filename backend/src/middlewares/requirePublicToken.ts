@@ -38,6 +38,10 @@ export const requirePublicToken: RequestHandler = async (req, _res, next) => {
       throw new AppError('Token de acceso inválido', 401, 'PUBLIC_TOKEN_INVALID');
     }
 
+    if (record.revokedAt) {
+      throw new AppError('El token de acceso fue revocado', 401, 'PUBLIC_TOKEN_REVOKED');
+    }
+
     if (isTokenExpired(record.expiresAt)) {
       throw new AppError('El token de acceso venció', 401, 'PUBLIC_TOKEN_EXPIRED');
     }
