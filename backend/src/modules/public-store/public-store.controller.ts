@@ -11,11 +11,23 @@ function clientId(req: Request): number {
   return Number(req.params.clientId);
 }
 
+function tokenId(req: Request): number {
+  return Number(req.params.id);
+}
+
 /** El token NO habilita endpoints internos: acá siempre hace falta JWT + admin. */
 export const createClientAccessToken = asyncHandler(async (req: Request, res: Response) => {
   res.status(201).json(
     await publicStoreService.createClientAccessToken(clientId(req), req.body, adminId(req)),
   );
+});
+
+export const listClientAccessTokens = asyncHandler(async (req: Request, res: Response) => {
+  res.status(200).json(await publicStoreService.listClientAccessTokens(clientId(req)));
+});
+
+export const revokeClientAccessToken = asyncHandler(async (req: Request, res: Response) => {
+  res.status(200).json(await publicStoreService.revokeClientAccessToken(tokenId(req), adminId(req)));
 });
 
 export const getPublicCatalog = asyncHandler(async (req: Request, res: Response) => {

@@ -57,6 +57,74 @@ export async function createClientAccessToken(clientId: number, input: CreateTok
   };
 }
 
+function tokenPublico(record: {
+  id: number;
+  expiresAt: Date;
+  createdAt: Date;
+  createdByUserId: number;
+  revokedAt: Date | null;
+}) {
+  return {
+    id: record.id,
+    expiresAt: record.expiresAt,
+    createdAt: record.createdAt,
+    createdByUserId: record.createdByUserId,
+    revocado: record.revokedAt !== null,
+  };
+}
+
+/** Lista los enlaces del cliente. El valor del token no sale: solo se entrega al crearlo. */
+export async function listClientAccessTokens(clientId: number) {
+  const client = await prisma.client.findUnique({ where: { id: clientId } });
+  if (!client) {
+    throw new AppError('Cliente no encontrado', 404, 'NOT_FOUND');
+  }
+
+  const records = await prisma.clientAccessToken.findMany({
+    where: { clientId },
+    orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+    select: {
+      id: true,
+      expiresAt: true,
+      createdAt: true,
+      createdByUserId: true,
+      revokedAt: true,
+    },
+  });
+
+  return records.map(tokenPublico);
+}
+
+/** Marca el enlace como revocado. La fila se queda: nada se borra. */
+export async function revokeClientAccessToken(id: number, userId: number) {
+  return prisma.$transaction(async (tx) => {
+    const record = await tx.clientAccessToken.findUnique({ where: { id } });
+    if (!record) {
+      throw new AppError('Token no encontrado', 404, 'NOT_FOUND');
+    }
+    if (record.revokedAt) {
+      throw new AppError('El token ya está revocado', 409, 'TOKEN_ALREADY_REVOKED');
+    }
+
+    const revokedAt = new Date();
+    const updated = await tx.clientAccessToken.update({
+      where: { id: record.id },
+      data: { revokedAt },
+    });
+    await writeAudit(tx, {
+      userId,
+      entidad: 'ClientAccessToken',
+      entidadId: String(record.id),
+      accion: 'revoke',
+      // El token no va al audit: es un credencial vivo y el log no debe
+      // servir para recuperar un enlace.
+      datosAntes: { clientId: record.clientId, revokedAt: null },
+      datosDespues: { clientId: record.clientId, revokedAt },
+    });
+    return tokenPublico(updated);
+  });
+}
+
 // --- Catálogo público ---
 
 /**
