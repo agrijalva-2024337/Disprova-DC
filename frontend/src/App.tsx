@@ -12,6 +12,9 @@ import { InventoryPage } from './features/admin/inventory/InventoryPage.tsx'
 import { ZonesPage } from './features/admin/zones/ZonesPage.tsx'
 import { FieldGate } from './features/field/FieldGate.tsx'
 import { CatalogPage } from './features/store/catalog/CatalogPage.tsx'
+import { CheckoutPage } from './features/store/checkout/CheckoutPage.tsx'
+import { OrderConfirmationPage } from './features/store/checkout/OrderConfirmationPage.tsx'
+import { StoreLayout } from './features/store/StoreLayout.tsx'
 import { DeliveriesPage } from './features/field/DeliveriesPage.tsx'
 import { DeliveryPage } from './features/field/DeliveryPage.tsx'
 import { NewOrderPage } from './features/field/NewOrderPage.tsx'
@@ -35,7 +38,11 @@ export default function App() {
         <Route path="clientes/nuevo" element={<ClientFormPage />} />
         <Route path="clientes/:id" element={<ClientFormPage />} />
       </Route>
-      <Route path="/catalogo/:token" element={<CatalogPage />} />
+      <Route path="/catalogo/:token" element={<StoreLayout />}>
+        <Route index element={<CatalogPage />} />
+        <Route path="pedido" element={<CheckoutPage />} />
+        <Route path="confirmacion" element={<OrderConfirmationPage />} />
+      </Route>
       <Route path="/ruta" element={<FieldGate />}>
         <Route index element={<TodayRoutePage />} />
         <Route path="pedido/:clientId" element={<NewOrderPage />} />
