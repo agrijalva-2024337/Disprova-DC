@@ -4,6 +4,10 @@ export const clientIdParamSchema = z.object({
   clientId: z.coerce.number().int().positive(),
 });
 
+export const tokenIdParamSchema = z.object({
+  id: z.coerce.number().int().positive(),
+});
+
 export const createTokenSchema = z.object({
   /** Vigencia por defecto: 30 días. */
   expiresInDays: z.number().int().positive().max(365).optional(),
