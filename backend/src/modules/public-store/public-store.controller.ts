@@ -22,7 +22,7 @@ export const getPublicCatalog = asyncHandler(async (req: Request, res: Response)
   if (!req.publicClient) {
     throw new AppError('Token de acceso inválido', 401, 'PUBLIC_TOKEN_INVALID');
   }
-  res.status(200).json(await publicStoreService.getPublicCatalog(req.publicClient.priceListId));
+  res.status(200).json(await publicStoreService.getPublicCatalog(req.publicClient));
 });
 
 export const createPublicOrder = asyncHandler(async (req: Request, res: Response) => {

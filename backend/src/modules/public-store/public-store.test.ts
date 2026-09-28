@@ -154,6 +154,10 @@ describe('GET /api/public/catalog', () => {
     const response = await request(app).get(`/api/public/catalog?token=${vigente.token}`);
 
     expect(response.status).toBe(200);
+    expect(response.body.cliente).toEqual({
+      id: client.id,
+      nombreComercial: client.nombreComercial,
+    });
   });
 
   it('muestra el precio de la lista del cliente del token', async () => {

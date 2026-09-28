@@ -36,7 +36,7 @@ import { clientIdParamSchema, createTokenSchema, publicOrderSchema } from './pub
  *     description: "Público a propósito: **no** acepta JWT. Se autentica solo con el token de cliente, por header `X-Client-Token` o por query param `token`. Devuelve categorías y productos activos con el precio de la lista del cliente."
  *     security: [{ clientToken: [] }]
  *     responses:
- *       200: { description: "`{ categorias, productos }`. Las presentaciones sin precio vigente vienen con `precio: null`." }
+ *       200: { description: "`{ cliente: { id, nombreComercial }, categorias, productos }`. Las presentaciones sin precio vigente vienen con `precio: null`." }
  *       401: { description: "`PUBLIC_TOKEN_MISSING`, `PUBLIC_TOKEN_INVALID` o `PUBLIC_TOKEN_EXPIRED`." }
  *       422: { description: "El cliente del token no tiene lista de precios." }
  *

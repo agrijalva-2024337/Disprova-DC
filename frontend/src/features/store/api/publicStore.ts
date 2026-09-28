@@ -59,6 +59,7 @@ export type PublicProduct = {
 }
 
 export type PublicCatalog = {
+  cliente: { id: number; nombreComercial: string }
   categorias: PublicCategory[]
   productos: PublicProduct[]
 }

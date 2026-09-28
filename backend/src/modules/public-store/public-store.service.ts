@@ -64,7 +64,11 @@ export async function createClientAccessToken(clientId: number, input: CreateTok
  * del token. Reusa `currentPrice` de sales: la resolución de precio (el ítem
  * más reciente con `vigenteDesde` ya vencido) es la misma que usa el pedido.
  */
-export async function getPublicCatalog(priceListId: number) {
+export async function getPublicCatalog(client: {
+  id: number;
+  priceListId: number;
+  nombreComercial: string;
+}) {
   const [categorias, productos] = await Promise.all([
     prisma.category.findMany({
       where: { activo: true },
@@ -81,7 +85,7 @@ export async function getPublicCatalog(priceListId: number) {
   for (const producto of productos) {
     const unidades = [];
     for (const unidad of producto.units) {
-      const precio = await currentPrice(priceListId, unidad.id);
+      const precio = await currentPrice(client.priceListId, unidad.id);
       unidades.push({
         id: unidad.id,
         nombre: unidad.nombre,
@@ -103,7 +107,11 @@ export async function getPublicCatalog(priceListId: number) {
     });
   }
 
-  return { categorias, productos: items };
+  return {
+    cliente: { id: client.id, nombreComercial: client.nombreComercial },
+    categorias,
+    productos: items,
+  };
 }
 
 // --- Pedido público ---
