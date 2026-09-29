@@ -1,0 +1,9 @@
+# Los scripts de shell corren dentro de un contenedor Alpine, que espera LF.
+# Si el repo los guardara con CRLF, sh falla en la primera línea con
+# "illegal option -" o "set: : not found", y el respaldo diario no arranca.
+*.sh text eol=lf
+
+# Estos también se leen en Linux (el backend corre en Docker).
+*.prisma text eol=lf
+*.yml text eol=lf
+*.sql text eol=lf
