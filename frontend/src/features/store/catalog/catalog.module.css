@@ -131,8 +131,8 @@
   height: 2rem;
   border-radius: 0.5rem;
   border: 1px solid var(--store-border);
-  background: var(--store-accent-soft);
-  color: var(--store-accent);
+  background: var(--store-surface);
+  color: var(--store-ink);
   font-size: 1.125rem;
   font-weight: 600;
   line-height: 1;
@@ -164,7 +164,7 @@
   height: 0.75rem;
   width: 70%;
   border-radius: 999px;
-  background: var(--store-accent-soft);
+  background: var(--store-border);
   animation: pulse 1.2s ease-in-out infinite;
 }
 

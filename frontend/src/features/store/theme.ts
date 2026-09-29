@@ -8,7 +8,6 @@ export const theme = {
   accent: '#A3221C',
   accentInk: '#7A1712',
   gold: '#B8873A',
-  accentSoft: '#EAF0E3',
 } as const
 
 export const bg = theme.bg
@@ -19,4 +18,3 @@ export const textMuted = theme.textMuted
 export const accent = theme.accent
 export const accentInk = theme.accentInk
 export const gold = theme.gold
-export const accentSoft = theme.accentSoft

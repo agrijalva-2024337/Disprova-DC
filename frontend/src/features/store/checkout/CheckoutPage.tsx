@@ -17,9 +17,9 @@ const storeVars = {
   '--store-surface': theme.surface,
   '--store-border': theme.border,
   '--store-text': theme.text,
+  '--store-ink': theme.text,
   '--store-muted': theme.textMuted,
   '--store-accent': theme.accent,
-  '--store-accent-soft': theme.accentSoft,
 } as CSSProperties
 
 type Linea = {
@@ -36,6 +36,16 @@ function money(value: number) {
 
 function quetzales(value: number) {
   return `Q ${value.toLocaleString('es-GT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+}
+
+function enlaceInvalido(error: unknown) {
+  return (
+    isPublicStoreError(error) &&
+    (error.code === 'PUBLIC_TOKEN_EXPIRED' ||
+      error.code === 'PUBLIC_TOKEN_INVALID' ||
+      error.code === 'PUBLIC_TOKEN_MISSING' ||
+      error.code === 'PUBLIC_TOKEN_REVOKED')
+  )
 }
 
 function lineasDelCarrito(catalog: PublicCatalog, cantidades: Record<number, number>): Linea[] {
@@ -114,8 +124,12 @@ export function CheckoutPage() {
             ? `Sin precio vigente: ${linea.nombre}, ${linea.presentacion}.`
             : 'Una presentación del pedido ya no tiene precio vigente.',
         )
+      } else if (enlaceInvalido(error)) {
+        setErrorLinea('Este enlace ya no es válido. Pide uno nuevo a tu vendedor.')
+      } else if (isPublicStoreError(error) && error.code === 'NO_PRICE_LIST') {
+        setErrorLinea('Este cliente no tiene lista de precios. Pide a tu vendedor que la asigne.')
       } else {
-        setErrorLinea('No se pudo enviar el pedido. Puedes intentar de nuevo.')
+        setErrorLinea('No se pudo enviar el pedido. Revisa la conexión e intenta de nuevo.')
       }
     } finally {
       enCurso.current = false
@@ -128,8 +142,9 @@ export function CheckoutPage() {
       <div className="mx-auto min-h-screen w-full max-w-md">
         <header className={styles.header}>
           <h1 className={`${styles.title} font-display`}>Tu pedido</h1>
+          <div className={styles.rule} aria-hidden="true" />
           {token ? (
-            <Link className={styles.back} to={`/catalogo/${token}`}>
+            <Link className={`${styles.back} font-body`} to={`/catalogo/${token}`}>
               Seguir comprando
             </Link>
           ) : null}
@@ -139,11 +154,19 @@ export function CheckoutPage() {
           <p className={styles.empty}>Cargando el pedido…</p>
         ) : null}
 
+        {catalogQuery.isError ? (
+          <p className={styles.error}>
+            {enlaceInvalido(catalogQuery.error)
+              ? 'Este enlace ya no es válido. Pide uno nuevo a tu vendedor.'
+              : 'No se pudo cargar el pedido. Abre de nuevo el enlace del catálogo.'}
+          </p>
+        ) : null}
+
         {catalog && lineas.length === 0 ? (
           <div className={styles.empty}>
             <p>Todavía no agregaste productos.</p>
             {token ? (
-              <Link className={`${catalogStyles.addbtn} mt-4`} to={`/catalogo/${token}`}>
+              <Link className={`${styles.confirm} font-body mt-4`} to={`/catalogo/${token}`}>
                 Volver al catálogo
               </Link>
             ) : null}
@@ -222,13 +245,13 @@ export function CheckoutPage() {
 
             <div className={styles.footer}>
               <div className={styles.total}>
-                <span>Total</span>
-                <span className="font-display">{quetzales(subtotal(catalog))}</span>
+                <span className="font-body">Total</span>
+                <span className={`${styles.totalAmount} font-display`}>{quetzales(subtotal(catalog))}</span>
               </div>
               {errorLinea ? <p className={styles.error}>{errorLinea}</p> : null}
               <button
                 type="button"
-                className={`${catalogStyles.addbtn} w-full`}
+                className={`${styles.confirm} font-body`}
                 disabled={enviando}
                 onClick={() => void confirmar()}
               >
