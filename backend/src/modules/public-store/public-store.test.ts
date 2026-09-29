@@ -18,13 +18,24 @@ async function loginAsAdmin() {
  * afterEach: si quedan clientes o pedidos de prueba, los tests de
  * sales-territory y reports que cuentan clientes empiezan a fallar.
  */
-const creados = { tokens: [] as number[], clients: [] as number[], priceLists: [] as number[] };
+const creados = {
+  tokens: [] as number[],
+  clients: [] as number[],
+  priceLists: [] as number[],
+  products: [] as number[],
+};
 
 async function limpiar() {
-  const { tokens, clients, priceLists } = creados;
+  const { tokens, clients, priceLists, products } = creados;
   creados.tokens = [];
   creados.clients = [];
   creados.priceLists = [];
+  creados.products = [];
+
+  if (products.length > 0) {
+    await prisma.productImage.deleteMany({ where: { productId: { in: products } } });
+    await prisma.product.deleteMany({ where: { id: { in: products } } });
+  }
 
   if (tokens.length > 0) {
     await prisma.clientAccessToken.deleteMany({ where: { id: { in: tokens } } });
@@ -266,6 +277,48 @@ describe('GET /api/public/catalog', () => {
     // Misma presentación, distinto precio según la lista de cada token.
     expect(precioDe(deGeneral.body)).not.toBe(precioDe(deWeb.body));
     expect(precioDe(deWeb.body)).toBe('20.00');
+  });
+
+  it('devuelve la imagen principal y null si el producto no tiene fotos', async () => {
+    const { userId } = await loginAsAdmin();
+    const lista = await prisma.priceList.findFirstOrThrow();
+    const client = await crearCliente(lista.id);
+    const token = await crearToken(client.id, userId);
+    const category = await prisma.category.findFirstOrThrow({ where: { activo: true } });
+    const marca = sufijo();
+
+    const conImagen = await prisma.product.create({
+      data: {
+        sku: `IMG-${marca}`,
+        nombre: 'Con imagen',
+        categoryId: category.id,
+        unidadBase: 'Unidad',
+        images: { create: { url: 'https://cdn.example/principal.jpg', esPrincipal: true } },
+      },
+    });
+    const sinImagen = await prisma.product.create({
+      data: {
+        sku: `NOIMG-${marca}`,
+        nombre: 'Sin imagen',
+        categoryId: category.id,
+        unidadBase: 'Unidad',
+      },
+    });
+    creados.products.push(conImagen.id, sinImagen.id);
+
+    const response = await request(app)
+      .get('/api/public/catalog')
+      .set('X-Client-Token', token.token);
+
+    expect(response.status).toBe(200);
+    const porId = new Map(
+      (response.body.productos as Array<{ id: number; imagenUrl: string | null }>).map((producto) => [
+        producto.id,
+        producto.imagenUrl,
+      ]),
+    );
+    expect(porId.get(conImagen.id)).toBe('https://cdn.example/principal.jpg');
+    expect(porId.get(sinImagen.id)).toBeNull();
   });
 
   it('el token no habilita endpoints internos', async () => {
