@@ -183,3 +183,14 @@ export type RouteVisitInput = {
   resultado: 'pedido' | 'no_compro' | 'cerrado'
   motivo?: string | null
 }
+
+/**
+ * `POST /api/tokens/clients/:clientId`. Ojo: `pathCatalogo` viene RELATIVO
+ * (`/catalogo/<token>`), el frontend le pone el dominio.
+ */
+export type ClientAccessToken = {
+  token: string
+  expiresAt: string
+  cliente: { id: number; nombreComercial: string }
+  pathCatalogo: string
+}
