@@ -18,6 +18,7 @@
 | DISP-031 | Frontend: caja (apertura y cierre de sesión) | Pendiente |
 | DISP-032 | Frontend: devoluciones | Pendiente |
 | DISP-033 | Frontend: reportes (ventas, cobros, antigüedad) | Pendiente |
+| DISP-034 | Frontend: mensajería (plantillas y envío por WhatsApp) | Pendiente |
 
 ## Definition of Done
 
