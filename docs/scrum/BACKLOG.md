@@ -17,11 +17,23 @@
 | DISP-030 | Frontend: cobranza (estado de cuenta, pagos, antigüedad) | Pendiente |
 | DISP-031 | Frontend: caja (apertura y cierre de sesión) | Pendiente |
 | DISP-032 | Frontend: devoluciones | Pendiente |
-| DISP-033 | Frontend: reportes (ventas, cobros, antigüedad) | Pendiente |
-| DISP-034 | Frontend: mensajería (plantillas y envío por WhatsApp) | Pendiente |
-| DISP-035 | Frontend: facturación (estado de facturas) | Pendiente |
-| DISP-036 | Frontend: usuarios y roles | Pendiente |
-| DISP-037 | Frontend: enlaces del catálogo público | Pendiente |
+| DISP-030 | Frontend: cobranza (estado de cuenta, pagos, antigüedad) | Listo |
+| DISP-031 | Frontend: caja (apertura y cierre de sesión) | Listo |
+| DISP-032 | Frontend: devoluciones | Listo |
+| DISP-033 | Frontend: reportes (ventas, cobros, antigüedad) | Listo |
+| DISP-034 | Frontend: mensajería (plantillas y envío por WhatsApp) | Listo |
+| DISP-035 | Frontend: facturación (estado de facturas) | Listo |
+| DISP-036 | Frontend: usuarios y roles | Listo |
+| DISP-037 | Frontend: enlaces del catálogo público | Listo |
+| DISP-038 | Auditoría MVP: índices de la planificación, TIMESTAMPTZ y unicidad de lotes | Listo |
+| DISP-039 | FEFO real con reparto entre lotes y rastro de la reserva (`order_item_batches`) | Listo |
+| DISP-040 | Idempotencia en la toma de pedido del vendedor | Listo |
+| DISP-041 | Gastos de ruta: tabla `cash_expenses` y arqueo con gastos | Listo |
+| DISP-042 | Saldo inicial de cartera como cargo de apertura del libro mayor | Listo |
+| DISP-043 | Soft-delete en zonas, clientes y catálogo (regla "nada se borra") | Pendiente |
+| DISP-044 | Frontend: cobranza en `features/field` (cobro desde el móvil) | Pendiente |
+| DISP-045 | Respaldo `pg_dump` programado y prueba de restauración | Pendiente |
+| DISP-046 | Confirmar con el negocio si el precio de lista incluye IVA (hoy se suma 12%) | Pendiente |
 
 ## Definition of Done
 

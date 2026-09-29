@@ -3,7 +3,12 @@ import { prisma } from '../../config/prisma.js';
 import { AppError } from '../../shared/errors/AppError.js';
 import { writeAudit } from '../../shared/audit/writeAudit.js';
 import { postMovement } from './account.service.js';
-import type { ApplyPaymentInput, CreateCollectionVisitInput, CreatePaymentInput } from './collections.schema.js';
+import type {
+  AbrirSaldosInicialesInput,
+  ApplyPaymentInput,
+  CreateCollectionVisitInput,
+  CreatePaymentInput,
+} from './collections.schema.js';
 
 function money(value: Prisma.Decimal | string | number) {
   return new Prisma.Decimal(value).toDecimalPlaces(2, Prisma.Decimal.ROUND_HALF_UP);
@@ -221,6 +226,103 @@ export async function getAging(clientId: number) {
     saldoActual: last ? last.saldoResultante : new Prisma.Decimal(0),
     buckets,
   };
+}
+
+/**
+ * Carga el saldo inicial de la cartera como un cargo de tipo `apertura` en el
+ * libro mayor, no como una columna nueva.
+ *
+ * Así el saldo inicial se explica movimiento por movimiento como cualquier otro,
+ * que es justo lo que pide el criterio de aceptación del MVP: "el saldo que
+ * muestra el sistema coincide con el saldo real y se puede explicar movimiento
+ * por movimiento".
+ *
+ * `simulacion` devuelve el cuadre sin escribir. `commit` escribe, y el índice
+ * único parcial sobre `account_movements` impide que el mismo corte se cargue
+ * dos veces: una doble carga duplicaría toda la deuda.
+ */
+export async function abrirSaldosIniciales(input: AbrirSaldosInicialesInput, userId: number) {
+  const plan = await prisma.$transaction(async (tx) => {
+    const yaCargado = await tx.accountMovement.findFirst({
+      where: { referenciaTipo: 'apertura', referenciaId: input.corte },
+    });
+    if (yaCargado) {
+      throw new AppError(
+        `El corte "${input.corte}" ya fue cargado. Los saldos iniciales se cargan una sola vez.`,
+        409,
+        'ALREADY_OPENED',
+      );
+    }
+
+    const clients = await tx.client.findMany({
+      where: { id: { in: input.items.map((item) => item.clientId) } },
+    });
+    const faltan = input.items
+      .map((item) => item.clientId)
+      .filter((id) => !clients.some((client) => client.id === id));
+    if (faltan.length > 0) {
+      throw new AppError(
+        `Clientes inexistentes en el corte: ${faltan.join(', ')}`,
+        422,
+        'CLIENT_NOT_FOUND',
+      );
+    }
+
+    return Promise.all(
+      input.items.map(async (item) => {
+        const anterior = await tx.accountMovement.findFirst({
+          where: { clientId: item.clientId },
+          orderBy: [{ fecha: 'desc' }, { id: 'desc' }],
+        });
+        const saldoPrevio = new Prisma.Decimal(anterior?.saldoResultante ?? 0);
+        const monto = money(item.monto);
+        return {
+          clientId: item.clientId,
+          nombre: clients.find((client) => client.id === item.clientId)?.nombreComercial ?? '',
+          monto,
+          saldoPrevio,
+          saldoResultante: money(saldoPrevio.add(monto)),
+        };
+      }),
+    );
+  });
+
+  if (input.modo === 'simulacion') {
+    return { modo: 'simulacion' as const, corte: input.corte, plan, escrito: false };
+  }
+
+  const fecha = new Date();
+  await prisma.$transaction(async (tx) => {
+    for (const row of plan) {
+      if (row.monto.lessThanOrEqualTo(0)) {
+        continue;
+      }
+      await postMovement(tx, {
+        clientId: row.clientId,
+        tipo: 'cargo',
+        referenciaTipo: 'apertura',
+        referenciaId: input.corte,
+        monto: row.monto,
+        fecha,
+        userId,
+      });
+      await writeAudit(tx, {
+        userId,
+        entidad: 'AccountMovement',
+        entidadId: String(row.clientId),
+        accion: 'saldo_inicial',
+        datosDespues: {
+          corte: input.corte,
+          cliente: row.nombre,
+          monto: row.monto.toFixed(2),
+          saldoPrevio: row.saldoPrevio.toFixed(2),
+          saldoResultante: row.saldoResultante.toFixed(2),
+        },
+      });
+    }
+  });
+
+  return { modo: 'commit' as const, corte: input.corte, plan, escrito: true };
 }
 
 export async function createCollectionVisit(input: CreateCollectionVisitInput, userId: number) {

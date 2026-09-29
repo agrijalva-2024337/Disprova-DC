@@ -29,3 +29,8 @@ export const getAging = asyncHandler(async (req: Request, res: Response) => {
 export const createCollectionVisit = asyncHandler(async (req: Request, res: Response) => {
   res.status(201).json(await collectionsService.createCollectionVisit(req.body, userId(req)));
 });
+
+export const abrirSaldosIniciales = asyncHandler(async (req: Request, res: Response) => {
+  const resultado = await collectionsService.abrirSaldosIniciales(req.body, userId(req));
+  res.status(resultado.escrito ? 201 : 200).json(resultado);
+});

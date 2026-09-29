@@ -212,6 +212,8 @@ export type UpdateUserInput = {
   email?: string
   roleId?: number
   activo?: boolean
+}
+
 export type InvoiceEstado = 'pendiente_certificacion' | 'certificada' | 'error'
 
 /** `GET /api/invoices` incluye el pedido con su cliente, para no pedir otra cosa. */
@@ -235,6 +237,8 @@ export type Invoice = {
     numero: string
     client?: { id: number; nombreComercial: string }
   }
+}
+
 export type MessageCanal = 'wa_link' | 'whatsapp_api'
 export type MessageEstado = 'generado' | 'enviado' | 'fallido'
 
@@ -281,6 +285,8 @@ export type BroadcastLink = {
   clientId: number
   nombre: string
   url: string
+}
+
 export type ReturnEstado = 'pendiente' | 'aceptada' | 'rechazada'
 export type ReturnDestino = 'reingreso' | 'merma'
 
@@ -379,6 +385,12 @@ export type AgingRow = {
   saldoActual: string
   buckets: AgingBuckets
 }
+
+/**
+ * Alias de `AgingRow`. El panel de reportes y la tabla de antigüedad ya lo
+ * usaban con este nombre; sin el alias el frontend no compilaba.
+ */
+export type AgingReportRow = AgingRow
 
 export type SalesTodayVendedor = {
   userId: number

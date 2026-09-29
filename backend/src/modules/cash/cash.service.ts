@@ -2,7 +2,7 @@ import { Prisma } from '@prisma/client';
 import { prisma } from '../../config/prisma.js';
 import { AppError } from '../../shared/errors/AppError.js';
 import { writeAudit } from '../../shared/audit/writeAudit.js';
-import type { CloseCashSessionInput, OpenCashSessionInput } from './cash.schema.js';
+import type { CloseCashSessionInput, CreateExpenseInput, OpenCashSessionInput } from './cash.schema.js';
 
 type Tx = Prisma.TransactionClient;
 
@@ -125,6 +125,68 @@ export async function closeSession(sessionId: number, input: CloseCashSessionInp
     });
 
     return updated;
+  });
+}
+
+/**
+ * Registra un gasto de la jornada y lo suma a `total_gastos` de la sesión.
+ *
+ * La columna existía y se usaba en el arqueo, pero nada la escribía: sin esta
+ * función, cualquier gasto real (combustible, viáticos) descuadraba la caja y
+ * el sistema no tenía forma de explicarlo.
+ *
+ * El gasto se descuenta del efectivo esperado al cerrar, y ambos cambios van
+ * en la misma transacción: o queda el gasto registrado y el total actualizado,
+ * o no queda nada. Un gasto sobre una caja ya cerrada se rechaza, porque
+ * tocaría el arqueo que ya se firmó.
+ */
+export async function createExpense(input: CreateExpenseInput, userId: number) {
+  return prisma.$transaction(async (tx) => {
+    const session = await tx.cashSession.findFirst({
+      where: { userId, estado: 'abierta' },
+      orderBy: { id: 'desc' },
+    });
+    if (!session) {
+      throw new AppError('No hay una caja abierta para registrar el gasto', 409, 'CASH_SESSION_REQUIRED');
+    }
+
+    const monto = money(input.monto);
+    const expense = await tx.cashExpense.create({
+      data: {
+        cashSessionId: session.id,
+        userId,
+        concepto: input.concepto,
+        monto,
+        reciboUrl: input.reciboUrl ?? null,
+      },
+    });
+
+    await tx.cashSession.update({
+      where: { id: session.id },
+      data: { totalGastos: { increment: monto } },
+    });
+
+    await writeAudit(tx, {
+      userId,
+      entidad: 'CashExpense',
+      entidadId: String(expense.id),
+      accion: 'create',
+      datosDespues: {
+        cashSessionId: session.id,
+        concepto: expense.concepto,
+        monto: money(expense.monto).toFixed(2),
+        reciboUrl: expense.reciboUrl,
+      },
+    });
+
+    return expense;
+  });
+}
+
+export async function listExpenses(sessionId: number) {
+  return prisma.cashExpense.findMany({
+    where: { cashSessionId: sessionId },
+    orderBy: { id: 'asc' },
   });
 }
 

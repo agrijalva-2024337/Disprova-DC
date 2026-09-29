@@ -102,6 +102,49 @@ PostgreSQL con los del servicio `postgres`.
 | `JWT_ACCESS_SECRET` | Secreto para firmar los tokens de acceso (caducan a los 15 minutos). |
 | `JWT_REFRESH_SECRET` | Secreto para firmar los tokens de refresco. |
 
+## Cargar la cartera (saldo inicial)
+
+La deuda que el negocio ya tiene no entra como una columna: se carga como un
+**cargo de tipo `apertura`** en el libro mayor, de modo que el saldo inicial se
+explica movimiento por movimiento como cualquier otro.
+
+```bash
+# 1. Simulación: devuelve el cuadre por cliente SIN escribir nada.
+curl -X POST http://localhost:3000/api/account/opening-balances \
+  -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+  -d '{
+        "corte": "corte-2026-09-29",
+        "modo": "simulacion",
+        "items": [{ "clientId": 1, "monto": "1250.00" }]
+      }'
+
+# 2. Comparar con la libreta y, cuando cuadre, confirmar con "commit".
+```
+
+El `corte` identifica la carga y solo se admite una vez: una doble carga
+duplicaría toda la deuda de la cartera.
+
+## Gastos de la jornada
+
+`cash_sessions.total_gastos` se alimentaba desde cero: el arqueo descuadraba con
+cualquier gasto real. Los gastos se registran sobre la caja abierta y se
+descontan del efectivo esperado al cerrar.
+
+```bash
+curl -X POST http://localhost:3000/api/cash-sessions/expenses \
+  -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+  -d '{ "concepto": "Combustible", "monto": "120.00", "reciboUrl": null }'
+```
+
+## Lotes y FEFO
+
+Los productos controlados (medicamentos) se despachan por **FEFO**: primero el
+lote que vence antes, repartiendo la cantidad entre los lotes necesarios cuando
+uno solo no cubre. Al confirmar un pedido, el lote elegido queda reservado en
+`order_item_batches`; la entrega consume esa reserva y no la que el vendedor
+escriba en el formulario. Un lote vencido entre la confirmación y la entrega se
+rechaza con `BATCH_EXPIRED`.
+
 ### Próximos módulos — no configurado aún
 
 Estas variables todavía no existen en el código: se agregarán a

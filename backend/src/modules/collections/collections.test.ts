@@ -238,4 +238,83 @@ describe('cobranza', () => {
     expect(response.body.error.code).toBe('CASH_SESSION_REQUIRED');
     expect(response.body.error.message).toContain('caja abierta');
   });
+
+  it('carga el saldo inicial como cargo de apertura y no deja repetir el corte', async () => {
+    const { token, userId } = await loginAsAdmin();
+    const sample = await prisma.client.findFirstOrThrow();
+    const client = await prisma.client.create({
+      data: {
+        nombreComercial: `Apertura ${Date.now()}`,
+        tipoNegocio: 'tienda',
+        zoneId: sample.zoneId,
+        ordenRuta: 8500 + (Date.now() % 1000),
+        direccion: 'Calle de apertura',
+        priceListId: sample.priceListId,
+        limiteCredito: '0',
+        plazoDias: 0,
+        activo: true,
+      },
+    });
+    clientsCreados.push(client.id);
+
+    const auth = { Authorization: `Bearer ${token}` };
+    const corte = `test-apertura-${Date.now()}`;
+    const body = {
+      corte,
+      items: [{ clientId: client.id, monto: '350.00' }],
+    };
+
+    // Sin `modo` no escribe nada: devuelve el cuadre para comparar con la
+    // libreta antes de tocar el libro mayor.
+    const simulacion = await request(app).post('/api/account/opening-balances').set(auth).send(body);
+    expect(simulacion.status).toBe(200);
+    expect(simulacion.body.escrito).toBe(false);
+    expect(equalsMoney(simulacion.body.plan[0].monto, '350.00')).toBe(true);
+    expect(equalsMoney(simulacion.body.plan[0].saldoResultante, '350.00')).toBe(true);
+
+    const antesDeSimular = await prisma.accountMovement.count({ where: { clientId: client.id } });
+    expect(antesDeSimular).toBe(0);
+
+    const commit = await request(app)
+      .post('/api/account/opening-balances')
+      .set(auth)
+      .send({ ...body, modo: 'commit' });
+    expect(commit.status).toBe(201);
+    expect(commit.body.escrito).toBe(true);
+
+    // El saldo sale del libro mayor, no de una columna nueva: el movimiento
+    // existe y su saldo_resultante coincide con lo que ve el cliente.
+    const movimiento = await prisma.accountMovement.findFirstOrThrow({
+      where: { clientId: client.id, referenciaTipo: 'apertura' },
+    });
+    expect(movimiento.tipo).toBe('cargo');
+    expect(movimiento.referenciaId).toBe(corte);
+    expect(equalsMoney(movimiento.monto, '350.00')).toBe(true);
+    expect(equalsMoney(movimiento.saldoResultante, '350.00')).toBe(true);
+
+    const cuenta = await request(app).get(`/api/clients/${client.id}/account`).set(auth);
+    expect(cuenta.status).toBe(200);
+    expect(equalsMoney(cuenta.body.saldoActual, '350.00')).toBe(true);
+
+    const audit = await prisma.auditLog.findFirstOrThrow({
+      where: { entidad: 'AccountMovement', entidadId: String(client.id), accion: 'saldo_inicial' },
+    });
+    expect(audit.userId).toBe(userId);
+    expect((audit.datosDespues as { corte: string }).corte).toBe(corte);
+
+    // El mismo corte no se carga dos veces: duplicaría toda la deuda.
+    const repetido = await request(app)
+      .post('/api/account/opening-balances')
+      .set(auth)
+      .send({ ...body, modo: 'commit' });
+    expect(repetido.status).toBe(409);
+    expect(repetido.body.error.code).toBe('ALREADY_OPENED');
+
+    const inexistente = await request(app)
+      .post('/api/account/opening-balances')
+      .set(auth)
+      .send({ corte: `${corte}-x`, modo: 'commit', items: [{ clientId: 999999, monto: '10.00' }] });
+    expect(inexistente.status).toBe(422);
+    expect(inexistente.body.error.code).toBe('CLIENT_NOT_FOUND');
+  });
 });

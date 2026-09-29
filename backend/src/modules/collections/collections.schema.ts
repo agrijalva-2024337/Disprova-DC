@@ -37,4 +37,28 @@ export const createCollectionVisitSchema = z.object({
 
 export type CreatePaymentInput = z.infer<typeof createPaymentSchema>;
 export type ApplyPaymentInput = z.infer<typeof applyPaymentSchema>;
+export const abrirSaldosInicialesSchema = z.object({
+  /**
+   * Identifica el corte del negocio, por ejemplo 'corte-2026-09-29'. El índice
+   * único parcial sobre account_movements impide cargar el mismo corte dos
+   * veces: una doble carga duplicaría toda la deuda de la cartera.
+   */
+  corte: z.string().min(1),
+  items: z
+    .array(
+      z.object({
+        clientId: z.number().int().positive(),
+        monto: decimalValue,
+      }),
+    )
+    .min(1),
+  /**
+   * `simulacion` devuelve el cuadre sin escribir nada. Es el modo por defecto
+   * en la práctica: el administrador compara el resultado con la libreta y
+   * recién entonces manda `commit`.
+   */
+  modo: z.enum(['simulacion', 'commit']).default('simulacion'),
+});
+
 export type CreateCollectionVisitInput = z.infer<typeof createCollectionVisitSchema>;
+export type AbrirSaldosInicialesInput = z.infer<typeof abrirSaldosInicialesSchema>;
