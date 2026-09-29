@@ -67,7 +67,7 @@ import {
  *     security: [{ clientToken: [] }]
  *     responses:
 
- *       200: { description: "`{ categorias, productos }`. Las presentaciones sin precio vigente vienen con `precio: null`." }
+ *       200: { description: "`{ categorias, productos }`. Cada producto trae `imagenUrl` (la foto con `esPrincipal`) o `null` si no tiene. Las presentaciones sin precio vigente vienen con `precio: null`." }
  *       401: { description: "`PUBLIC_TOKEN_MISSING`, `PUBLIC_TOKEN_INVALID`, `PUBLIC_TOKEN_EXPIRED` o `PUBLIC_TOKEN_REVOKED`." }
  
  *       422: { description: "El cliente del token no tiene lista de precios." }

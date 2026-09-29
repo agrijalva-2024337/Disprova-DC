@@ -145,7 +145,10 @@ export async function getPublicCatalog(client: {
     prisma.product.findMany({
       where: { activo: true, category: { activo: true } },
       orderBy: { id: 'asc' },
-      include: { units: { where: { activo: true }, orderBy: { id: 'asc' } } },
+      include: {
+        units: { where: { activo: true }, orderBy: { id: 'asc' } },
+        images: { where: { esPrincipal: true }, orderBy: { id: 'asc' }, take: 1 },
+      },
     }),
   ]);
 
@@ -171,6 +174,9 @@ export async function getPublicCatalog(client: {
       descripcion: producto.descripcion,
       marca: producto.marca,
       categoryId: producto.categoryId,
+      // Solo la foto marcada como principal. Si no hay ninguna, el frontend
+      // decide el hueco: acá no se inventa un placeholder.
+      imagenUrl: producto.images[0]?.url ?? null,
       unidades,
     });
   }
