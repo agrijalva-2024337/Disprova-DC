@@ -183,3 +183,104 @@ export type RouteVisitInput = {
   resultado: 'pedido' | 'no_compro' | 'cerrado'
   motivo?: string | null
 }
+
+/** Movimientos de la cuenta corriente. El backend los devuelve de más antiguo a más nuevo. */
+export type AccountMovement = {
+  id: number
+  clientId: number
+  tipo: 'cargo' | 'abono'
+  referenciaTipo: string
+  referenciaId: string
+  monto: string
+  saldoResultante: string
+  fecha: string
+  createdAt: string
+}
+
+export type AccountStatement = {
+  saldoActual: string
+  movements: AccountMovement[]
+}
+
+/** Los mismos cuatro buckets que arma el backend en `getAging`. */
+export type AgingBuckets = {
+  '0-15': string
+  '16-30': string
+  '31-60': string
+  '60+': string
+}
+
+export type ClientAging = {
+  saldoActual: string
+  buckets: AgingBuckets
+}
+
+/** Fila de `GET /api/reports/aging`: un cliente con saldo y sus buckets. */
+export type AgingRow = {
+  clientId: number
+  nombre: string
+  saldoActual: string
+  buckets: AgingBuckets
+}
+
+export type PaymentMethod = 'efectivo' | 'transferencia' | 'cheque'
+
+export type Payment = {
+  id: number
+  clientId: number
+  userId: number
+  fecha: string
+  monto: string
+  metodo: PaymentMethod
+  referencia: string | null
+  cashSessionId: number | null
+  createdAt: string
+}
+
+export type PaymentApplication = {
+  id: number
+  paymentId: number
+  orderId: number
+  montoAplicado: string
+}
+
+export type PaymentWithApplications = Payment & {
+  applications: PaymentApplication[]
+}
+
+export type PaymentInput = {
+  clientId: number
+  monto: string
+  metodo: PaymentMethod
+  referencia?: string | null
+}
+
+export type ApplyPaymentInput = {
+  applications: Array<{ orderId: number; monto: string }>
+}
+
+export type CollectionVisitResultado =
+  | 'pago_completo'
+  | 'pago_parcial'
+  | 'compromiso'
+  | 'sin_contacto'
+
+export type CollectionVisit = {
+  id: number
+  clientId: number
+  userId: number
+  fecha: string
+  resultado: CollectionVisitResultado
+  montoComprometido: string | null
+  fechaCompromiso: string | null
+  observaciones: string | null
+  createdAt: string
+}
+
+export type CollectionVisitInput = {
+  clientId: number
+  resultado: CollectionVisitResultado
+  montoComprometido?: string | null
+  fechaCompromiso?: string | null
+  observaciones?: string | null
+}

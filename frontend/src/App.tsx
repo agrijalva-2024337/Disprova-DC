@@ -7,6 +7,8 @@ import { ProductFormPage } from './features/admin/products/ProductFormPage.tsx'
 import { ProductsPage } from './features/admin/products/ProductsPage.tsx'
 import { ClientFormPage } from './features/admin/clients/ClientFormPage.tsx'
 import { ClientsPage } from './features/admin/clients/ClientsPage.tsx'
+import { AccountStatementPage } from './features/admin/collections/AccountStatementPage.tsx'
+import { AgingPage } from './features/admin/collections/AgingPage.tsx'
 import { KardexPage } from './features/admin/inventory/KardexPage.tsx'
 import { InventoryPage } from './features/admin/inventory/InventoryPage.tsx'
 import { ZonesPage } from './features/admin/zones/ZonesPage.tsx'
@@ -33,6 +35,8 @@ export default function App() {
         <Route path="clientes" element={<ClientsPage />} />
         <Route path="clientes/nuevo" element={<ClientFormPage />} />
         <Route path="clientes/:id" element={<ClientFormPage />} />
+        <Route path="cobranza" element={<AgingPage />} />
+        <Route path="cobranza/clientes/:clientId" element={<AccountStatementPage />} />
       </Route>
       <Route path="/ruta" element={<FieldGate />}>
         <Route index element={<TodayRoutePage />} />
