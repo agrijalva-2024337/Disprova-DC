@@ -61,6 +61,17 @@ export async function listUsers(filtros: { activo?: boolean } = {}) {
   return users.map(toDto);
 }
 
+export async function getUser(id: number) {
+  const user = await prisma.user.findUnique({
+    where: { id },
+    include: userConRol,
+  });
+  if (!user) {
+    throw new AppError('Usuario no encontrado', 404, 'NOT_FOUND');
+  }
+  return toDto(user);
+}
+
 async function requireRoleById(roleId: number) {
   const role = await prisma.role.findUnique({ where: { id: roleId } });
   if (!role) {

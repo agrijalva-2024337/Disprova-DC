@@ -96,6 +96,39 @@ describe('GET /api/users', () => {
   });
 });
 
+describe('GET /api/users/:id', () => {
+  it('devuelve el mismo DTO que la lista, sin passwordHash', async () => {
+    const { token } = await loginAsAdmin();
+    const { user } = await crearAdmin();
+
+    const detalle = await request(app).get(`/api/users/${user.id}`).set(auth(token));
+    const lista = await request(app).get('/api/users').set(auth(token));
+    const enLista = lista.body.find((item: { id: number }) => item.id === user.id);
+
+    expect(detalle.status).toBe(200);
+    expect(detalle.body).toEqual(enLista);
+    expect(detalle.body.passwordHash).toBeUndefined();
+    expect(detalle.body.password).toBeUndefined();
+    expect(detalle.body).toMatchObject({
+      id: user.id,
+      nombre: 'Usuario Prueba',
+      email: user.email,
+      rol: 'admin',
+    });
+  });
+
+  it('no responde sin sesión y 404 si el usuario no existe', async () => {
+    const { token } = await loginAsAdmin();
+
+    const sinSesion = await request(app).get('/api/users/1');
+    expect(sinSesion.status).toBe(401);
+
+    const inexistente = await request(app).get('/api/users/9999999').set(auth(token));
+    expect(inexistente.status).toBe(404);
+    expect(inexistente.body.error.code).toBe('NOT_FOUND');
+  });
+});
+
 describe('POST /api/users', () => {
   it('crea el usuario con la contraseña hasheada y devuelve el rol', async () => {
     const { token, userId } = await loginAsAdmin();
