@@ -13,7 +13,6 @@ const storeVars = {
   '--store-surface': theme.surface,
   '--store-border': theme.border,
   '--store-text': theme.text,
-  '--store-ink': theme.text,
   '--store-muted': theme.textMuted,
   '--store-accent': theme.accent,
   '--store-accent-soft': theme.accentSoft,
@@ -54,7 +53,6 @@ function Catalogo({ token, catalog }: { token: string; catalog: PublicCatalog })
     <div className={totalItems > 0 ? 'pb-24' : undefined}>
       <header className={styles.header}>
         <h1 className={`${styles.brand} font-display`}>Disprova GyG</h1>
-        <div className={styles.rule} aria-hidden="true" />
         <p className={`${styles.clientName} font-body`}>{catalog.cliente.nombreComercial}</p>
         <input
           className={`${styles.search} font-body`}
