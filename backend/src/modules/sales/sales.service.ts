@@ -207,6 +207,7 @@ export async function createOrder(input: CreateOrderInput, userId: number) {
         `La lista de precios del cliente no tiene un precio vigente para la presentación ${unit.nombre}`,
         422,
         'NO_PRICE',
+        { productUnitId: unit.id },
       );
     }
     const cantidad = new Prisma.Decimal(line.cantidad);

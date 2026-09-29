@@ -15,16 +15,22 @@ export function isPublicStoreErrorCode(code: string): code is PublicStoreErrorCo
   return (PUBLIC_STORE_ERROR_CODES as readonly string[]).includes(code)
 }
 
+export type PublicStoreErrorDetails = {
+  productUnitId?: number
+}
+
 /** Error del catálogo público. `code` es el del backend, no solo el texto. */
 export class PublicStoreError extends Error {
   readonly status: number
   readonly code: string
+  readonly details?: PublicStoreErrorDetails
 
-  constructor(message: string, status: number, code: string) {
+  constructor(message: string, status: number, code: string, details?: PublicStoreErrorDetails) {
     super(message)
     this.name = 'PublicStoreError'
     this.status = status
     this.code = code
+    this.details = details
   }
 }
 
@@ -95,12 +101,18 @@ export type PublicOrder = {
   items: PublicOrderItem[]
 }
 
-async function readError(response: Response): Promise<{ message: string; code: string }> {
+async function readError(
+  response: Response,
+): Promise<{ message: string; code: string; details?: PublicStoreErrorDetails }> {
   try {
-    const data = (await response.json()) as { error?: { message?: string; code?: string } }
+    const data = (await response.json()) as {
+      error?: { message?: string; code?: string; details?: { productUnitId?: unknown } }
+    }
+    const productUnitId = data.error?.details?.productUnitId
     return {
       message: data.error?.message ?? `Error ${response.status}`,
       code: data.error?.code ?? '',
+      details: typeof productUnitId === 'number' ? { productUnitId } : undefined,
     }
   } catch {
     return { message: `Error ${response.status}`, code: '' }
@@ -127,7 +139,7 @@ async function publicRequest<T>(path: string, token: string, body?: unknown): Pr
 
   if (!response.ok) {
     const error = await readError(response)
-    throw new PublicStoreError(error.message, response.status, error.code)
+    throw new PublicStoreError(error.message, response.status, error.code, error.details)
   }
 
   return (await response.json()) as T
