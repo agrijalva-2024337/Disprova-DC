@@ -183,6 +183,27 @@ export type RouteVisitInput = {
   resultado: 'pedido' | 'no_compro' | 'cerrado'
   motivo?: string | null
 }
+export type CashSessionEstado = 'abierta' | 'cerrada'
+
+export type CashSession = {
+  id: number
+  userId: number
+  fecha: string
+  fondoInicial: string
+  totalCobrado: string
+  totalGastos: string
+  conteoFinal: string | null
+  diferencia: string | null
+  estado: CashSessionEstado
+  createdAt: string
+  cerradaAt: string | null
+}
+
+export type CashSessionFilters = {
+  userId?: number
+  desde?: string
+  hasta?: string
+}
 
 /** Movimientos de la cuenta corriente. El backend los devuelve de más antiguo a más nuevo. */
 export type AccountMovement = {

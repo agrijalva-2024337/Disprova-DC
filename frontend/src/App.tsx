@@ -7,6 +7,8 @@ import { ProductFormPage } from './features/admin/products/ProductFormPage.tsx'
 import { ProductsPage } from './features/admin/products/ProductsPage.tsx'
 import { ClientFormPage } from './features/admin/clients/ClientFormPage.tsx'
 import { ClientsPage } from './features/admin/clients/ClientsPage.tsx'
+import { CashSessionsListPage } from './features/admin/cash/CashSessionsListPage.tsx'
+import { CashSessionPage } from './features/field/cash/CashSessionPage.tsx'
 import { AccountStatementPage } from './features/admin/collections/AccountStatementPage.tsx'
 import { AgingPage } from './features/admin/collections/AgingPage.tsx'
 import { KardexPage } from './features/admin/inventory/KardexPage.tsx'
@@ -39,6 +41,7 @@ export default function App() {
         <Route path="clientes" element={<ClientsPage />} />
         <Route path="clientes/nuevo" element={<ClientFormPage />} />
         <Route path="clientes/:id" element={<ClientFormPage />} />
+        <Route path="cajas" element={<CashSessionsListPage />} />
         <Route path="cobranza" element={<AgingPage />} />
         <Route path="cobranza/clientes/:clientId" element={<AccountStatementPage />} />
       </Route>
@@ -52,6 +55,7 @@ export default function App() {
         <Route path="pedido/:clientId" element={<NewOrderPage />} />
         <Route path="entregas" element={<DeliveriesPage />} />
         <Route path="entregas/:orderId" element={<DeliveryPage />} />
+        <Route path="caja" element={<CashSessionPage />} />
       </Route>
       <Route path="*" element={<Navigate to="/login" replace />} />
     </Routes>
