@@ -7,6 +7,8 @@ import { ProductFormPage } from './features/admin/products/ProductFormPage.tsx'
 import { ProductsPage } from './features/admin/products/ProductsPage.tsx'
 import { ClientFormPage } from './features/admin/clients/ClientFormPage.tsx'
 import { ClientsPage } from './features/admin/clients/ClientsPage.tsx'
+import { NewReturnPage } from './features/admin/returns/NewReturnPage.tsx'
+import { ReturnDetailPage } from './features/admin/returns/ReturnDetailPage.tsx'
 import { CashSessionsListPage } from './features/admin/cash/CashSessionsListPage.tsx'
 import { CashSessionPage } from './features/field/cash/CashSessionPage.tsx'
 import { AccountStatementPage } from './features/admin/collections/AccountStatementPage.tsx'
@@ -41,6 +43,9 @@ export default function App() {
         <Route path="clientes" element={<ClientsPage />} />
         <Route path="clientes/nuevo" element={<ClientFormPage />} />
         <Route path="clientes/:id" element={<ClientFormPage />} />
+        <Route path="devoluciones" element={<NewReturnPage />} />
+        <Route path="devoluciones/nueva" element={<NewReturnPage />} />
+        <Route path="devoluciones/:id" element={<ReturnDetailPage />} />
         <Route path="cajas" element={<CashSessionsListPage />} />
         <Route path="cobranza" element={<AgingPage />} />
         <Route path="cobranza/clientes/:clientId" element={<AccountStatementPage />} />
