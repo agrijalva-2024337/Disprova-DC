@@ -20,6 +20,8 @@ export const listOrders = asyncHandler(async (req: Request, res: Response) => {
   res.status(200).json(
     await salesService.listOrders({
       clientId: parsed.data.clientId,
+      estado: parsed.data.estado,
+      canal: parsed.data.canal,
       userId: userId(req),
       pendientes: parsed.data.pendientes !== undefined,
     }),

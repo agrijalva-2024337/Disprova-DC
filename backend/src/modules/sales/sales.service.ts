@@ -107,23 +107,32 @@ export function importeEntregado(
   );
 }
 
-export async function listOrders(filters: { clientId?: number; userId?: number; pendientes?: boolean }) {
+export async function listOrders(filters: {
+  clientId?: number;
+  userId?: number;
+  estado?: 'borrador' | 'confirmado' | 'entregado_parcial' | 'entregado' | 'cancelado';
+  canal?: 'campo' | 'web' | 'whatsapp';
+  pendientes?: boolean;
+}) {
   const start = todayDate();
   const end = new Date(start);
   end.setUTCDate(end.getUTCDate() + 1);
   return prisma.order.findMany({
     where: {
       clientId: filters.clientId,
+      ...(filters.canal ? { canal: filters.canal } : {}),
+      ...(filters.estado ? { estado: filters.estado } : {}),
       ...(filters.pendientes
         ? {
             userId: filters.userId,
-            estado: { in: ['confirmado', 'entregado_parcial'] },
+            estado: { in: ['confirmado', 'entregado_parcial'] as const },
             createdAt: { gte: start, lt: end },
           }
         : {}),
     },
     include: {
       client: true,
+      user: { select: { id: true, nombre: true } },
       items: { include: { productUnit: { include: { product: true } }, deliveryItems: true } },
     },
     orderBy: { id: 'desc' },
@@ -135,6 +144,7 @@ export async function getOrder(orderId: number) {
     where: { id: orderId },
     include: {
       client: true,
+      user: { select: { id: true, nombre: true } },
       items: { include: { productUnit: { include: { product: true } }, deliveryItems: true } },
     },
   });

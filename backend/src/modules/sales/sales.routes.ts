@@ -13,6 +13,8 @@ import { createOrderSchema, deliverOrderSchema, idParamSchema } from './sales.sc
  *     security: [{ bearerAuth: [] }]
  *     parameters:
  *       - { in: query, name: clientId, schema: { type: integer } }
+ *       - { in: query, name: estado, schema: { type: string, enum: [borrador, confirmado, entregado_parcial, entregado, cancelado] } }
+ *       - { in: query, name: canal, schema: { type: string, enum: [campo, web, whatsapp] } }
  *       - { in: query, name: pendientes, schema: { type: string, enum: ['1','true'] }, description: Solo pedidos confirmados o entregados a medias de hoy. }
  *     responses:
  *       200: { description: Pedidos con cliente, líneas y entregas. }

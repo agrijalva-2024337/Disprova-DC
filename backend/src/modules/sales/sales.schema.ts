@@ -2,6 +2,8 @@ import { z } from 'zod';
 
 export const listOrdersQuerySchema = z.object({
   clientId: z.coerce.number().int().positive().optional(),
+  estado: z.enum(['borrador', 'confirmado', 'entregado_parcial', 'entregado', 'cancelado']).optional(),
+  canal: z.enum(['campo', 'web', 'whatsapp']).optional(),
   pendientes: z.enum(['1', 'true']).optional(),
 });
 
