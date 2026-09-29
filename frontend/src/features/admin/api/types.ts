@@ -184,6 +184,30 @@ export type RouteVisitInput = {
   motivo?: string | null
 }
 
+export type InvoiceEstado = 'pendiente_certificacion' | 'certificada' | 'error'
+
+/** `GET /api/invoices` incluye el pedido con su cliente, para no pedir otra cosa. */
+export type Invoice = {
+  id: number
+  orderId: number
+  serie: string
+  /** Correlativo interno. NO es el número fiscal: ese lo asigna el certificador. */
+  numero: number
+  /** UUID que devuelve la SAT al certificar. Null hasta entonces. */
+  uuidFel: string | null
+  fechaCertificacion: string | null
+  estado: InvoiceEstado
+  total: string
+  xmlUrl: string | null
+  pdfUrl: string | null
+  error: string | null
+  createdAt: string
+  order?: {
+    id: number
+    numero: string
+    client?: { id: number; nombreComercial: string }
+  }
+=======
 export type MessageCanal = 'wa_link' | 'whatsapp_api'
 export type MessageEstado = 'generado' | 'enviado' | 'fallido'
 
@@ -230,7 +254,6 @@ export type BroadcastLink = {
   clientId: number
   nombre: string
   url: string
-=======
 export type ReturnEstado = 'pendiente' | 'aceptada' | 'rechazada'
 export type ReturnDestino = 'reingreso' | 'merma'
 
