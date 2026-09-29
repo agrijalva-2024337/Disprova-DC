@@ -16,6 +16,7 @@
 | DISP-024 | Documentación Swagger: 11 endpoints faltantes | Listo |
 | DISP-030 | Frontend: cobranza (estado de cuenta, pagos, antigüedad) | Pendiente |
 | DISP-031 | Frontend: caja (apertura y cierre de sesión) | Pendiente |
+| DISP-032 | Frontend: devoluciones | Pendiente |
 
 ## Definition of Done
 
