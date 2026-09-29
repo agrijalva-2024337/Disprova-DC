@@ -183,3 +183,33 @@ export type RouteVisitInput = {
   resultado: 'pedido' | 'no_compro' | 'cerrado'
   motivo?: string | null
 }
+
+export type Role = {
+  id: number
+  nombre: string
+  permisos: unknown
+}
+
+/**
+ * Alta de usuario. La contraseña es obligatoria y de al menos 8 caracteres:
+ * el backend la hashea con bcrypt y nunca devuelve el hash.
+ */
+export type CreateUserInput = {
+  nombre: string
+  email: string
+  password: string
+  roleId: number
+  activo?: boolean
+}
+
+/**
+ * Edición de usuario. NO lleva `password` a propósito: `updateUserSchema` del
+ * backend no la acepta y el service no hashea nada en el PUT. Cambiar una
+ * contraseña es otro flujo que todavía no existe.
+ */
+export type UpdateUserInput = {
+  nombre?: string
+  email?: string
+  roleId?: number
+  activo?: boolean
+}
