@@ -2,6 +2,7 @@ import { Prisma } from '@prisma/client';
 import { prisma } from '../../config/prisma.js';
 import { AppError } from '../../shared/errors/AppError.js';
 import { writeAudit } from '../../shared/audit/writeAudit.js';
+import { getAccount } from '../collections/collections.service.js';
 import { routeCalendar } from './routeCalendar.js';
 import type {
   CreateClientInput,
@@ -47,7 +48,7 @@ function decimalOrNull(value: string | number | null | undefined) {
 }
 
 export async function listZones() {
-  return prisma.zone.findMany({ orderBy: { id: 'asc' } });
+  return prisma.zone.findMany({ where: { activo: true }, orderBy: { id: 'asc' } });
 }
 
 export async function getZone(id: number) {
@@ -102,6 +103,13 @@ export async function updateZone(id: number, input: UpdateZoneInput, userId: num
   }
 }
 
+/**
+ * Desactiva la zona. No la borra.
+ *
+ * La sección 8 de la planificación: "Nada se borra. Clientes, productos y
+ * pedidos se desactivan o anulan, nunca se eliminan." Una zona con historial
+ * de visitas borrada deja al vendedor sin poder reconstruir su ruta.
+ */
 export async function deleteZone(id: number, userId: number) {
   try {
     return await prisma.$transaction(async (tx) => {
@@ -109,15 +117,19 @@ export async function deleteZone(id: number, userId: number) {
       if (!existing) {
         throw new AppError('Zona no encontrada', 404, 'NOT_FOUND');
       }
-      await tx.zone.delete({ where: { id } });
+      if (!existing.activo) {
+        throw new AppError('La zona ya está desactivada', 409, 'ALREADY_INACTIVE');
+      }
+      const updated = await tx.zone.update({ where: { id }, data: { activo: false } });
       await writeAudit(tx, {
         userId,
         entidad: 'Zone',
         entidadId: String(id),
-        accion: 'delete',
+        accion: 'deactivate',
         datosAntes: existing,
+        datosDespues: updated,
       });
-      return existing;
+      return updated;
     });
   } catch (err) {
     rethrowPrisma(err);
@@ -126,6 +138,7 @@ export async function deleteZone(id: number, userId: number) {
 
 export async function listClients() {
   return prisma.client.findMany({
+    where: { activo: true },
     orderBy: [{ zoneId: 'asc' }, { ordenRuta: 'asc' }],
     include: { contacts: true },
   });
@@ -200,6 +213,15 @@ export async function updateClient(id: number, input: UpdateClientInput, userId:
   }
 }
 
+/**
+ * Desactiva el cliente. No lo borra, y sobre todo NO borra sus visitas.
+ *
+ * Antes esta función hacía `routeVisit.deleteMany` y `clientContact.deleteMany`
+ * en cascada antes de borrar al cliente: cada visita de ruta quedaba sin
+ * registro y con ella se perdía la medida de la ruta, que es justo lo que el
+ * negocio necesita para saber a quién no se le ha visitado. El historial de
+ * visitas es el activo más valioso del sistema.
+ */
 export async function deleteClient(id: number, userId: number) {
   try {
     return await prisma.$transaction(async (tx) => {
@@ -210,17 +232,25 @@ export async function deleteClient(id: number, userId: number) {
       if (!existing) {
         throw new AppError('Cliente no encontrado', 404, 'NOT_FOUND');
       }
-      await tx.routeVisit.deleteMany({ where: { clientId: id } });
-      await tx.clientContact.deleteMany({ where: { clientId: id } });
-      await tx.client.delete({ where: { id } });
+      if (!existing.activo) {
+        throw new AppError('El cliente ya está desactivado', 409, 'ALREADY_INACTIVE');
+      }
+      // Los tokens del catálogo público se revocan: un cliente desactivado no
+      // debe seguir teniendo una URL viva que muestre su lista de precios.
+      await tx.clientAccessToken.updateMany({
+        where: { clientId: id, revokedAt: null },
+        data: { revokedAt: new Date() },
+      });
+      const updated = await tx.client.update({ where: { id }, data: { activo: false } });
       await writeAudit(tx, {
         userId,
         entidad: 'Client',
         entidadId: String(id),
-        accion: 'delete',
+        accion: 'deactivate',
         datosAntes: existing,
+        datosDespues: updated,
       });
-      return existing;
+      return updated;
     });
   } catch (err) {
     rethrowPrisma(err);
@@ -364,11 +394,14 @@ export async function getTodayRoute(now = new Date()) {
     orderBy: { id: 'asc' },
   });
 
-  const clients =
+  const clientsEnZona =
     zones.length === 0
       ? []
       : await prisma.client.findMany({
-          where: { zoneId: { in: zones.map((zone) => zone.id) } },
+          // Un cliente desactivado no aparece en la ruta: el vendedor no debe
+          // visitar un local que ya no se atiende. Su historial de visitas y
+          // pedidos queda intacto.
+          where: { zoneId: { in: zones.map((zone) => zone.id) }, activo: true },
           orderBy: [{ zoneId: 'asc' }, { ordenRuta: 'asc' }],
           include: {
             contacts: true,
@@ -376,21 +409,28 @@ export async function getTodayRoute(now = new Date()) {
           },
         });
 
+  // El saldo es el de cobranza, no un 0 de relleno: un cargo pendiente se tiene
+  // que ver en la ruta. Cada cliente se resuelve por separado y todos en
+  // paralelo, porque ninguno depende del resultado de otro.
+  const clients = await Promise.all(
+    clientsEnZona.map(async (client) => {
+      const { visits, ...rest } = client;
+      const { saldoActual } = await getAccount(client.id);
+      return {
+        ...rest,
+        saldoActual: Number(saldoActual),
+        visitadoHoy: visits.length > 0,
+        visitaHoy: visits[0] ?? null,
+      };
+    }),
+  );
+
   return {
     fecha: calendar.fecha.toISOString().slice(0, 10),
     semanaMes: calendar.semanaMes,
     diaSemana: calendar.diaSemana,
     zones,
-    clients: clients.map((client) => {
-      const { visits, ...rest } = client;
-      return {
-        ...rest,
-        // TODO: reemplazar saldoActual con el saldo del módulo de cobranza cuando exista.
-        saldoActual: 0,
-        visitadoHoy: visits.length > 0,
-        visitaHoy: visits[0] ?? null,
-      };
-    }),
+    clients,
   };
 }
 

@@ -4,7 +4,7 @@ import { AppError } from '../../shared/errors/AppError.js';
 import { writeAudit } from '../../shared/audit/writeAudit.js';
 import { postMovement } from '../collections/account.service.js';
 import { registerMovement } from '../inventory/inventory.service.js';
-import type { CreateReturnInput } from './returns.schema.js';
+import { LIMITE_POR_DEFECTO, type CreateReturnInput, type ListReturnsQuery } from './returns.schema.js';
 
 function money(value: Prisma.Decimal) {
   return value.toDecimalPlaces(2, Prisma.Decimal.ROUND_HALF_UP);
@@ -23,6 +23,77 @@ async function sellerVehicle(tx: Prisma.TransactionClient, userId: number) {
     );
   }
   return warehouse;
+}
+
+const listInclude = {
+  client: { select: { nombreComercial: true } },
+  order: { select: { numero: true } },
+} as const;
+
+const detailInclude = {
+  client: { select: { nombreComercial: true } },
+  order: { select: { numero: true } },
+  items: {
+    include: {
+      orderItem: {
+        include: {
+          productUnit: {
+            select: {
+              nombre: true,
+              product: { select: { nombre: true } },
+            },
+          },
+        },
+      },
+      batch: true,
+    },
+  },
+} as const;
+
+export async function listReturns(query: ListReturnsQuery) {
+  const where: Prisma.ReturnWhereInput = {};
+  if (query.estado) {
+    where.estado = query.estado;
+  }
+  if (query.clientId) {
+    where.clientId = query.clientId;
+  }
+
+  const limit = query.limit ?? LIMITE_POR_DEFECTO;
+  const offset = query.offset ?? 0;
+
+  const [total, rows] = await Promise.all([
+    prisma.return.count({ where }),
+    prisma.return.findMany({
+      where,
+      include: listInclude,
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      take: limit,
+      skip: offset,
+    }),
+  ]);
+
+  return {
+    data: rows,
+    meta: {
+      total,
+      limit,
+      offset,
+      count: rows.length,
+      hasMore: offset + rows.length < total,
+    },
+  };
+}
+
+export async function getReturn(id: number) {
+  const record = await prisma.return.findUnique({
+    where: { id },
+    include: detailInclude,
+  });
+  if (!record) {
+    throw new AppError('Devolución no encontrada', 404, 'NOT_FOUND');
+  }
+  return record;
 }
 
 export async function createReturn(input: CreateReturnInput, userId: number) {

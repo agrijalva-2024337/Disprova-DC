@@ -26,9 +26,13 @@ export const updateCategory = asyncHandler(async (req: Request, res: Response) =
   res.status(200).json(await catalogService.updateCategory(paramId(req), req.body, userId(req)));
 });
 
+/**
+ * Desactiva la categoría y devuelve el registro. Ya no responde 204: el
+ * cliente tiene que poder mostrar "quedó desactivada" y no fallar al leer un
+ * cuerpo vacío.
+ */
 export const deleteCategory = asyncHandler(async (req: Request, res: Response) => {
-  await catalogService.deleteCategory(paramId(req), userId(req));
-  res.status(204).send();
+  res.status(200).json(await catalogService.deleteCategory(paramId(req), userId(req)));
 });
 
 export const listProducts = asyncHandler(async (_req: Request, res: Response) => {
@@ -48,8 +52,7 @@ export const updateProduct = asyncHandler(async (req: Request, res: Response) =>
 });
 
 export const deleteProduct = asyncHandler(async (req: Request, res: Response) => {
-  await catalogService.deleteProduct(paramId(req), userId(req));
-  res.status(204).send();
+  res.status(200).json(await catalogService.deleteProduct(paramId(req), userId(req)));
 });
 
 export const listPriceLists = asyncHandler(async (_req: Request, res: Response) => {
@@ -69,8 +72,7 @@ export const updatePriceList = asyncHandler(async (req: Request, res: Response) 
 });
 
 export const deletePriceList = asyncHandler(async (req: Request, res: Response) => {
-  await catalogService.deletePriceList(paramId(req), userId(req));
-  res.status(204).send();
+  res.status(200).json(await catalogService.deletePriceList(paramId(req), userId(req)));
 });
 
 export const listPriceListItems = asyncHandler(async (_req: Request, res: Response) => {
@@ -90,8 +92,7 @@ export const updatePriceListItem = asyncHandler(async (req: Request, res: Respon
 });
 
 export const deletePriceListItem = asyncHandler(async (req: Request, res: Response) => {
-  await catalogService.deletePriceListItem(paramId(req), userId(req));
-  res.status(204).send();
+  res.status(200).json(await catalogService.deletePriceListItem(paramId(req), userId(req)));
 });
 
 function productId(req: Request): number {

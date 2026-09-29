@@ -26,7 +26,7 @@ model User {
   passwordHash String   @map("password_hash")
   roleId       Int      @map("role_id")
   activo       Boolean  @default(true)
-  createdAt    DateTime @default(now()) @map("created_at")
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
 
   role        Role         @relation(fields: [roleId], references: [id], onDelete: Restrict)
   auditLogs   AuditLog[]
@@ -37,6 +37,7 @@ model User {
   orders              Order[]
   deliveries          Delivery[]
   cashSessions        CashSession[]
+  cashExpenses        CashExpense[]
   payments            Payment[]
   collectionVisits    CollectionVisit[]
   returns             Return[]
@@ -54,7 +55,7 @@ model AuditLog {
   accion       String
   datosAntes   Json?    @map("datos_antes")
   datosDespues Json?    @map("datos_despues")
-  createdAt    DateTime @default(now()) @map("created_at")
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
 
   user User @relation(fields: [userId], references: [id], onDelete: Restrict)
 
@@ -75,6 +76,7 @@ model Category {
   children Category[] @relation("CategoryTree")
   products Product[]
 
+  @@index([activo], map: "categories_activo_idx")
   @@map("categories")
 }
 
@@ -88,7 +90,7 @@ model Product {
   unidadBase  String   @map("unidad_base")
   controlado  Boolean  @default(false)
   activo      Boolean  @default(true)
-  createdAt   DateTime @default(now()) @map("created_at")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
 
   category Category       @relation(fields: [categoryId], references: [id], onDelete: Restrict)
   units    ProductUnit[]
@@ -97,6 +99,7 @@ model Product {
   stocks   Stock[]
   movements InventoryMovement[]
 
+  @@index([activo], map: "products_activo_idx")
   @@map("products")
 }
 
@@ -146,11 +149,15 @@ model PriceListItem {
   productUnitId Int      @map("product_unit_id")
   precio        Decimal  @db.Decimal(12, 2)
   vigenteDesde  DateTime @map("vigente_desde") @db.Date
+  /// false cuando el precio se deja de aplicar. El registro queda: un pedido
+  /// viejo tiene que poder seguir mostrando de dónde salió su precio.
+  activo        Boolean  @default(true)
 
   priceList   PriceList   @relation(fields: [priceListId], references: [id], onDelete: Restrict)
   productUnit ProductUnit @relation(fields: [productUnitId], references: [id], onDelete: Restrict)
 
   @@unique([priceListId, productUnitId, vigenteDesde])
+  @@index([priceListId, productUnitId, activo, vigenteDesde(sort: Desc)], map: "price_list_items_lookup_idx")
   @@map("price_list_items")
 }
 
@@ -201,7 +208,7 @@ model Client {
   limiteCredito   Decimal     @default(0) @map("limite_credito") @db.Decimal(12, 2)
   plazoDias       Int         @default(0) @map("plazo_dias")
   activo          Boolean     @default(true)
-  createdAt       DateTime    @default(now()) @map("created_at")
+  createdAt       DateTime    @default(now()) @map("created_at") @db.Timestamptz(3)
 
   zone      Zone            @relation(fields: [zoneId], references: [id], onDelete: Restrict)
   priceList PriceList       @relation(fields: [priceListId], references: [id], onDelete: Restrict)
@@ -216,6 +223,7 @@ model Client {
   accessTokens       ClientAccessToken[]
 
   @@unique([zoneId, ordenRuta])
+  @@index([activo, zoneId, ordenRuta], map: "clients_activo_zone_id_orden_ruta_idx")
   @@map("clients")
 }
 
@@ -243,7 +251,7 @@ model RouteVisit {
   observaciones String?
   lat           Decimal?        @db.Decimal(10, 7)
   lng           Decimal?        @db.Decimal(10, 7)
-  createdAt     DateTime        @default(now()) @map("created_at")
+  createdAt     DateTime        @default(now()) @map("created_at") @db.Timestamptz(3)
 
   client Client @relation(fields: [clientId], references: [id], onDelete: Restrict)
   user   User   @relation(fields: [userId], references: [id], onDelete: Restrict)
@@ -293,14 +301,16 @@ model ProductBatch {
   lote              String
   fechaVencimiento  DateTime? @map("fecha_vencimiento") @db.Date
   costo             Decimal?  @db.Decimal(12, 2)
-  createdAt         DateTime  @default(now()) @map("created_at")
+  createdAt         DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
 
   product        Product              @relation(fields: [productId], references: [id], onDelete: Restrict)
   stocks         Stock[]
   movements      InventoryMovement[]
   deliveryItems  DeliveryItem[]
   returnItems    ReturnItem[]
+  orderItems     OrderItemBatch[]
 
+  @@unique([productId, lote])
   @@map("product_batches")
 }
 
@@ -330,13 +340,15 @@ model InventoryMovement {
   referenciaTipo  String?                   @map("referencia_tipo")
   referenciaId    String?                   @map("referencia_id")
   userId          Int                       @map("user_id")
-  createdAt       DateTime                  @default(now()) @map("created_at")
+  createdAt       DateTime                  @default(now()) @map("created_at") @db.Timestamptz(3)
 
   product   Product       @relation(fields: [productId], references: [id], onDelete: Restrict)
   warehouse Warehouse     @relation(fields: [warehouseId], references: [id], onDelete: Restrict)
   batch     ProductBatch? @relation(fields: [batchId], references: [id], onDelete: Restrict)
   user      User          @relation(fields: [userId], references: [id], onDelete: Restrict)
 
+  @@index([productId, createdAt], map: "inventory_movements_product_id_created_at_idx")
+  @@index([referenciaTipo, referenciaId], map: "inventory_movements_referencia_idx")
   @@map("inventory_movements")
 }
 
@@ -394,7 +406,7 @@ model Order {
   fechaEntregaPrevista DateTime?      @map("fecha_entrega_prevista") @db.Date
   /// NULL cuando el alta no trae clave. Varios NULL conviven: el índice único no los trata como iguales.
   idempotencyKey       String?        @map("idempotency_key")
-  createdAt            DateTime       @default(now()) @map("created_at")
+  createdAt            DateTime       @default(now()) @map("created_at") @db.Timestamptz(3)
 
   client     Client      @relation(fields: [clientId], references: [id], onDelete: Restrict)
   user       User        @relation(fields: [userId], references: [id], onDelete: Restrict)
@@ -404,6 +416,8 @@ model Order {
   returns              Return[]
   invoice              Invoice?
 
+  @@index([clientId, createdAt], map: "orders_client_id_created_at_idx")
+  @@index([userId, createdAt], map: "orders_user_id_created_at_idx")
   @@unique([clientId, userId, idempotencyKey], map: "orders_client_user_idempotency_key")
   @@map("orders")
 }
@@ -425,8 +439,37 @@ model OrderItem {
   productUnit    ProductUnit    @relation(fields: [productUnitId], references: [id], onDelete: Restrict)
   deliveryItems  DeliveryItem[]
   returnItems    ReturnItem[]
+  batches        OrderItemBatch[]
 
+  @@index([orderId])
   @@map("order_items")
+}
+
+/// Qué lote quedó reservado para esta línea, y de cuánto.
+///
+/// El FEFO de `confirmOrder` calculaba el lote correcto pero lo descartaba:
+/// la entrega lo tomaba del cuerpo de la petición del vendedor. Eso rompía
+/// la trazabilidad de medicamentos y hacía que `liberacion_reserva` pudiera
+/// consumir la reserva de otro pedido sobre ese lote. Con esta tabla la
+/// entrega consume lo que el pedido reservó, y `vigente` deja el rastro de
+/// qué reservas ya se descargaron sin borrar la historia.
+model OrderItemBatch {
+  id          Int     @id @default(autoincrement())
+  orderItemId Int     @map("order_item_id")
+  batchId     Int     @map("batch_id")
+  /// Cantidad en unidad base del producto, no en presentación.
+  cantidad    Decimal @db.Decimal(12, 4)
+  /// false cuando esa parte de la reserva ya se entregó o se liberó.
+  vigente     Boolean @default(true)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  orderItem OrderItem    @relation(fields: [orderItemId], references: [id], onDelete: Restrict)
+  batch     ProductBatch @relation(fields: [batchId], references: [id], onDelete: Restrict)
+
+  @@unique([orderItemId, batchId])
+  @@index([orderItemId])
+  @@map("order_item_batches")
 }
 
 model Delivery {
@@ -500,11 +543,13 @@ model AccountMovement {
   monto           Decimal               @db.Decimal(12, 2)
   /// Saldo del cliente justo después de este movimiento. Se guarda al crearlo y no se recalcula.
   saldoResultante Decimal               @map("saldo_resultante") @db.Decimal(12, 2)
-  fecha           DateTime
-  createdAt       DateTime              @default(now()) @map("created_at")
+  fecha           DateTime              @db.Timestamptz(3)
+  createdAt       DateTime              @default(now()) @map("created_at") @db.Timestamptz(3)
 
   client Client @relation(fields: [clientId], references: [id], onDelete: Restrict)
 
+  @@index([clientId, fecha], map: "account_movements_client_id_fecha_idx")
+  @@index([referenciaTipo, referenciaId], map: "account_movements_referencia_idx")
   @@map("account_movements")
 }
 
@@ -518,31 +563,57 @@ model CashSession {
   conteoFinal   Decimal?    @map("conteo_final") @db.Decimal(12, 2)
   diferencia    Decimal?    @db.Decimal(12, 2)
   estado        EstadoCaja  @default(abierta)
-  createdAt     DateTime    @default(now()) @map("created_at")
-  cerradaAt     DateTime?   @map("cerrada_at")
+  createdAt     DateTime    @default(now()) @map("created_at") @db.Timestamptz(3)
+  cerradaAt     DateTime?   @map("cerrada_at") @db.Timestamptz(3)
 
   user      User      @relation(fields: [userId], references: [id], onDelete: Restrict)
   payments  Payment[]
+  expenses  CashExpense[]
 
   @@map("cash_sessions")
+}
+
+/// Gasto de la jornada de ruta.
+///
+/// `cash_sessions.total_gastos` existía como columna y se usaba en el arqueo,
+/// pero NADA la escribía: no había forma de registrar un gasto. Cualquier gasto
+/// real (combustible, viáticos, comida) descuadraba el arqueo sin que el sistema
+/// pudiera explicarlo. El monto se descuenta del esperado al cerrar la caja.
+model CashExpense {
+  id             Int      @id @default(autoincrement())
+  cashSessionId  Int      @map("cash_session_id")
+  userId         Int      @map("user_id")
+  fecha          DateTime @default(now()) @db.Timestamptz(3)
+  concepto       String
+  monto          Decimal  @db.Decimal(12, 2)
+  /// Foto o PDF del recibo. El archivo vive fuera del contenedor: aquí solo la URL.
+  reciboUrl      String?  @map("recibo_url")
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  cashSession CashSession @relation(fields: [cashSessionId], references: [id], onDelete: Restrict)
+  user        User        @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  @@index([cashSessionId])
+  @@map("cash_expenses")
 }
 
 model Payment {
   id             Int        @id @default(autoincrement())
   clientId       Int        @map("client_id")
   userId         Int        @map("user_id")
-  fecha          DateTime
+  fecha          DateTime   @db.Timestamptz(3)
   monto          Decimal    @db.Decimal(12, 2)
   metodo         MetodoPago
   referencia     String?
   cashSessionId  Int?       @map("cash_session_id")
-  createdAt      DateTime   @default(now()) @map("created_at")
+  createdAt      DateTime   @default(now()) @map("created_at") @db.Timestamptz(3)
 
   client       Client               @relation(fields: [clientId], references: [id], onDelete: Restrict)
   user         User                 @relation(fields: [userId], references: [id], onDelete: Restrict)
   cashSession  CashSession?         @relation(fields: [cashSessionId], references: [id], onDelete: Restrict)
   applications PaymentApplication[]
 
+  @@index([fecha])
   @@map("payments")
 }
 
@@ -552,10 +623,11 @@ model PaymentApplication {
   orderId        Int     @map("order_id")
   montoAplicado  Decimal @map("monto_aplicado") @db.Decimal(12, 2)
 
-  payment Payment @relation(fields: [paymentId], references: [id], onDelete: Restrict)
+  payment  Payment @relation(fields: [paymentId], references: [id], onDelete: Restrict)
   /// El cobro se aplica al pedido. No hay tabla de facturas en este módulo.
   order   Order   @relation(fields: [orderId], references: [id], onDelete: Restrict)
 
+  @@index([paymentId])
   @@map("payment_applications")
 }
 
@@ -563,12 +635,12 @@ model CollectionVisit {
   id                 Int               @id @default(autoincrement())
   clientId           Int               @map("client_id")
   userId             Int               @map("user_id")
-  fecha              DateTime
+  fecha              DateTime          @db.Timestamptz(3)
   resultado          ResultadoCobranza
   montoComprometido  Decimal?          @map("monto_comprometido") @db.Decimal(12, 2)
   fechaCompromiso    DateTime?         @map("fecha_compromiso") @db.Date
   observaciones      String?
-  createdAt          DateTime          @default(now()) @map("created_at")
+  createdAt          DateTime          @default(now()) @map("created_at") @db.Timestamptz(3)
 
   client Client @relation(fields: [clientId], references: [id], onDelete: Restrict)
   user   User   @relation(fields: [userId], references: [id], onDelete: Restrict)
@@ -596,12 +668,12 @@ model Return {
   clientId   Int              @map("client_id")
   orderId    Int              @map("order_id")
   userId     Int              @map("user_id")
-  fecha      DateTime
+  fecha      DateTime         @db.Timestamptz(3)
   motivo     String
   estado     EstadoDevolucion @default(pendiente)
   /// Se calcula al aceptar, con el precio y el impuesto congelados en la línea. Mientras está pendiente queda en 0.
   total      Decimal          @default(0) @db.Decimal(12, 2)
-  createdAt  DateTime         @default(now()) @map("created_at")
+  createdAt  DateTime         @default(now()) @map("created_at") @db.Timestamptz(3)
 
   client Client       @relation(fields: [clientId], references: [id], onDelete: Restrict)
   order  Order        @relation(fields: [orderId], references: [id], onDelete: Restrict)
@@ -668,7 +740,7 @@ model MessageLog {
   estado     EstadoMensaje @default(generado)
   error      String?
   userId     Int           @map("user_id")
-  createdAt  DateTime      @default(now()) @map("created_at")
+  createdAt  DateTime      @default(now()) @map("created_at") @db.Timestamptz(3)
 
   client   Client           @relation(fields: [clientId], references: [id], onDelete: Restrict)
   template MessageTemplate? @relation(fields: [templateId], references: [id], onDelete: Restrict)
@@ -691,12 +763,12 @@ model ClientAccessToken {
   /// 128 bits de randomBytes codificados en base64url. Nunca un id
   /// secuencial ni un valor adivinable.
   token           String   @unique
-  expiresAt       DateTime  @map("expires_at")
-  createdAt       DateTime  @default(now()) @map("created_at")
+  expiresAt       DateTime  @map("expires_at") @db.Timestamptz(3)
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
   /// Quién lo generó. Es trazabilidad del usuario interno, no autorización.
   createdByUserId Int       @map("created_by_user_id")
   /// Se marca al revocar. La fila no se borra: un enlace cortado sigue en el historial.
-  revokedAt       DateTime? @map("revoked_at")
+  revokedAt       DateTime? @map("revoked_at") @db.Timestamptz(3)
 
   client    Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
   createdBy User   @relation(fields: [createdByUserId], references: [id], onDelete: Restrict)
@@ -730,14 +802,14 @@ model Invoice {
   numero          Int       @unique @default(dbgenerated("nextval('invoice_numero_seq')"))
   /// UUID que devuelve la SAT al certificar. NULL hasta entonces.
   uuidFel         String?   @map("uuid_fel")
-  fechaCertificacion DateTime? @map("fecha_certificacion")
+  fechaCertificacion DateTime? @map("fecha_certificacion") @db.Timestamptz(3)
   estado          EstadoFactura @default(pendiente_certificacion)
   total           Decimal      @db.Decimal(12, 2)
   xmlUrl          String?      @map("xml_url")
   pdfUrl          String?      @map("pdf_url")
   /// Motivo por el que la certificación falló, si falló.
   error           String?
-  createdAt       DateTime     @default(now()) @map("created_at")
+  createdAt       DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
 
   order Order @relation(fields: [orderId], references: [id], onDelete: Restrict)
 

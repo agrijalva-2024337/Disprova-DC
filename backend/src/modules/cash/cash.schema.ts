@@ -23,5 +23,17 @@ export const listCashSessionsQuerySchema = z.object({
   hasta: z.coerce.date().optional(),
 });
 
+export const createExpenseSchema = z.object({
+  concepto: z.string().min(1),
+  monto: z
+    .union([z.string(), z.number()])
+    .refine(
+      (value) => value !== '' && !Number.isNaN(Number(value)) && Number(value) > 0,
+      'El monto del gasto debe ser mayor a cero',
+    ),
+  reciboUrl: z.string().min(1).nullable().optional(),
+});
+
 export type OpenCashSessionInput = z.infer<typeof openCashSessionSchema>;
 export type CloseCashSessionInput = z.infer<typeof closeCashSessionSchema>;
+export type CreateExpenseInput = z.infer<typeof createExpenseSchema>;

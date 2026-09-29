@@ -58,13 +58,15 @@ import {
  *       404: { description: "Zona no encontrada." }
  *   delete:
  *     tags: [Zonas y Clientes]
- *     summary: "Elimina una zona"
+ *     summary: "Desactiva una zona"
+ *     description: "No borra: conserva el historial de visitas de la ruta."
  *     security: [{ bearerAuth: [] }]
  *     parameters: [{ in: path, name: id, required: true, schema: { type: integer } }]
  *     responses:
- *       204: { description: "Zona eliminada." }
+ *       200: { description: "Zona desactivada." }
  *       403: { description: "Solo admin." }
- *       409: { description: "Tiene clientes o visitas asociadas." }
+ *       404: { description: "Zona no encontrada." }
+ *       409: { description: "Ya estaba desactivada (`ALREADY_INACTIVE`)." }
  *
  * /clients:
  *   get:
@@ -110,13 +112,15 @@ import {
  *       409: { description: "`ordenRuta` duplicado en la zona." }
  *   delete:
  *     tags: [Zonas y Clientes]
- *     summary: "Elimina un cliente"
+ *     summary: "Desactiva un cliente"
+ *     description: "No borra. Conserva sus visitas, pedidos y movimientos de cuenta, y revoca sus tokens del catálogo público."
  *     security: [{ bearerAuth: [] }]
  *     parameters: [{ in: path, name: id, required: true, schema: { type: integer } }]
  *     responses:
- *       204: { description: "Cliente eliminado." }
+ *       200: { description: "Cliente desactivado." }
  *       403: { description: "Solo admin." }
- *       409: { description: "Tiene pedidos o movimientos asociados." }
+ *       404: { description: "Cliente no encontrado." }
+ *       409: { description: "Ya estaba desactivado (`ALREADY_INACTIVE`)." }
  *
  * /clients/{id}/contacts:
  *   get:

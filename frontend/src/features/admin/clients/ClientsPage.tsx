@@ -3,6 +3,7 @@ import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { listClients, listZones } from '../api/territory.ts'
 import { QueryStatus } from '../ui/Status.tsx'
+import { ClientMessaging } from '../messaging/ClientMessaging.tsx'
 
 const tipoLabel: Record<string, string> = {
   tienda: 'Tienda',
@@ -13,6 +14,7 @@ const tipoLabel: Record<string, string> = {
 
 export function ClientsPage() {
   const [zoneId, setZoneId] = useState('')
+  const [mensajeriaClientId, setMensajeriaClientId] = useState<number | null>(null)
   const clientsQuery = useQuery({ queryKey: ['clients'], queryFn: listClients })
   const zonesQuery = useQuery({ queryKey: ['zones'], queryFn: listZones })
 
@@ -101,12 +103,25 @@ export function ClientsPage() {
                     <td className="px-3 py-2">{client.plazoDias} días</td>
                     <td className="px-3 py-2">{client.contacts?.length ?? 0}</td>
                     <td className="px-3 py-2">
-                      <Link
-                        to={`/admin/clientes/${client.id}`}
-                        className="rounded border border-slate-300 px-2 py-1 text-xs hover:bg-slate-50"
-                      >
-                        Editar
-                      </Link>
+                      <div className="flex flex-wrap gap-2">
+                        <Link
+                          to={`/admin/clientes/${client.id}`}
+                          className="rounded border border-slate-300 px-2 py-1 text-xs hover:bg-slate-50"
+                        >
+                          Editar
+                        </Link>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setMensajeriaClientId(
+                              mensajeriaClientId === client.id ? null : client.id,
+                            )
+                          }
+                          className="rounded bg-green-600 px-2 py-1 text-xs font-medium text-white hover:bg-green-700"
+                        >
+                          Enviar WhatsApp
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))
@@ -115,6 +130,8 @@ export function ClientsPage() {
           </table>
         </div>
       ) : null}
+
+      {mensajeriaClientId !== null ? <ClientMessaging clientId={mensajeriaClientId} /> : null}
     </div>
   )
 }

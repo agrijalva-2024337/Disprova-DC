@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import { useMemo, useState, type CSSProperties } from 'react'
 import { useParams } from 'react-router-dom'
 import { getCatalog, isPublicStoreError, type PublicCatalog } from '../api/publicStore.ts'
-import { CartProvider, useCart } from '../cart/CartContext.tsx'
+import { useCart } from '../cart/CartContext.tsx'
 import { theme } from '../theme.ts'
 import { CartBar } from './CartBar.tsx'
 import { ProductCard } from './ProductCard.tsx'
@@ -135,9 +135,5 @@ function CatalogScreen() {
 }
 
 export function CatalogPage() {
-  return (
-    <CartProvider>
-      <CatalogScreen />
-    </CartProvider>
-  )
+  return <CatalogScreen />
 }

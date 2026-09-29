@@ -1,8 +1,10 @@
 import { Router } from 'express';
 import { requireAuth } from '../../middlewares/requireAuth.js';
+import { requireRole } from '../../middlewares/requireRole.js';
 import { validateBody, validateParams } from '../../shared/http/validate.js';
 import * as controller from './collections.controller.js';
 import {
+  abrirSaldosInicialesSchema,
   applyPaymentSchema,
   createCollectionVisitSchema,
   createPaymentSchema,
@@ -78,10 +80,29 @@ import {
  *     responses:
  *       201: { description: "Visita registrada." }
  *       404: { description: "Cliente no encontrado." }
+ *
+ * /account/opening-balances:
+ *   post:
+ *     tags: [Cobranza]
+ *     summary: "Carga el saldo inicial de la cartera"
+ *     description: "Solo admin. Escribe un cargo `apertura` por cliente en el libro mayor, nunca una columna nueva: el saldo inicial se explica movimiento por movimiento como cualquier otro. Sin `modo` (o con `simulacion`) devuelve el cuadre sin escribir. El `corte` identifica la carga y solo se admite una vez."
+ *     security: [{ bearerAuth: [] }]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema: { type: object, required: [corte, items], properties: { corte: { type: string, example: corte-2026-09-29 }, modo: { type: string, enum: [simulacion, commit], default: simulacion }, items: { type: array, items: { type: object, required: [clientId, monto], properties: { clientId: { type: integer }, monto: { oneOf: [{ type: string }, { type: number }] } } } } } }
+ *     responses:
+ *       200: { description: "Simulación: devuelve el plan con el saldo previo y el resultante por cliente, sin escribir." }
+ *       201: { description: "Carga confirmada: los cargos quedaron en el libro mayor." }
+ *       403: { description: "Solo admin." }
+ *       409: { description: "El corte ya fue cargado (`ALREADY_OPENED`)." }
+ *       422: { description: "Algún cliente del corte no existe (`CLIENT_NOT_FOUND`)." }
  */
 export const collectionsRouter = Router();
 
 const auth = [requireAuth] as const;
+const adminAuth = [requireAuth, requireRole('admin')] as const;
 const idParams = validateParams(idParamSchema);
 
 collectionsRouter.post('/payments', ...auth, validateBody(createPaymentSchema), controller.createPayment);
@@ -99,4 +120,10 @@ collectionsRouter.post(
   ...auth,
   validateBody(createCollectionVisitSchema),
   controller.createCollectionVisit,
+);
+collectionsRouter.post(
+  '/account/opening-balances',
+  ...adminAuth,
+  validateBody(abrirSaldosInicialesSchema),
+  controller.abrirSaldosIniciales,
 );

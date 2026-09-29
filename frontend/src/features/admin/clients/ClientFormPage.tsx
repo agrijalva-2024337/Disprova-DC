@@ -16,6 +16,7 @@ import {
 } from '../api/territory.ts'
 import { Alert, QueryStatus } from '../ui/Status.tsx'
 import { clientFormSchema, type ClientFormValues } from './clientFormSchema.ts'
+import { PublicCatalogSection } from './PublicCatalogSection.tsx'
 
 const emptyContact = {
   nombre: '',
@@ -309,6 +310,9 @@ export function ClientFormPage() {
           {saveMutation.isPending ? 'Guardando…' : isEdit ? 'Guardar cambios' : 'Crear cliente'}
         </button>
       </form>
+
+      {/* Solo cuando el cliente ya existe: un token sin cliente guardado no sirve. */}
+      {isEdit && clientId ? <PublicCatalogSection clientId={clientId} /> : null}
     </div>
   )
 }
