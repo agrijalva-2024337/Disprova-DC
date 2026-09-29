@@ -457,3 +457,38 @@ describe('auditoría de pedidos', () => {
     expect((cancel.datosDespues as { estado: string }).estado).toBe('cancelado');
   });
 });
+
+describe('NO_PRICE', () => {
+  it('incluye el productUnitId en details', async () => {
+    const { token } = await loginAsAdmin();
+    const client = await prisma.client.findFirstOrThrow();
+    const product = await prisma.product.findFirstOrThrow();
+    const unit = await prisma.productUnit.create({
+      data: {
+        productId: product.id,
+        nombre: `Sin precio ${Date.now()}`,
+        factor: '1',
+        precioBase: '1.00',
+      },
+    });
+
+    try {
+      const response = await request(app)
+        .post('/api/orders')
+        .set('Authorization', `Bearer ${token}`)
+        .send({
+          clientId: client.id,
+          canal: 'campo',
+          condicionPago: 'contado',
+          items: [{ productUnitId: unit.id, cantidad: '1' }],
+        });
+
+      expect(response.status).toBe(422);
+      expect(response.body.error.code).toBe('NO_PRICE');
+      expect(response.body.error.details).toEqual({ productUnitId: unit.id });
+      expect(response.body.error.message).toContain(unit.nombre);
+    } finally {
+      await prisma.productUnit.delete({ where: { id: unit.id } });
+    }
+  });
+});

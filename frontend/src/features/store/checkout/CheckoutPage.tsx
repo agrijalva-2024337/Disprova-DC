@@ -63,17 +63,6 @@ function lineasDelCarrito(catalog: PublicCatalog, cantidades: Record<number, num
   })
 }
 
-/** El backend nombra la presentación que no tiene precio vigente. */
-function lineasSinPrecio(message: string, lineas: Linea[]) {
-  const marca = 'para la presentación '
-  const desde = message.indexOf(marca)
-  if (desde < 0) {
-    return []
-  }
-  const presentacion = message.slice(desde + marca.length).trim()
-  return lineas.filter((linea) => linea.presentacion === presentacion)
-}
-
 export function CheckoutPage() {
   const { token } = useParams()
   const navigate = useNavigate()
@@ -115,10 +104,14 @@ export function CheckoutPage() {
       navigate(`/catalogo/${token}/confirmacion`, { state: { numero: pedido.numero } })
     } catch (error) {
       if (isPublicStoreError(error) && error.code === 'NO_PRICE') {
-        const fallidas = lineasSinPrecio(error.message, lineas)
+        const productUnitId = error.details?.productUnitId
+        const linea =
+          typeof productUnitId === 'number'
+            ? lineas.find((item) => item.productUnitId === productUnitId)
+            : undefined
         setErrorLinea(
-          fallidas.length > 0
-            ? `Sin precio vigente: ${fallidas.map((linea) => `${linea.nombre}, ${linea.presentacion}`).join('; ')}.`
+          linea
+            ? `Sin precio vigente: ${linea.nombre}, ${linea.presentacion}.`
             : 'Una presentación del pedido ya no tiene precio vigente.',
         )
       } else {

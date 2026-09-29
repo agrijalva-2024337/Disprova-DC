@@ -15,6 +15,13 @@ export const ESQUEMAS: Record<string, any> = {
         properties: {
           message: { type: 'string' },
           code: { type: 'string', description: 'Código de negocio, ej. INVALID_ORDER_STATE' },
+          details: {
+            type: 'object',
+            description: 'Datos extra. En `NO_PRICE` trae `productUnitId` de la presentación sin precio vigente.',
+            properties: {
+              productUnitId: { type: 'integer' },
+            },
+          },
         },
       },
     },
