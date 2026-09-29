@@ -2,6 +2,7 @@ import { Prisma } from '@prisma/client';
 import { prisma } from '../../config/prisma.js';
 import { AppError } from '../../shared/errors/AppError.js';
 import { writeAudit } from '../../shared/audit/writeAudit.js';
+import { getAccount } from '../collections/collections.service.js';
 import { routeCalendar } from './routeCalendar.js';
 import type {
   CreateClientInput,
@@ -364,7 +365,7 @@ export async function getTodayRoute(now = new Date()) {
     orderBy: { id: 'asc' },
   });
 
-  const clients =
+  const clientsEnZona =
     zones.length === 0
       ? []
       : await prisma.client.findMany({
@@ -376,21 +377,28 @@ export async function getTodayRoute(now = new Date()) {
           },
         });
 
+  // El saldo es el de cobranza, no un 0 de relleno: un cargo pendiente se tiene
+  // que ver en la ruta. Cada cliente se resuelve por separado y todos en
+  // paralelo, porque ninguno depende del resultado de otro.
+  const clients = await Promise.all(
+    clientsEnZona.map(async (client) => {
+      const { visits, ...rest } = client;
+      const { saldoActual } = await getAccount(client.id);
+      return {
+        ...rest,
+        saldoActual: Number(saldoActual),
+        visitadoHoy: visits.length > 0,
+        visitaHoy: visits[0] ?? null,
+      };
+    }),
+  );
+
   return {
     fecha: calendar.fecha.toISOString().slice(0, 10),
     semanaMes: calendar.semanaMes,
     diaSemana: calendar.diaSemana,
     zones,
-    clients: clients.map((client) => {
-      const { visits, ...rest } = client;
-      return {
-        ...rest,
-        // TODO: reemplazar saldoActual con el saldo del módulo de cobranza cuando exista.
-        saldoActual: 0,
-        visitadoHoy: visits.length > 0,
-        visitaHoy: visits[0] ?? null,
-      };
-    }),
+    clients,
   };
 }
 
