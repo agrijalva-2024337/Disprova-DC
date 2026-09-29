@@ -691,10 +691,12 @@ model ClientAccessToken {
   /// 128 bits de randomBytes codificados en base64url. Nunca un id
   /// secuencial ni un valor adivinable.
   token           String   @unique
-  expiresAt       DateTime @map("expires_at")
-  createdAt       DateTime @default(now()) @map("created_at")
+  expiresAt       DateTime  @map("expires_at")
+  createdAt       DateTime  @default(now()) @map("created_at")
   /// Quién lo generó. Es trazabilidad del usuario interno, no autorización.
-  createdByUserId Int      @map("created_by_user_id")
+  createdByUserId Int       @map("created_by_user_id")
+  /// Se marca al revocar. La fila no se borra: un enlace cortado sigue en el historial.
+  revokedAt       DateTime? @map("revoked_at")
 
   client    Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
   createdBy User   @relation(fields: [createdByUserId], references: [id], onDelete: Restrict)

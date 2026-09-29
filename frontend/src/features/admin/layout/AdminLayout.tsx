@@ -2,6 +2,7 @@ import { NavLink, Navigate, Outlet } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext.tsx'
 
 const links = [
+  { to: '/admin', label: 'Inicio' },
   { to: '/admin/categorias', label: 'Categorías' },
   { to: '/admin/productos', label: 'Productos' },
   { to: '/admin/listas-precio', label: 'Listas de precio' },
@@ -9,6 +10,11 @@ const links = [
   { to: '/admin/zonas', label: 'Zonas' },
   { to: '/admin/clientes', label: 'Clientes' },
   { to: '/admin/usuarios', label: 'Usuarios', soloAdmin: true },
+  { to: '/admin/facturacion', label: 'Facturación' },
+  { to: '/admin/mensajeria/plantillas', label: 'Mensajería' },
+  { to: '/admin/devoluciones', label: 'Devoluciones' },
+  { to: '/admin/cajas', label: 'Cajas' },
+  { to: '/admin/cobranza', label: 'Cobranza' },
   { to: '/ruta', label: 'Mi ruta' },
 ]
 
