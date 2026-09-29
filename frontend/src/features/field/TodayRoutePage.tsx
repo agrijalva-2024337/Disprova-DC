@@ -129,6 +129,12 @@ export function TodayRoutePage() {
                 >
                   Pedido
                 </Link>
+                <Link
+                  to={`/ruta/cobro/${selected.id}`}
+                  className="flex h-14 w-full items-center justify-center rounded-xl bg-green-700 text-lg font-medium text-white"
+                >
+                  Cobrar
+                </Link>
                 <button
                   type="button"
                   onClick={() => setAskingMotivo(true)}

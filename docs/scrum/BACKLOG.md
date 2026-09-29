@@ -30,10 +30,13 @@
 | DISP-040 | Idempotencia en la toma de pedido del vendedor | Listo |
 | DISP-041 | Gastos de ruta: tabla `cash_expenses` y arqueo con gastos | Listo |
 | DISP-042 | Saldo inicial de cartera como cargo de apertura del libro mayor | Listo |
-| DISP-043 | Soft-delete en zonas, clientes y catálogo (regla "nada se borra") | Pendiente |
-| DISP-044 | Frontend: cobranza en `features/field` (cobro desde el móvil) | Pendiente |
-| DISP-045 | Respaldo `pg_dump` programado y prueba de restauración | Pendiente |
+| DISP-043 | Soft-delete en zonas, clientes y catálogo (regla "nada se borra") | Listo |
+| DISP-044 | Frontend: cobranza en `features/field` (cobro desde el móvil) | Listo |
+| DISP-045 | Respaldo `pg_dump` programado y prueba de restauración | Listo |
 | DISP-046 | Confirmar con el negocio si el precio de lista incluye IVA (hoy se suma 12%) | Pendiente |
+| DISP-047 | Descuento por línea en el pedido: la columna existe pero siempre vale 0 | Pendiente |
+| DISP-048 | CI en GitHub Actions (`.github/` no existe) | Pendiente |
+| DISP-049 | Modo sin conexión en la toma de pedido (guardado local y reintento) | Pendiente |
 
 ## Definition of Done
 

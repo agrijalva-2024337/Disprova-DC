@@ -29,6 +29,7 @@ import { OrderConfirmationPage } from './features/store/checkout/OrderConfirmati
 import { DeliveriesPage } from './features/field/DeliveriesPage.tsx'
 import { DeliveryPage } from './features/field/DeliveryPage.tsx'
 import { NewOrderPage } from './features/field/NewOrderPage.tsx'
+import { CollectPage } from './features/field/CollectPage.tsx'
 import { TodayRoutePage } from './features/field/TodayRoutePage.tsx'
 
 export default function App() {
@@ -71,6 +72,7 @@ export default function App() {
         <Route path="entregas" element={<DeliveriesPage />} />
         <Route path="entregas/:orderId" element={<DeliveryPage />} />
         <Route path="caja" element={<CashSessionPage />} />
+        <Route path="cobro/:clientId" element={<CollectPage />} />
       </Route>
       <Route path="*" element={<Navigate to="/login" replace />} />
     </Routes>

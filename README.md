@@ -124,6 +124,56 @@ curl -X POST http://localhost:3000/api/account/opening-balances \
 El `corte` identifica la carga y solo se admite una vez: una doble carga
 duplicaría toda la deuda de la cartera.
 
+## Respaldos de la base de datos
+
+La sección 6 de la planificación pide respaldo diario fuera del servidor y una
+prueba de restauración. El servicio `backup` corre `pg_dump` todos los días a
+las **03:10 hora de Guatemala** (no a medianoche: el cierre de caja de la
+jornada anterior suele terminar cerca de esa hora) y guarda 30 días.
+
+```bash
+docker compose up -d backup      # levanta el servicio
+docker logs -f disprova-backup   # ver el respaldo de hoy
+```
+
+Los archivos quedan en `backups/` del host, que está en `.gitignore`: son datos
+del negocio, no código.
+
+### Probar que un respaldo sirve
+
+Un respaldo que nunca se restauró no es un respaldo: puede estar truncado y aun
+así parecer válido.
+
+```bash
+sh scripts/verify_backup.sh                       # lista los respaldos
+sh scripts/verify_backup.sh backups/disprova-20260929-031000.sql.gz
+```
+
+El script **nunca toca la base real**: crea una base temporal, restaura ahí,
+cuenta filas de las tablas críticas (clientes, pedidos, cuenta corriente,
+inventario, caja) y la elimina al final. Si vuelve todo en cero, avisa que el
+archivo está malo.
+
+Hacer esto **una vez por mes** y dejar constancia del resultado es lo que
+convierte el respaldo en una garantía y no en una costumbre.
+
+### Para restaurar de verdad
+
+Con el servicio de respaldo detenido:
+
+```bash
+docker compose stop backup
+gunzip -c backups/disprova-AAAA-MM-DD-HHMMSS.sql.gz | \
+  docker exec -i disprova-postgres psql -U disprova -d disprova
+docker compose start backup
+```
+
+> En Windows, `gunzip` no viene instalado. Usá el contenedor de PostgreSQL:
+> `docker run --rm -v "%cd%\backups:/backups" postgres:16-alpine gunzip -c /backups/ARCHIVO.sql.gz > salida.sql`
+> y subí `salida.sql` con `docker cp`. Redireccionar `gunzip` desde PowerShell
+> escribe el archivo en UTF-16 y la restauración falla con
+> `invalid byte sequence for encoding "UTF8"`.
+
 ## Gastos de la jornada
 
 `cash_sessions.total_gastos` se alimentaba desde cero: el arqueo descuadraba con
