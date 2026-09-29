@@ -183,6 +183,7 @@ export type RouteVisitInput = {
   resultado: 'pedido' | 'no_compro' | 'cerrado'
   motivo?: string | null
 }
+
 export type ReturnEstado = 'pendiente' | 'aceptada' | 'rechazada'
 export type ReturnDestino = 'reingreso' | 'merma'
 
@@ -280,6 +281,40 @@ export type AgingRow = {
   nombre: string
   saldoActual: string
   buckets: AgingBuckets
+}
+
+export type SalesTodayVendedor = {
+  userId: number
+  nombre: string
+  contado: string
+  credito: string
+  total: string
+}
+
+/**
+ * `GET /api/reports/sales-today`. Ojo: el backend NO devuelve la cantidad de
+ * pedidos por vendedor, solo los montos, asi que el dashboard no la muestra.
+ */
+export type SalesToday = {
+  total: string
+  porCondicion: { contado: string; credito: string }
+  porVendedor: SalesTodayVendedor[]
+}
+
+export type CollectionsTodayVendedor = {
+  userId: number
+  nombre: string
+  total: string
+}
+
+/**
+ * `GET /api/reports/collections-today`. Ojo: agrupa por VENDEDOR, no por método
+ * de pago. Para desglosar por efectivo/transferencia/cheque hace falta un
+ * endpoint nuevo (ver el aviso de DISP-033).
+ */
+export type CollectionsToday = {
+  total: string
+  porVendedor: CollectionsTodayVendedor[]
 }
 
 export type PaymentMethod = 'efectivo' | 'transferencia' | 'cheque'

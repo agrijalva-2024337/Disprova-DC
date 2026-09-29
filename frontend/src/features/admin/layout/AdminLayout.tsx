@@ -2,6 +2,7 @@ import { NavLink, Navigate, Outlet } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext.tsx'
 
 const links = [
+  { to: '/admin', label: 'Inicio' },
   { to: '/admin/categorias', label: 'Categorías' },
   { to: '/admin/productos', label: 'Productos' },
   { to: '/admin/listas-precio', label: 'Listas de precio' },
