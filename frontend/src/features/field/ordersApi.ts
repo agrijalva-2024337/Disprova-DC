@@ -47,6 +47,13 @@ export function createOrder(input: {
   clientId: number
   canal: 'campo'
   condicionPago: 'contado' | 'credito'
+  /**
+   * Se manda la MISMA clave en cada reintento del mismo pedido. Con mala señal
+   * el vendedor aprieta "guardar" dos veces; sin la clave el backend abre dos
+   * pedidos. El backend responde 200 con el pedido ya creado cuando la clave
+   * se repite, así que el segundo toque no duplica nada.
+   */
+  idempotencyKey?: string
   items: Array<{ productUnitId: number; cantidad: string }>
 }) {
   return apiRequest<FieldOrder>('/api/orders', { method: 'POST', body: input })

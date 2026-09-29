@@ -38,6 +38,10 @@ export function NewOrderPage() {
   const [condicion, setCondicion] = useState<'contado' | 'credito'>('contado')
   const [errorTitle, setErrorTitle] = useState<string | null>(null)
   const [errorDetail, setErrorDetail] = useState<string | null>(null)
+  // Una clave por PEDIDO, no por intento: nace con el formulario y sobrevive a
+  // los reintentos. Si se regenerara en cada submit, un doble toque o un
+  // reintento tras un corte de red abrirían dos pedidos del mismo cliente.
+  const [idempotencyKey] = useState(() => crypto.randomUUID())
 
   const clientQuery = useQuery({ queryKey: ['field-client', id], queryFn: () => getClient(id), enabled: Number.isFinite(id) })
   const productsQuery = useQuery({ queryKey: ['products'], queryFn: listProducts })
@@ -121,6 +125,7 @@ export function NewOrderPage() {
         clientId: id,
         canal: 'campo',
         condicionPago: condicion,
+        idempotencyKey,
         items: cart.map((line) => ({ productUnitId: line.productUnitId, cantidad: String(line.cantidad) })),
       })
       await confirmOrder(order.id)
