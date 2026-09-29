@@ -10,6 +10,7 @@ const links = [
   { to: '/admin/zonas', label: 'Zonas' },
   { to: '/admin/clientes', label: 'Clientes' },
   { to: '/admin/facturacion', label: 'Facturación' },
+  { to: '/admin/mensajeria/plantillas', label: 'Mensajería' },
   { to: '/admin/devoluciones', label: 'Devoluciones' },
   { to: '/admin/cajas', label: 'Cajas' },
   { to: '/admin/cobranza', label: 'Cobranza' },
