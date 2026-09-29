@@ -1,12 +1,50 @@
 import { apiRequest } from './http.ts'
-import type { CreateReturnInput, MerchandiseReturn } from './types.ts'
+import type { CreateReturnInput, MerchandiseReturn, ReturnEstado } from './types.ts'
 
-/**
- * Devoluciones: el backend solo expone crear, aceptar y rechazar. No hay
- * ningún GET de listado ni de detalle, asi que no hay función para listar acá:
- * inventarla seria romper en runtime. Queda pendiente el endpoint de backend
- * (ver el aviso de DISP-032).
- */
+export type ReturnListFilters = {
+  estado?: ReturnEstado
+  clientId?: number
+}
+
+export type ReturnListRow = {
+  id: number
+  clientId: number
+  orderId: number
+  fecha: string
+  motivo: string
+  estado: ReturnEstado
+  total: string
+  createdAt: string
+  client: { nombreComercial: string }
+  order: { numero: string }
+}
+
+export type ReturnListResponse = {
+  data: ReturnListRow[]
+  meta: {
+    total: number
+    limit: number
+    offset: number
+    count: number
+    hasMore: boolean
+  }
+}
+
+export function listReturns(filtros: ReturnListFilters = {}) {
+  const params = new URLSearchParams()
+  if (filtros.estado) {
+    params.set('estado', filtros.estado)
+  }
+  if (filtros.clientId) {
+    params.set('clientId', String(filtros.clientId))
+  }
+  const query = params.toString()
+  return apiRequest<ReturnListResponse>(`/api/returns${query ? `?${query}` : ''}`)
+}
+
+export function getReturn(id: number) {
+  return apiRequest<MerchandiseReturn>(`/api/returns/${id}`)
+}
 
 /** Registra la devolución en estado `pendiente`. El total se calcula al aceptarla. */
 export function createReturn(input: CreateReturnInput) {
