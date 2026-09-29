@@ -17,6 +17,7 @@
 | DISP-030 | Frontend: cobranza (estado de cuenta, pagos, antigüedad) | Pendiente |
 | DISP-031 | Frontend: caja (apertura y cierre de sesión) | Pendiente |
 | DISP-032 | Frontend: devoluciones | Pendiente |
+| DISP-033 | Frontend: reportes (ventas, cobros, antigüedad) | Pendiente |
 
 ## Definition of Done
 
