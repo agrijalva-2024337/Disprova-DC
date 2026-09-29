@@ -32,6 +32,10 @@ afterEach(async () => {
   creados.clients = [];
 
   if (clients.length > 0) {
+    // Las entregas van primero: `delivery_items` y `deliveries` cuelgan de los
+    // pedidos, y los pedidos de los clientes de prueba.
+    await prisma.deliveryItem.deleteMany({ where: { delivery: { order: { clientId: { in: clients } } } } });
+    await prisma.delivery.deleteMany({ where: { order: { clientId: { in: clients } } } });
     await prisma.orderItem.deleteMany({ where: { order: { clientId: { in: clients } } } });
     await prisma.order.deleteMany({ where: { clientId: { in: clients } } });
     await prisma.paymentApplication.deleteMany({ where: { payment: { clientId: { in: clients } } } });
@@ -42,6 +46,8 @@ afterEach(async () => {
     await prisma.client.deleteMany({ where: { id: { in: clients } } });
   }
   if (users.length > 0) {
+    await prisma.deliveryItem.deleteMany({ where: { delivery: { userId: { in: users } } } });
+    await prisma.delivery.deleteMany({ where: { userId: { in: users } } });
     await prisma.order.deleteMany({ where: { userId: { in: users } } });
     await prisma.auditLog.deleteMany({ where: { userId: { in: users } } });
     await prisma.user.deleteMany({ where: { id: { in: users } } });
@@ -84,7 +90,7 @@ async function sellerAndClient(_suffix: string) {
 }
 
 describe('reportes', () => {
-  it('suma lo vendido hoy por vendedor y por condición de pago', async () => {
+  it('suma lo ENTREGADO hoy por vendedor y por condición de pago', async () => {
     const token = await loginAsAdmin();
     const { seller, client } = await sellerAndClient('venta');
     const base = {
@@ -95,24 +101,88 @@ describe('reportes', () => {
       descuento: '0',
       impuesto: '0',
     };
-    await prisma.order.create({
-      data: { ...base, estado: 'confirmado', condicionPago: 'contado', subtotal: '100.00', total: '100.00' },
+    const unit = await prisma.productUnit.findFirstOrThrow({ where: { activo: true } });
+
+    // Dos pedidos entregados hoy, uno al contado y otro a crédito.
+    const contado = await prisma.order.create({
+      data: {
+        ...base,
+        estado: 'entregado',
+        condicionPago: 'contado',
+        subtotal: '100.00',
+        total: '100.00',
+        items: {
+          create: [
+            { productUnitId: unit.id, cantidad: '1', precioUnitario: '100.00', impuesto: '0', totalLinea: '100.00' },
+          ],
+        },
+      },
+      include: { items: true },
     });
-    await prisma.order.create({
-      data: { ...base, estado: 'confirmado', condicionPago: 'credito', subtotal: '40.00', total: '40.00' },
+    const credito = await prisma.order.create({
+      data: {
+        ...base,
+        estado: 'entregado',
+        condicionPago: 'credito',
+        subtotal: '40.00',
+        total: '40.00',
+        items: {
+          create: [
+            { productUnitId: unit.id, cantidad: '1', precioUnitario: '40.00', impuesto: '0', totalLinea: '40.00' },
+          ],
+        },
+      },
+      include: { items: true },
     });
-    await prisma.order.create({
-      data: { ...base, estado: 'cancelado', condicionPago: 'contado', subtotal: '999.00', total: '999.00' },
+
+    const entrega = await prisma.delivery.create({
+      data: {
+        orderId: contado.id,
+        userId: seller.id,
+        fecha: todayDate(),
+        estado: 'completa',
+        items: {
+          create: [{ orderItemId: contado.items[0].id, cantidadEntregada: '1' }],
+        },
+      },
     });
+    await prisma.delivery.create({
+      data: {
+        orderId: credito.id,
+        userId: seller.id,
+        fecha: todayDate(),
+        estado: 'completa',
+        items: {
+          create: [{ orderItemId: credito.items[0].id, cantidadEntregada: '1' }],
+        },
+      },
+    });
+
+    // Un pedido entregado AYER no cuenta como venta de hoy, aunque se haya
+    // tomado hoy. Antes se contaban los `createdAt` del día y esto no se
+    // distinguía.
+    const ayer = new Date(todayDate());
+    ayer.setUTCDate(ayer.getUTCDate() - 1);
+    await prisma.delivery.update({ where: { id: entrega.id }, data: { fecha: ayer } });
 
     const response = await request(app)
       .get('/api/reports/sales-today')
       .set('Authorization', `Bearer ${token}`);
     expect(response.status).toBe(200);
     const row = response.body.porVendedor.find((item: { userId: number }) => item.userId === seller.id);
-    expect(equalsMoney(row.contado, '100.00')).toBe(true);
+    // Solo el de crédito, que se entregó hoy.
+    expect(equalsMoney(row.contado, '0')).toBe(true);
     expect(equalsMoney(row.credito, '40.00')).toBe(true);
-    expect(equalsMoney(row.total, '140.00')).toBe(true);
+    expect(equalsMoney(row.total, '40.00')).toBe(true);
+
+    // Y el de ayer vuelve a contar cuando la entrega es de hoy.
+    await prisma.delivery.update({ where: { id: entrega.id }, data: { fecha: todayDate() } });
+    const otra = await request(app)
+      .get('/api/reports/sales-today')
+      .set('Authorization', `Bearer ${token}`);
+    const row2 = otra.body.porVendedor.find((item: { userId: number }) => item.userId === seller.id);
+    expect(equalsMoney(row2.contado, '100.00')).toBe(true);
+    expect(equalsMoney(row2.total, '140.00')).toBe(true);
   });
 
   it('suma lo cobrado hoy por vendedor', async () => {
