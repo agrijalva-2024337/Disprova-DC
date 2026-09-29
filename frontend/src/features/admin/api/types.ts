@@ -193,6 +193,8 @@ export type ClientAccessToken = {
   expiresAt: string
   cliente: { id: number; nombreComercial: string }
   pathCatalogo: string
+}
+
 export type Role = {
   id: number
   nombre: string
