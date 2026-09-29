@@ -1,4 +1,5 @@
 import { Prisma } from '@prisma/client';
+import bcrypt from 'bcryptjs';
 import request from 'supertest';
 import { afterEach, describe, expect, it } from 'vitest';
 import { app } from '../../app.js';
@@ -12,6 +13,8 @@ import { registerMovement } from '../inventory/inventory.service.js';
  * en que corren los archivos.
  */
 const clientsCreados: number[] = [];
+const usuariosCreados: number[] = [];
+const lotesCreados: number[] = [];
 
 afterEach(async () => {
   const ids = clientsCreados.splice(0, clientsCreados.length);
@@ -41,13 +44,41 @@ afterEach(async () => {
     await prisma.returnItem.deleteMany({ where: { returnId: { in: returnIds } } });
     await prisma.return.deleteMany({ where: { id: { in: returnIds } } });
   }
+  const lotes = lotesCreados.splice(0, lotesCreados.length);
+  if (lotes.length > 0) {
+    await prisma.productBatch.deleteMany({ where: { id: { in: lotes } } });
+  }
   await prisma.deliveryItem.deleteMany({ where: { delivery: { order: { clientId: { in: ids } } } } });
   await prisma.delivery.deleteMany({ where: { order: { clientId: { in: ids } } } });
   await prisma.orderItem.deleteMany({ where: { order: { clientId: { in: ids } } } });
   await prisma.order.deleteMany({ where: { clientId: { in: ids } } });
   await prisma.accountMovement.deleteMany({ where: { clientId: { in: ids } } });
   await prisma.client.deleteMany({ where: { id: { in: ids } } });
+  const users = usuariosCreados.splice(0, usuariosCreados.length);
+  if (users.length > 0) {
+    await prisma.user.deleteMany({ where: { id: { in: users } } });
+  }
 });
+
+async function crearVendedor() {
+  const role = await prisma.role.findFirstOrThrow({ where: { nombre: 'vendedor' } });
+  const email = `devolucion-${Date.now()}@disprova.local`;
+  const user = await prisma.user.create({
+    data: {
+      nombre: 'Vendedor devolucion',
+      email,
+      passwordHash: await bcrypt.hash('Vendedor123!', 10),
+      roleId: role.id,
+    },
+  });
+  usuariosCreados.push(user.id);
+  const response = await request(app).post('/api/auth/login').send({
+    email,
+    password: 'Vendedor123!',
+  });
+  expect(response.status).toBe(200);
+  return { token: response.body.accessToken as string, userId: user.id };
+}
 
 async function loginAsAdmin() {
   const response = await request(app).post('/api/auth/login').send({
@@ -203,5 +234,90 @@ describe('devoluciones', () => {
     expect(rejected.body.estado).toBe('rechazada');
     expect((await onHand(unit.productId, vehicle.id)).toString()).toBe(beforeStock.toString());
     expect((await saldo(client.id)).toString()).toBe(beforeSaldo.toString());
+  });
+
+  it('un vendedor ve la devolución que generó, con cliente, pedido, presentación y lote', async () => {
+    const { client, orderId, orderItemId, unit } = await deliveredOrder();
+    const seller = await crearVendedor();
+    const sellerAuth = { Authorization: `Bearer ${seller.token}` };
+    const lote = await prisma.productBatch.create({
+      data: {
+        productId: unit.productId,
+        lote: `DEV-${Date.now()}`,
+        fechaVencimiento: new Date('2027-12-31'),
+      },
+    });
+    lotesCreados.push(lote.id);
+    const created = await request(app).post('/api/returns').set(sellerAuth).send({
+      clientId: client.id,
+      orderId,
+      motivo: 'Cambio',
+      items: [{ orderItemId, cantidad: '1', destino: 'reingreso', batchId: lote.id }],
+    });
+    expect(created.status).toBe(201);
+
+    const list = await request(app).get('/api/returns').query({ clientId: client.id }).set(sellerAuth);
+    expect(list.status).toBe(200);
+    expect(list.body.meta).toMatchObject({ total: 1, limit: 100, offset: 0, count: 1, hasMore: false });
+    expect(list.body.data[0].client.nombreComercial).toBe(client.nombreComercial);
+    expect(list.body.data[0].order.numero).toMatch(/^PED-/);
+
+    const detail = await request(app).get(`/api/returns/${created.body.id}`).set(sellerAuth);
+    expect(detail.status).toBe(200);
+    expect(detail.body.estado).toBe('pendiente');
+    expect(detail.body.items[0].orderItem.productUnit.nombre).toBe('Unidad');
+    expect(detail.body.items[0].orderItem.productUnit.product.nombre).toBeTruthy();
+    expect(detail.body.items[0].batch.lote).toBe(lote.lote);
+  });
+
+  it('filtra por estado y pagina como la auditoría', async () => {
+    const { auth, client, orderId, orderItemId } = await deliveredOrder();
+    const first = await request(app).post('/api/returns').set(auth).send({
+      clientId: client.id,
+      orderId,
+      motivo: 'Primera',
+      items: [{ orderItemId, cantidad: '1', destino: 'merma' }],
+    });
+    const second = await request(app).post('/api/returns').set(auth).send({
+      clientId: client.id,
+      orderId,
+      motivo: 'Segunda',
+      items: [{ orderItemId, cantidad: '1', destino: 'merma' }],
+    });
+    expect(first.status).toBe(201);
+    expect(second.status).toBe(201);
+    const accepted = await request(app).post(`/api/returns/${first.body.id}/accept`).set(auth);
+    expect(accepted.status).toBe(200);
+
+    const pendientes = await request(app)
+      .get('/api/returns')
+      .query({ clientId: client.id, estado: 'pendiente' })
+      .set(auth);
+    expect(pendientes.status).toBe(200);
+    expect(pendientes.body.data.map((row: { id: number }) => row.id)).toEqual([second.body.id]);
+
+    const page = await request(app)
+      .get('/api/returns')
+      .query({ clientId: client.id, limit: 1, offset: 0 })
+      .set(auth);
+    expect(page.status).toBe(200);
+    expect(page.body.meta).toMatchObject({ total: 2, limit: 1, offset: 0, count: 1, hasMore: true });
+    expect(page.body.data[0].id).toBe(second.body.id);
+
+    const next = await request(app)
+      .get('/api/returns')
+      .query({ clientId: client.id, limit: 1, offset: 1 })
+      .set(auth);
+    expect(next.body.data[0].id).toBe(first.body.id);
+  });
+
+  it('exige sesión y responde 404 si la devolución no existe', async () => {
+    const anon = await request(app).get('/api/returns');
+    expect(anon.status).toBe(401);
+
+    const { token } = await loginAsAdmin();
+    const missing = await request(app).get('/api/returns/999999999').set({ Authorization: `Bearer ${token}` });
+    expect(missing.status).toBe(404);
+    expect(missing.body.error.code).toBe('NOT_FOUND');
   });
 });

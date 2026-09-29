@@ -5,9 +5,21 @@ const decimalValue = z.union([z.string(), z.number()]).refine(
   'La cantidad debe ser mayor a cero',
 );
 
+export const LIMITE_POR_DEFECTO = 100;
+export const LIMITE_MAXIMO = 500;
+
 export const idParamSchema = z.object({
   id: z.coerce.number().int().positive(),
 });
+
+export const listReturnsQuerySchema = z.object({
+  estado: z.enum(['pendiente', 'aceptada', 'rechazada']).optional(),
+  clientId: z.coerce.number().int().positive().optional(),
+  limit: z.coerce.number().int().positive().max(LIMITE_MAXIMO).optional(),
+  offset: z.coerce.number().int().min(0).optional(),
+});
+
+export type ListReturnsQuery = z.infer<typeof listReturnsQuerySchema>;
 
 export const createReturnSchema = z.object({
   clientId: z.number().int().positive(),
