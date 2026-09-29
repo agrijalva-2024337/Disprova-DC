@@ -41,9 +41,14 @@ export function TodayRoutePage() {
         <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Disprova</p>
         <div className="flex items-center justify-between gap-3">
           <h1 className="text-2xl font-semibold">Mi ruta de hoy</h1>
-          <Link to="/ruta/entregas" className="rounded-xl bg-slate-900 px-3 py-2 text-sm font-medium text-white">
-            Entregas
-          </Link>
+          <div className="flex gap-2">
+            <Link to="/ruta/caja" className="rounded-xl border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700">
+              Caja
+            </Link>
+            <Link to="/ruta/entregas" className="rounded-xl bg-slate-900 px-3 py-2 text-sm font-medium text-white">
+              Entregas
+            </Link>
+          </div>
         </div>
         {routeQuery.data ? (
           <p className="text-sm text-slate-600">

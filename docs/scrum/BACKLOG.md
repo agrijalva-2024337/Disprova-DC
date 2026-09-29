@@ -19,6 +19,9 @@
 | DISP-032 | Frontend: devoluciones | Pendiente |
 | DISP-033 | Frontend: reportes (ventas, cobros, antigüedad) | Pendiente |
 | DISP-034 | Frontend: mensajería (plantillas y envío por WhatsApp) | Pendiente |
+| DISP-035 | Frontend: facturación (estado de facturas) | Pendiente |
+| DISP-036 | Frontend: usuarios y roles | Pendiente |
+| DISP-037 | Frontend: enlaces del catálogo público | Pendiente |
 
 ## Definition of Done
 
