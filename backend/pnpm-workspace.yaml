@@ -1,8 +1,13 @@
-# pnpm 10+ no corre los scripts de instalacion de las dependencias y falla
-# el build si los ignora (ERR_PNPM_IGNORED_BUILDS). Prisma y esbuild los
-# necesitan: sin esto `prisma generate` no puede descargar las engines.
+# Sin estos scripts `prisma generate` no descarga las engines.
+# `onlyBuiltDependencies` lo lee pnpm 10 (Docker). `allowBuilds` lo lee pnpm 11.
 onlyBuiltDependencies:
   - '@prisma/client'
   - '@prisma/engines'
   - prisma
   - esbuild
+allowBuilds:
+  '@prisma/client': true
+  '@prisma/engines': true
+  prisma: true
+  esbuild: true
+  '@scarf/scarf': false

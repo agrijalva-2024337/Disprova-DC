@@ -1,0 +1,13 @@
+# Vite y Tailwind traen binarios nativos. pnpm no corre esos scripts
+# si no estan permitidos.
+# `onlyBuiltDependencies` lo lee pnpm 10. `allowBuilds` lo lee pnpm 11.
+onlyBuiltDependencies:
+  - esbuild
+  - rolldown
+  - '@tailwindcss/oxide'
+  - lightningcss
+allowBuilds:
+  esbuild: true
+  rolldown: true
+  '@tailwindcss/oxide': true
+  lightningcss: true
