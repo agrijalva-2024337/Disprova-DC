@@ -60,6 +60,19 @@ const idParams = validateParams(idParamSchema);
  *       422: { description: "El rol no existe (`ROLE_NOT_FOUND`)." }
  *
  * /users/{id}:
+ *   get:
+ *     tags: [Usuarios]
+ *     summary: "Devuelve un usuario"
+ *     description: >
+ *       Mismo DTO que la lista: id, nombre, email, roleId, rol, activo y
+ *       createdAt. Nunca incluye `passwordHash`. Solo admin.
+ *     security: [{ bearerAuth: [] }]
+ *     parameters: [{ in: path, name: id, required: true, schema: { type: integer } }]
+ *     responses:
+ *       200: { description: "`{ id, nombre, email, roleId, rol, activo, createdAt }`." }
+ *       401: { description: "Sin token o vencido." }
+ *       403: { description: "El usuario no es admin (`FORBIDDEN`)." }
+ *       404: { description: "Usuario no encontrado (`NOT_FOUND`)." }
  *   put:
  *     tags: [Usuarios]
  *     summary: "Actualiza un usuario"
@@ -86,6 +99,7 @@ const idParams = validateParams(idParamSchema);
 export const usersRouter = Router();
 
 usersRouter.get('/', ...adminWrite, controller.listUsers);
+usersRouter.get('/:id', ...adminWrite, idParams, controller.getUser);
 usersRouter.post('/', ...adminWrite, validateBody(createUserSchema), controller.createUser);
 usersRouter.put('/:id', ...adminWrite, idParams, validateBody(updateUserSchema), controller.updateUser);
 

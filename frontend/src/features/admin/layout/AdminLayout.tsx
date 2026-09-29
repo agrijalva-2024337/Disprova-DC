@@ -9,6 +9,7 @@ const links = [
   { to: '/admin/zonas', label: 'Zonas' },
   { to: '/admin/clientes', label: 'Clientes' },
   { to: '/admin/cajas', label: 'Cajas' },
+  { to: '/admin/cobranza', label: 'Cobranza' },
   { to: '/ruta', label: 'Mi ruta' },
 ]
 

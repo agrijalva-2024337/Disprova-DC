@@ -1,4 +1,4 @@
-import { Navigate, Route, Routes } from 'react-router-dom'
+import { Navigate, Outlet, Route, Routes } from 'react-router-dom'
 import { LoginPage } from './features/admin/auth/LoginPage.tsx'
 import { CategoriesPage } from './features/admin/categories/CategoriesPage.tsx'
 import { AdminLayout } from './features/admin/layout/AdminLayout.tsx'
@@ -9,10 +9,16 @@ import { ClientFormPage } from './features/admin/clients/ClientFormPage.tsx'
 import { ClientsPage } from './features/admin/clients/ClientsPage.tsx'
 import { CashSessionsListPage } from './features/admin/cash/CashSessionsListPage.tsx'
 import { CashSessionPage } from './features/field/cash/CashSessionPage.tsx'
+import { AccountStatementPage } from './features/admin/collections/AccountStatementPage.tsx'
+import { AgingPage } from './features/admin/collections/AgingPage.tsx'
 import { KardexPage } from './features/admin/inventory/KardexPage.tsx'
 import { InventoryPage } from './features/admin/inventory/InventoryPage.tsx'
 import { ZonesPage } from './features/admin/zones/ZonesPage.tsx'
 import { FieldGate } from './features/field/FieldGate.tsx'
+import { CartProvider } from './features/store/cart/CartContext.tsx'
+import { CatalogPage } from './features/store/catalog/CatalogPage.tsx'
+import { CheckoutPage } from './features/store/checkout/CheckoutPage.tsx'
+import { OrderConfirmationPage } from './features/store/checkout/OrderConfirmationPage.tsx'
 import { DeliveriesPage } from './features/field/DeliveriesPage.tsx'
 import { DeliveryPage } from './features/field/DeliveryPage.tsx'
 import { NewOrderPage } from './features/field/NewOrderPage.tsx'
@@ -36,7 +42,14 @@ export default function App() {
         <Route path="clientes/nuevo" element={<ClientFormPage />} />
         <Route path="clientes/:id" element={<ClientFormPage />} />
         <Route path="cajas" element={<CashSessionsListPage />} />
+        <Route path="cobranza" element={<AgingPage />} />
+        <Route path="cobranza/clientes/:clientId" element={<AccountStatementPage />} />
       </Route>
+      <Route element={<CartProvider><Outlet /></CartProvider>}>
+        <Route path="/catalogo/:token" element={<CatalogPage />} />
+        <Route path="/catalogo/:token/pedido" element={<CheckoutPage />} />
+      </Route>
+      <Route path="/catalogo/:token/confirmacion" element={<OrderConfirmationPage />} />
       <Route path="/ruta" element={<FieldGate />}>
         <Route index element={<TodayRoutePage />} />
         <Route path="pedido/:clientId" element={<NewOrderPage />} />
