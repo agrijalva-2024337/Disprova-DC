@@ -16,6 +16,7 @@ export type FieldOrder = {
   numero: string
   clientId: number
   estado: string
+  condicionPago: string
   total: string
   client?: { id: number; nombreComercial: string; priceListId: number }
   items: FieldOrderItem[]

@@ -121,6 +121,73 @@ describe('POST /api/tokens/clients/:clientId', () => {
   });
 });
 
+describe('GET /api/tokens/clients/:clientId y DELETE /api/tokens/:id', () => {
+  it('lista los enlaces sin el valor del token y revocar deja la fila', async () => {
+    const { token, userId } = await loginAsAdmin();
+    const lista = await prisma.priceList.findFirstOrThrow();
+    const client = await crearCliente(lista.id);
+    const otro = await crearCliente(lista.id);
+    const vigente = await crearToken(client.id, userId);
+    await crearToken(otro.id, userId);
+
+    const listaTokens = await request(app)
+      .get(`/api/tokens/clients/${client.id}`)
+      .set('Authorization', `Bearer ${token}`);
+
+    expect(listaTokens.status).toBe(200);
+    expect(listaTokens.body).toHaveLength(1);
+    expect(listaTokens.body[0]).toMatchObject({
+      id: vigente.id,
+      createdByUserId: userId,
+      revocado: false,
+    });
+    expect(listaTokens.body[0]).not.toHaveProperty('token');
+    expect(JSON.stringify(listaTokens.body)).not.toContain(vigente.token);
+
+    const revocado = await request(app)
+      .delete(`/api/tokens/${vigente.id}`)
+      .set('Authorization', `Bearer ${token}`);
+
+    expect(revocado.status).toBe(200);
+    expect(revocado.body).toMatchObject({ id: vigente.id, revocado: true });
+    expect(revocado.body).not.toHaveProperty('token');
+
+    const fila = await prisma.clientAccessToken.findUniqueOrThrow({ where: { id: vigente.id } });
+    expect(fila.revokedAt).toBeTruthy();
+    expect(fila.token).toBe(vigente.token);
+
+    const auditoria = await prisma.auditLog.findFirstOrThrow({
+      where: { entidad: 'ClientAccessToken', entidadId: String(vigente.id), accion: 'revoke' },
+    });
+    expect(JSON.stringify(auditoria)).not.toContain(vigente.token);
+
+    const catalogo = await request(app)
+      .get('/api/public/catalog')
+      .set('X-Client-Token', vigente.token);
+    expect(catalogo.status).toBe(401);
+    expect(catalogo.body.error.code).toBe('PUBLIC_TOKEN_REVOKED');
+
+    const otraVez = await request(app)
+      .delete(`/api/tokens/${vigente.id}`)
+      .set('Authorization', `Bearer ${token}`);
+    expect(otraVez.status).toBe(409);
+    expect(otraVez.body.error.code).toBe('TOKEN_ALREADY_REVOKED');
+  });
+
+  it('no lista ni revoca sin admin', async () => {
+    const { userId } = await loginAsAdmin();
+    const lista = await prisma.priceList.findFirstOrThrow();
+    const client = await crearCliente(lista.id);
+    const vigente = await crearToken(client.id, userId);
+
+    const sinListar = await request(app).get(`/api/tokens/clients/${client.id}`);
+    const sinRevocar = await request(app).delete(`/api/tokens/${vigente.id}`);
+
+    expect(sinListar.status).toBe(401);
+    expect(sinRevocar.status).toBe(401);
+  });
+});
+
 describe('GET /api/public/catalog', () => {
   it('rechaza un token inexistente con 401', async () => {
     const response = await request(app)
@@ -154,6 +221,10 @@ describe('GET /api/public/catalog', () => {
     const response = await request(app).get(`/api/public/catalog?token=${vigente.token}`);
 
     expect(response.status).toBe(200);
+    expect(response.body.cliente).toEqual({
+      id: client.id,
+      nombreComercial: client.nombreComercial,
+    });
   });
 
   it('muestra el precio de la lista del cliente del token', async () => {
