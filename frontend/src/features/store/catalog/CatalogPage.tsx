@@ -16,7 +16,6 @@ const storeVars = {
   '--store-ink': theme.text,
   '--store-muted': theme.textMuted,
   '--store-accent': theme.accent,
-  '--store-accent-soft': theme.accentSoft,
 } as CSSProperties
 
 function CatalogSkeleton() {

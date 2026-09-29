@@ -9,9 +9,9 @@ const storeVars = {
   '--store-surface': theme.surface,
   '--store-border': theme.border,
   '--store-text': theme.text,
+  '--store-ink': theme.text,
   '--store-muted': theme.textMuted,
   '--store-accent': theme.accent,
-  '--store-accent-soft': theme.accentSoft,
 } as CSSProperties
 
 export function OrderConfirmationPage() {
@@ -26,11 +26,11 @@ export function OrderConfirmationPage() {
           Número de pedido
         </p>
         {numero ? <p className={`${styles.numero} font-display`}>{numero}</p> : null}
-        <p className={styles.confirmText}>
-          Tu pedido quedó registrado. Un vendedor lo va a confirmar.
+        <p className={`${styles.confirmText} font-display`}>
+          Pedido recibido. Tu vendedor lo va a confirmar y coordinar la entrega.
         </p>
         {token ? (
-          <Link className={`${catalogStyles.addbtn} mt-8`} to={`/catalogo/${token}`}>
+          <Link className={`${styles.confirm} font-body mt-8`} to={`/catalogo/${token}`}>
             Volver al catálogo
           </Link>
         ) : null}
