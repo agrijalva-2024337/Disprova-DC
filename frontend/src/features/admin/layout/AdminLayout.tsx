@@ -8,6 +8,7 @@ const links = [
   { to: '/admin/inventario', label: 'Inventario' },
   { to: '/admin/zonas', label: 'Zonas' },
   { to: '/admin/clientes', label: 'Clientes' },
+  { to: '/admin/devoluciones', label: 'Devoluciones' },
   { to: '/ruta', label: 'Mi ruta' },
 ]
 

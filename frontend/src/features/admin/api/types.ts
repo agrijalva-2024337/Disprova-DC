@@ -183,3 +183,41 @@ export type RouteVisitInput = {
   resultado: 'pedido' | 'no_compro' | 'cerrado'
   motivo?: string | null
 }
+
+export type ReturnEstado = 'pendiente' | 'aceptada' | 'rechazada'
+export type ReturnDestino = 'reingreso' | 'merma'
+
+export type ReturnItem = {
+  id: number
+  returnId: number
+  orderItemId: number
+  cantidad: string
+  batchId: number | null
+  destino: ReturnDestino
+}
+
+export type MerchandiseReturn = {
+  id: number
+  clientId: number
+  orderId: number
+  userId: number
+  fecha: string
+  motivo: string
+  estado: ReturnEstado
+  /** Queda en 0 mientras está pendiente: se calcula al aceptarla. */
+  total: string
+  createdAt: string
+  items: ReturnItem[]
+}
+
+export type CreateReturnInput = {
+  clientId: number
+  orderId: number
+  motivo: string
+  items: Array<{
+    orderItemId: number
+    cantidad: string
+    batchId?: number | null
+    destino: ReturnDestino
+  }>
+}
