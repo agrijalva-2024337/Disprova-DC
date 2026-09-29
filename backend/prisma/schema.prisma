@@ -43,8 +43,26 @@ model User {
   returns             Return[]
   messageLogs          MessageLog[]
   clientAccessTokens   ClientAccessToken[]
+  refreshSessions      RefreshSession[]
 
   @@map("users")
+}
+
+/// Sesión del refresh token. El access token no se persiste: cada request
+/// autenticado sigue validando solo la firma.
+model RefreshSession {
+  id        Int       @id @default(autoincrement())
+  userId    Int       @map("user_id")
+  /// Uuid que viaja dentro del JWT de refresh, claim `jti`.
+  jti       String    @unique
+  revokedAt DateTime? @map("revoked_at") @db.Timestamptz(3)
+  expiresAt DateTime  @map("expires_at") @db.Timestamptz(3)
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, revokedAt])
+  @@map("refresh_sessions")
 }
 
 model AuditLog {
