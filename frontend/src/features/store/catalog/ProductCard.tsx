@@ -20,6 +20,19 @@ export function ProductCard({ producto }: { producto: PublicProduct }) {
 
   return (
     <article className={styles.card}>
+      <div className={styles.photo}>
+        {producto.imagenUrl ? (
+          <img className={styles.photoImg} src={producto.imagenUrl} alt="" />
+        ) : (
+          <span className={styles.photoEmpty} aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" strokeWidth="1.5">
+              <rect x="3" y="4" width="18" height="16" rx="2" />
+              <circle cx="9" cy="10" r="1.5" />
+              <path d="M21 16l-5-5-9 9" />
+            </svg>
+          </span>
+        )}
+      </div>
       <p className={styles.sku}>{producto.sku}</p>
       <h2 className={`${styles.name} font-display`}>{producto.nombre}</h2>
       {producto.unidades.length > 1 && unidad ? (

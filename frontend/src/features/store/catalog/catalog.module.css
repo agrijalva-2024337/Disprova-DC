@@ -8,21 +8,26 @@
   position: sticky;
   top: 0;
   z-index: 10;
-  background: var(--store-surface);
-  border-bottom: 1px solid var(--store-border);
+  background: var(--store-bg);
   padding: 1rem 1rem 0.75rem;
 }
 
 .brand {
   font-size: 1.25rem;
-  font-weight: 700;
+  font-weight: 600;
   letter-spacing: -0.02em;
-  color: var(--store-accent);
+  color: var(--store-ink);
+}
+
+.rule {
+  height: 2px;
+  margin-top: 0.5rem;
+  background: var(--store-accent);
 }
 
 .clientName {
-  margin-top: 0.125rem;
-  font-size: 0.875rem;
+  margin-top: 0.5rem;
+  font-size: 0.75rem;
   font-weight: 500;
   color: var(--store-muted);
 }
@@ -52,20 +57,22 @@
 
 .chip {
   cursor: pointer;
-  border: 1px solid var(--store-border);
-  background: var(--store-surface);
-  color: var(--store-text);
-  border-radius: 999px;
-  padding: 0.375rem 0.75rem;
+  border: 0;
+  background: none;
+  color: var(--store-ink);
+  padding: 0.375rem 0.125rem 0.5rem;
   font-size: 0.8125rem;
   font-weight: 500;
   white-space: nowrap;
+  text-decoration: none;
 }
 
 .chipActive {
-  background: var(--store-accent);
-  border-color: var(--store-accent);
-  color: #fff;
+  color: var(--store-ink);
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
+  text-decoration-color: var(--store-accent);
+  text-underline-offset: 0.35rem;
 }
 
 .grid {
@@ -79,11 +86,33 @@
   background: var(--store-surface);
   border: 1px solid var(--store-border);
   border-radius: 1rem;
-  padding: 0.75rem;
+  padding: 0 0.75rem 0.75rem;
   display: flex;
   flex-direction: column;
   gap: 0.375rem;
-  min-height: 9.5rem;
+  overflow: hidden;
+}
+
+.photo {
+  aspect-ratio: 1 / 1;
+  margin: 0 -0.75rem 0.25rem;
+  background: var(--store-border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--store-muted);
+  overflow: hidden;
+}
+
+.photoImg {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.photoEmpty {
+  display: flex;
 }
 
 .sku {
@@ -96,15 +125,16 @@
 
 .name {
   font-size: 0.9375rem;
-  font-weight: 600;
+  font-weight: 500;
   line-height: 1.25;
-  color: var(--store-text);
+  color: var(--store-ink);
 }
 
 .price {
   margin-top: auto;
-  font-size: 1rem;
+  font-size: 1.35rem;
   font-weight: 600;
+  line-height: 1.1;
   color: var(--store-accent);
 }
 
@@ -186,19 +216,54 @@
   align-items: center;
   justify-content: space-between;
   gap: 0.75rem;
-  border-top: 1px solid var(--store-border);
-  background: var(--store-surface);
+  background: var(--store-ink);
+  color: var(--store-bg);
   padding: 0.75rem 1rem calc(0.75rem + env(safe-area-inset-bottom));
+  animation: barIn 180ms ease-out;
 }
 
 .barCount {
   font-size: 0.875rem;
   font-weight: 600;
+  color: var(--store-bg);
 }
 
 .barTotal {
-  font-size: 0.75rem;
-  color: var(--store-muted);
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--store-accent);
+}
+
+.barLink {
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.75rem;
+  padding: 0 1rem;
+  border: 1px solid var(--store-bg);
+  border-radius: 0.625rem;
+  background: transparent;
+  color: var(--store-bg);
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+@keyframes barIn {
+  from {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bar {
+    animation: none;
+  }
 }
 
 @keyframes pulse {
