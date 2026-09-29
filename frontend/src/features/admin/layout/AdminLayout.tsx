@@ -9,6 +9,7 @@ const links = [
   { to: '/admin/inventario', label: 'Inventario' },
   { to: '/admin/zonas', label: 'Zonas' },
   { to: '/admin/clientes', label: 'Clientes' },
+  { to: '/admin/usuarios', label: 'Usuarios', soloAdmin: true },
   { to: '/admin/facturacion', label: 'Facturación' },
   { to: '/admin/mensajeria/plantillas', label: 'Mensajería' },
   { to: '/admin/devoluciones', label: 'Devoluciones' },
@@ -24,6 +25,9 @@ export function AdminLayout() {
     return <Navigate to="/login" replace />
   }
 
+  // Usuarios y roles es cosa de admin: el link no se muestra a los demás.
+  const visibles = links.filter((link) => !link.soloAdmin || user?.rol === 'admin')
+
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900">
       <div className="flex min-h-screen">
@@ -31,7 +35,7 @@ export function AdminLayout() {
           <p className="px-2 text-sm font-semibold">Disprova GyG</p>
           <p className="mb-4 px-2 text-xs text-slate-500">Panel admin</p>
           <nav className="space-y-1">
-            {links.map((link) => (
+            {visibles.map((link) => (
               <NavLink
                 key={link.to}
                 to={link.to}

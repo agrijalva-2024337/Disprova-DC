@@ -184,6 +184,34 @@ export type RouteVisitInput = {
   motivo?: string | null
 }
 
+export type Role = {
+  id: number
+  nombre: string
+  permisos: unknown
+}
+
+/**
+ * Alta de usuario. La contraseña es obligatoria y de al menos 8 caracteres:
+ * el backend la hashea con bcrypt y nunca devuelve el hash.
+ */
+export type CreateUserInput = {
+  nombre: string
+  email: string
+  password: string
+  roleId: number
+  activo?: boolean
+}
+
+/**
+ * Edición de usuario. NO lleva `password` a propósito: `updateUserSchema` del
+ * backend no la acepta y el service no hashea nada en el PUT. Cambiar una
+ * contraseña es otro flujo que todavía no existe.
+ */
+export type UpdateUserInput = {
+  nombre?: string
+  email?: string
+  roleId?: number
+  activo?: boolean
 export type InvoiceEstado = 'pendiente_certificacion' | 'certificada' | 'error'
 
 /** `GET /api/invoices` incluye el pedido con su cliente, para no pedir otra cosa. */
@@ -207,7 +235,6 @@ export type Invoice = {
     numero: string
     client?: { id: number; nombreComercial: string }
   }
-=======
 export type MessageCanal = 'wa_link' | 'whatsapp_api'
 export type MessageEstado = 'generado' | 'enviado' | 'fallido'
 

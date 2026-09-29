@@ -15,6 +15,7 @@ import { AccountStatementPage } from './features/admin/collections/AccountStatem
 import { AgingPage } from './features/admin/collections/AgingPage.tsx'
 import { KardexPage } from './features/admin/inventory/KardexPage.tsx'
 import { InventoryPage } from './features/admin/inventory/InventoryPage.tsx'
+import { UsersPage } from './features/admin/users/UsersPage.tsx'
 import { InvoicesPage } from './features/admin/billing/InvoicesPage.tsx'
 import { BroadcastPage } from './features/admin/messaging/BroadcastPage.tsx'
 import { TemplatesPage } from './features/admin/messaging/TemplatesPage.tsx'
@@ -47,6 +48,7 @@ export default function App() {
         <Route path="clientes" element={<ClientsPage />} />
         <Route path="clientes/nuevo" element={<ClientFormPage />} />
         <Route path="clientes/:id" element={<ClientFormPage />} />
+        <Route path="usuarios" element={<UsersPage />} />
         <Route path="facturacion" element={<InvoicesPage />} />
         <Route path="mensajeria/plantillas" element={<TemplatesPage />} />
         <Route path="mensajeria/enlaces" element={<BroadcastPage />} />
