@@ -268,6 +268,62 @@ describe('orders', () => {
     });
     expect(count).toBe(1);
   });
+
+  it('filtra por cliente, estado y canal e incluye al vendedor', async () => {
+    const { token, userId } = await loginAsAdmin();
+    const sample = await prisma.client.findFirstOrThrow();
+    const client = await prisma.client.create({
+      data: {
+        nombreComercial: `Pedidos ${Date.now()}`,
+        tipoNegocio: 'tienda',
+        zoneId: sample.zoneId,
+        ordenRuta: 8000 + Math.floor(Math.random() * 1000),
+        direccion: 'Calle de pedidos',
+        priceListId: sample.priceListId,
+        limiteCredito: '5000.00',
+        plazoDias: 15,
+      },
+    });
+    const { unit } = await unitOf('HIG-001', 'Unidad');
+    const auth = { Authorization: `Bearer ${token}` };
+    const orderIds: number[] = [];
+    try {
+      const campo = await request(app).post('/api/orders').set(auth).send({
+        clientId: client.id,
+        canal: 'campo',
+        condicionPago: 'contado',
+        items: [{ productUnitId: unit.id, cantidad: '1' }],
+      });
+      const web = await request(app).post('/api/orders').set(auth).send({
+        clientId: client.id,
+        canal: 'web',
+        condicionPago: 'contado',
+        items: [{ productUnitId: unit.id, cantidad: '1' }],
+      });
+      expect(campo.status).toBe(201);
+      expect(web.status).toBe(201);
+      orderIds.push(campo.body.id, web.body.id);
+
+      const listed = await request(app)
+        .get('/api/orders')
+        .query({ clientId: client.id, estado: 'borrador', canal: 'web' })
+        .set(auth);
+      expect(listed.status).toBe(200);
+      expect(listed.body.map((row: { id: number }) => row.id)).toEqual([web.body.id]);
+      expect(listed.body[0].client.nombreComercial).toBe(client.nombreComercial);
+      expect(listed.body[0].user).toEqual({ id: userId, nombre: expect.any(String) });
+      expect(listed.body[0].canal).toBe('web');
+    } finally {
+      if (orderIds.length > 0) {
+        await prisma.auditLog.deleteMany({
+          where: { entidad: 'Order', entidadId: { in: orderIds.map(String) } },
+        });
+        await prisma.orderItem.deleteMany({ where: { orderId: { in: orderIds } } });
+        await prisma.order.deleteMany({ where: { id: { in: orderIds } } });
+      }
+      await prisma.client.deleteMany({ where: { id: client.id } });
+    }
+  });
 });
 
 describe('auditoría de pedidos', () => {

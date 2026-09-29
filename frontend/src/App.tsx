@@ -7,6 +7,8 @@ import { ProductFormPage } from './features/admin/products/ProductFormPage.tsx'
 import { ProductsPage } from './features/admin/products/ProductsPage.tsx'
 import { ClientFormPage } from './features/admin/clients/ClientFormPage.tsx'
 import { ClientsPage } from './features/admin/clients/ClientsPage.tsx'
+import { OrderDetailPage } from './features/admin/orders/OrderDetailPage.tsx'
+import { OrdersPage } from './features/admin/orders/OrdersPage.tsx'
 import { KardexPage } from './features/admin/inventory/KardexPage.tsx'
 import { InventoryPage } from './features/admin/inventory/InventoryPage.tsx'
 import { ZonesPage } from './features/admin/zones/ZonesPage.tsx'
@@ -31,6 +33,8 @@ export default function App() {
         <Route path="inventario" element={<InventoryPage />} />
         <Route path="inventario/:productId" element={<KardexPage />} />
         <Route path="zonas" element={<ZonesPage />} />
+        <Route path="pedidos" element={<OrdersPage />} />
+        <Route path="pedidos/:id" element={<OrderDetailPage />} />
         <Route path="clientes" element={<ClientsPage />} />
         <Route path="clientes/nuevo" element={<ClientFormPage />} />
         <Route path="clientes/:id" element={<ClientFormPage />} />
