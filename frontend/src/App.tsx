@@ -9,6 +9,7 @@ import { ClientFormPage } from './features/admin/clients/ClientFormPage.tsx'
 import { ClientsPage } from './features/admin/clients/ClientsPage.tsx'
 import { KardexPage } from './features/admin/inventory/KardexPage.tsx'
 import { InventoryPage } from './features/admin/inventory/InventoryPage.tsx'
+import { DashboardPage } from './features/admin/reports/DashboardPage.tsx'
 import { ZonesPage } from './features/admin/zones/ZonesPage.tsx'
 import { FieldGate } from './features/field/FieldGate.tsx'
 import { DeliveriesPage } from './features/field/DeliveriesPage.tsx'
@@ -21,7 +22,7 @@ export default function App() {
     <Routes>
       <Route path="/login" element={<LoginPage />} />
       <Route path="/admin" element={<AdminLayout />}>
-        <Route index element={<Navigate to="productos" replace />} />
+        <Route index element={<DashboardPage />} />
         <Route path="categorias" element={<CategoriesPage />} />
         <Route path="productos" element={<ProductsPage />} />
         <Route path="productos/nuevo" element={<ProductFormPage />} />

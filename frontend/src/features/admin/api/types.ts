@@ -183,3 +183,53 @@ export type RouteVisitInput = {
   resultado: 'pedido' | 'no_compro' | 'cerrado'
   motivo?: string | null
 }
+
+/** Los mismos cuatro buckets que arma el backend en `getAging`. */
+export type AgingBuckets = {
+  '0-15': string
+  '16-30': string
+  '31-60': string
+  '60+': string
+}
+
+/** Fila de `GET /api/reports/aging`. El backend ya la ordena por deuda más vieja. */
+export type AgingReportRow = {
+  clientId: number
+  nombre: string
+  saldoActual: string
+  buckets: AgingBuckets
+}
+
+export type SalesTodayVendedor = {
+  userId: number
+  nombre: string
+  contado: string
+  credito: string
+  total: string
+}
+
+/**
+ * `GET /api/reports/sales-today`. Ojo: el backend NO devuelve la cantidad de
+ * pedidos por vendedor, solo los montos, asi que el dashboard no la muestra.
+ */
+export type SalesToday = {
+  total: string
+  porCondicion: { contado: string; credito: string }
+  porVendedor: SalesTodayVendedor[]
+}
+
+export type CollectionsTodayVendedor = {
+  userId: number
+  nombre: string
+  total: string
+}
+
+/**
+ * `GET /api/reports/collections-today`. Ojo: agrupa por VENDEDOR, no por método
+ * de pago. Para desglosar por efectivo/transferencia/cheque hace falta un
+ * endpoint nuevo (ver el aviso de DISP-033).
+ */
+export type CollectionsToday = {
+  total: string
+  porVendedor: CollectionsTodayVendedor[]
+}
