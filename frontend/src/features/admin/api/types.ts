@@ -184,6 +184,53 @@ export type RouteVisitInput = {
   motivo?: string | null
 }
 
+export type MessageCanal = 'wa_link' | 'whatsapp_api'
+export type MessageEstado = 'generado' | 'enviado' | 'fallido'
+
+/** Las únicas variables que el backend acepta en el cuerpo de una plantilla. */
+export const ALLOWED_TEMPLATE_VARIABLES = ['nombre', 'saldo', 'ultimoPedidoUrl'] as const
+
+export type MessageTemplate = {
+  id: number
+  nombre: string
+  canal: MessageCanal
+  cuerpo: string
+  activo: boolean
+  createdAt: string
+}
+
+export type MessageTemplateInput = {
+  nombre: string
+  canal: MessageCanal
+  cuerpo: string
+  activo?: boolean
+}
+
+export type MessageLog = {
+  id: number
+  clientId: number
+  templateId: number | null
+  telefono: string
+  contenido: string
+  canal: MessageCanal
+  estado: MessageEstado
+  error: string | null
+  userId: number
+  createdAt: string
+}
+
+/** `GET /clients/:id/link`: el texto ya resuelto y la URL de wa.me. */
+export type ClientLink = {
+  url: string
+  contenido: string
+}
+
+/** Fila de `POST /broadcast/today`. */
+export type BroadcastLink = {
+  clientId: number
+  nombre: string
+  url: string
+=======
 export type ReturnEstado = 'pendiente' | 'aceptada' | 'rechazada'
 export type ReturnDestino = 'reingreso' | 'merma'
 

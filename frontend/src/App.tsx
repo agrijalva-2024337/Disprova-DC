@@ -15,6 +15,9 @@ import { AccountStatementPage } from './features/admin/collections/AccountStatem
 import { AgingPage } from './features/admin/collections/AgingPage.tsx'
 import { KardexPage } from './features/admin/inventory/KardexPage.tsx'
 import { InventoryPage } from './features/admin/inventory/InventoryPage.tsx'
+
+import { BroadcastPage } from './features/admin/messaging/BroadcastPage.tsx'
+import { TemplatesPage } from './features/admin/messaging/TemplatesPage.tsx'
 import { DashboardPage } from './features/admin/reports/DashboardPage.tsx'
 import { ZonesPage } from './features/admin/zones/ZonesPage.tsx'
 import { FieldGate } from './features/field/FieldGate.tsx'
@@ -44,12 +47,15 @@ export default function App() {
         <Route path="clientes" element={<ClientsPage />} />
         <Route path="clientes/nuevo" element={<ClientFormPage />} />
         <Route path="clientes/:id" element={<ClientFormPage />} />
+        <Route path="mensajeria/plantillas" element={<TemplatesPage />} />
+        <Route path="mensajeria/enlaces" element={<BroadcastPage />} />
         <Route path="devoluciones" element={<NewReturnPage />} />
         <Route path="devoluciones/nueva" element={<NewReturnPage />} />
         <Route path="devoluciones/:id" element={<ReturnDetailPage />} />
         <Route path="cajas" element={<CashSessionsListPage />} />
         <Route path="cobranza" element={<AgingPage />} />
         <Route path="cobranza/clientes/:clientId" element={<AccountStatementPage />} />
+
       </Route>
       <Route element={<CartProvider><Outlet /></CartProvider>}>
         <Route path="/catalogo/:token" element={<CatalogPage />} />
