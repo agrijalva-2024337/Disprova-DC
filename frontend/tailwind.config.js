@@ -3,7 +3,7 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        display: ['Sora', 'sans-serif'],
+        display: ['Fraunces', 'serif'],
         body: ['"IBM Plex Sans"', 'sans-serif'],
       },
     },
