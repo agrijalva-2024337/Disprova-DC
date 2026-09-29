@@ -33,3 +33,11 @@ export const listSessions = asyncHandler(async (req: Request, res: Response) => 
   }
   res.status(200).json(await cashService.listSessions(parsed.data));
 });
+
+export const createExpense = asyncHandler(async (req: Request, res: Response) => {
+  res.status(201).json(await cashService.createExpense(req.body, userId(req)));
+});
+
+export const listExpenses = asyncHandler(async (req: Request, res: Response) => {
+  res.status(200).json(await cashService.listExpenses(paramId(req)));
+});

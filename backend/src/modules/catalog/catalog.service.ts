@@ -46,6 +46,7 @@ function rethrowPrisma(err: unknown): never {
 
 export async function listCategories() {
   return prisma.category.findMany({
+    where: { activo: true },
     orderBy: [{ orden: 'asc' }, { id: 'asc' }],
   });
 }
@@ -99,6 +100,7 @@ export async function updateCategory(id: number, input: UpdateCategoryInput, use
   }
 }
 
+/** Desactiva la categoría. No la borra: tiene productos y subcategorías colgados. */
 export async function deleteCategory(id: number, userId: number) {
   try {
     return await prisma.$transaction(async (tx) => {
@@ -106,15 +108,19 @@ export async function deleteCategory(id: number, userId: number) {
       if (!existing) {
         throw new AppError('Categoría no encontrada', 404, 'NOT_FOUND');
       }
-      await tx.category.delete({ where: { id } });
+      if (!existing.activo) {
+        throw new AppError('La categoría ya está desactivada', 409, 'ALREADY_INACTIVE');
+      }
+      const updated = await tx.category.update({ where: { id }, data: { activo: false } });
       await writeAudit(tx, {
         userId,
         entidad: 'Category',
         entidadId: String(id),
-        accion: 'delete',
+        accion: 'deactivate',
         datosAntes: existing,
+        datosDespues: updated,
       });
-      return existing;
+      return updated;
     });
   } catch (err) {
     rethrowPrisma(err);
@@ -123,6 +129,7 @@ export async function deleteCategory(id: number, userId: number) {
 
 export async function listProducts() {
   return prisma.product.findMany({
+    where: { activo: true },
     include: productInclude,
     orderBy: { id: 'asc' },
   });
@@ -243,6 +250,14 @@ export async function updateProduct(id: number, input: UpdateProductInput, userI
   }
 }
 
+/**
+ * Desactiva el producto. No lo borra.
+ *
+ * Antes borraba en cascada sus imágenes y sus presentaciones. Un producto con
+ * pedidos viejos pierde el nombre y la presentación con que se vendió, y el
+ * pedido queda apuntando a un id que ya no existe. Ahora el producto queda
+ * con `activo: false` y sus pedidos siguen siendo legibles.
+ */
 export async function deleteProduct(id: number, userId: number) {
   try {
     return await prisma.$transaction(async (tx) => {
@@ -253,17 +268,27 @@ export async function deleteProduct(id: number, userId: number) {
       if (!existing) {
         throw new AppError('Producto no encontrado', 404, 'NOT_FOUND');
       }
-      await tx.productImage.deleteMany({ where: { productId: id } });
-      await tx.productUnit.deleteMany({ where: { productId: id } });
-      await tx.product.delete({ where: { id } });
+      if (!existing.activo) {
+        throw new AppError('El producto ya está desactivado', 409, 'ALREADY_INACTIVE');
+      }
+      const updated = await tx.product.update({
+        where: { id },
+        data: { activo: false },
+        include: productInclude,
+      });
+      // Las presentaciones se desactivan con el producto: una presentación
+      // activa de un producto inactivo aparecería en el catálogo como
+      // vendible sin que el producto esté activo.
+      await tx.productUnit.updateMany({ where: { productId: id }, data: { activo: false } });
       await writeAudit(tx, {
         userId,
         entidad: 'Product',
         entidadId: String(id),
-        accion: 'delete',
+        accion: 'deactivate',
         datosAntes: existing,
+        datosDespues: updated,
       });
-      return existing;
+      return updated;
     });
   } catch (err) {
     rethrowPrisma(err);
@@ -272,7 +297,8 @@ export async function deleteProduct(id: number, userId: number) {
 
 export async function listPriceLists() {
   return prisma.priceList.findMany({
-    include: { items: true },
+    where: { activo: true },
+    include: { items: { where: { activo: true } } },
     orderBy: { id: 'asc' },
   });
 }
@@ -329,6 +355,7 @@ export async function updatePriceList(id: number, input: UpdatePriceListInput, u
   }
 }
 
+/** Desactiva la lista de precios. No borra sus ítems ni los clientes que la usan. */
 export async function deletePriceList(id: number, userId: number) {
   try {
     return await prisma.$transaction(async (tx) => {
@@ -339,16 +366,19 @@ export async function deletePriceList(id: number, userId: number) {
       if (!existing) {
         throw new AppError('Lista de precios no encontrada', 404, 'NOT_FOUND');
       }
-      await tx.priceListItem.deleteMany({ where: { priceListId: id } });
-      await tx.priceList.delete({ where: { id } });
+      if (!existing.activo) {
+        throw new AppError('La lista ya está desactivada', 409, 'ALREADY_INACTIVE');
+      }
+      const updated = await tx.priceList.update({ where: { id }, data: { activo: false } });
       await writeAudit(tx, {
         userId,
         entidad: 'PriceList',
         entidadId: String(id),
-        accion: 'delete',
+        accion: 'deactivate',
         datosAntes: existing,
+        datosDespues: updated,
       });
-      return existing;
+      return updated;
     });
   } catch (err) {
     rethrowPrisma(err);
@@ -357,6 +387,7 @@ export async function deletePriceList(id: number, userId: number) {
 
 export async function listPriceListItems() {
   return prisma.priceListItem.findMany({
+    where: { activo: true },
     orderBy: { id: 'asc' },
   });
 }
@@ -427,6 +458,13 @@ export async function updatePriceListItem(
   }
 }
 
+/**
+ * Desactiva el precio. No lo borra.
+ *
+ * Un precio borrado deja de explicar por qué un pedido viejo se cobró a lo que
+ * se cobró. Con `activo: false` sale de `currentPrice` pero el registro queda
+ * para que la historia siga siendo auditable.
+ */
 export async function deletePriceListItem(id: number, userId: number) {
   try {
     return await prisma.$transaction(async (tx) => {
@@ -434,15 +472,19 @@ export async function deletePriceListItem(id: number, userId: number) {
       if (!existing) {
         throw new AppError('Ítem de lista de precios no encontrado', 404, 'NOT_FOUND');
       }
-      await tx.priceListItem.delete({ where: { id } });
+      if (!existing.activo) {
+        throw new AppError('El precio ya está desactivado', 409, 'ALREADY_INACTIVE');
+      }
+      const updated = await tx.priceListItem.update({ where: { id }, data: { activo: false } });
       await writeAudit(tx, {
         userId,
         entidad: 'PriceListItem',
         entidadId: String(id),
-        accion: 'delete',
+        accion: 'deactivate',
         datosAntes: existing,
+        datosDespues: updated,
       });
-      return existing;
+      return updated;
     });
   } catch (err) {
     rethrowPrisma(err);

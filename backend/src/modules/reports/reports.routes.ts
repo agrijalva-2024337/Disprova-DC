@@ -9,6 +9,7 @@ import * as controller from './reports.controller.js';
  *   get:
  *     tags: [Reportes]
  *     summary: "Vendido hoy, por vendedor y condición de pago"
+ *     description: "Cuenta lo **entregado** hoy, no lo pedido hoy: un pedido tomado hoy y entregado mañana no cuenta, y uno de la semana pasada entregado hoy sí. El importe es el realmente entregado, la misma cifra que usa la cobranza y la facturación."
  *     security: [{ bearerAuth: [] }]
  *     responses:
  *       200: { description: "Totales del día, agrupados por vendedor." }

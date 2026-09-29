@@ -47,6 +47,13 @@ export function createOrder(input: {
   clientId: number
   canal: 'campo'
   condicionPago: 'contado' | 'credito'
+  /**
+   * Se manda la MISMA clave en cada reintento del mismo pedido. Con mala señal
+   * el vendedor aprieta "guardar" dos veces; sin la clave el backend abre dos
+   * pedidos. El backend responde 200 con el pedido ya creado cuando la clave
+   * se repite, así que el segundo toque no duplica nada.
+   */
+  idempotencyKey?: string
   items: Array<{ productUnitId: number; cantidad: string }>
 }) {
   return apiRequest<FieldOrder>('/api/orders', { method: 'POST', body: input })
@@ -64,4 +71,59 @@ export function deliverOrder(
     method: 'POST',
     body: { items },
   })
+}
+
+// --- Cobranza en ruta ---
+
+/**
+ * Un pago en efectivo exige una caja abierta: el backend responde 409
+ * `CASH_SESSION_REQUIRED` si no la hay. Por eso el formulario de cobro pide
+ * el monto y el método, y el backend decide a qué sesión imputarlo.
+ */
+export type FieldPayment = {
+  id: number
+  clientId: number
+  monto: string
+  metodo: 'efectivo' | 'transferencia' | 'cheque'
+  referencia: string | null
+  createdAt: string
+}
+
+export type FieldAccountMovement = {
+  id: number
+  tipo: 'cargo' | 'abono'
+  monto: string
+  saldoResultante: string
+  fecha: string
+}
+
+export type FieldAccount = {
+  saldoActual: string
+  movements: FieldAccountMovement[]
+}
+
+export type FieldCollectionVisitInput = {
+  clientId: number
+  resultado: 'pago_completo' | 'pago_parcial' | 'compromiso' | 'sin_contacto'
+  montoComprometido?: string | null
+  fechaCompromiso?: string | null
+  observaciones?: string | null
+}
+
+export function getAccount(clientId: number) {
+  return apiRequest<FieldAccount>(`/api/clients/${clientId}/account`)
+}
+
+/** Registra el pago. Queda pendiente de aplicar a pedidos hasta que se use `applyPayment`. */
+export function createPayment(input: {
+  clientId: number
+  monto: string
+  metodo: 'efectivo' | 'transferencia' | 'cheque'
+  referencia?: string | null
+}) {
+  return apiRequest<FieldPayment>('/api/payments', { method: 'POST', body: input })
+}
+
+export function createCollectionVisit(input: FieldCollectionVisitInput) {
+  return apiRequest<unknown>('/api/collection-visits', { method: 'POST', body: input })
 }

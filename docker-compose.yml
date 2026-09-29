@@ -41,5 +41,40 @@ services:
       postgres:
         condition: service_healthy
 
+  # Respaldo diario de PostgreSQL. La sección 6 de la planificación pide
+  # "pg_dump programado" y "respaldo diario fuera del servidor": los archivos
+  # se escriben en un bind mount del host, no en el contenedor, para que
+  # sobrevivan a que el contenedor se borre.
+  #
+  # La lógica vive en scripts/backup.sh y no en el entrypoint: Compose expande
+  # las `$` del shell antes de dárselas al contenedor, así que un `$(date ...)`
+  # escrito acá se pierde o se evalúa en el host. Con el script montado, el
+  # shell corre dentro del contenedor y las variables se comportan bien.
+  #
+  # Por defecto a las 03:10 de Guatemala y no a medianoche: el cierre de caja de
+  # la jornada anterior suele terminar cerca de esa hora, y respaldar a las
+  # 00:00 se llevaría una base a medio escribir.
+  backup:
+    image: postgres:16-alpine
+    container_name: disprova-backup
+    environment:
+      PGHOST: postgres
+      PGUSER: disprova
+      PGPASSWORD: disprova_dev_password
+      PGDATABASE: disprova
+      TZ: America/Guatemala
+      # A qué hora corre, en HHMM. Configurable sin tocar el script.
+      HORA_BACKUP: "0310"
+      # Cuántos días de respaldo se conservan.
+      RETENCION_DIAS: "30"
+    volumes:
+      - ./backups:/backups
+      - ./scripts/backup.sh:/usr/local/bin/backup.sh:ro
+    entrypoint: ["sh", "/usr/local/bin/backup.sh"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
 volumes:
   postgres_data:

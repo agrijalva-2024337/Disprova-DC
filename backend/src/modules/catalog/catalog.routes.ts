@@ -65,13 +65,15 @@ import {
  *       404: { description: "No encontrada." }
  *   delete:
  *     tags: [Catálogo]
- *     summary: "Elimina una categoría"
+ *     summary: "Desactiva una categoría"
+ *     description: "No borra: queda con `activo: false` y sale del listado. Sus productos y subcategorías quedan intactos."
  *     security: [{ bearerAuth: [] }]
  *     parameters: [{ in: path, name: id, required: true, schema: { type: integer } }]
  *     responses:
- *       204: { description: "Categoría eliminada." }
+ *       200: { description: "Categoría desactivada." }
  *       403: { description: "Solo admin." }
- *       409: { description: "Tiene subcategorías o productos asociados." }
+ *       404: { description: "Categoría no encontrada." }
+ *       409: { description: "Ya estaba desactivada (`ALREADY_INACTIVE`)." }
  *
  * /catalog/products:
  *   get:
@@ -116,13 +118,15 @@ import {
  *       404: { description: "No encontrado." }
  *   delete:
  *     tags: [Catálogo]
- *     summary: "Elimina un producto"
+ *     summary: "Desactiva un producto"
+ *     description: "No borra: queda con `activo: false` y sus presentaciones también. Los pedidos viejos siguen mostrando su nombre y su presentación."
  *     security: [{ bearerAuth: [] }]
  *     parameters: [{ in: path, name: id, required: true, schema: { type: integer } }]
  *     responses:
- *       204: { description: "Producto eliminado." }
+ *       200: { description: "Producto desactivado." }
  *       403: { description: "Solo admin." }
- *       409: { description: "Tiene pedidos o movimientos asociados." }
+ *       404: { description: "Producto no encontrado." }
+ *       409: { description: "Ya estaba desactivado (`ALREADY_INACTIVE`)." }
  *
  * /catalog/products/{productId}/units:
  *   get:
@@ -286,13 +290,15 @@ import {
  *       403: { description: "Solo admin." }
  *   delete:
  *     tags: [Catálogo]
- *     summary: "Elimina una lista de precios"
+ *     summary: "Desactiva una lista de precios"
+ *     description: "No borra: sus ítems y los clientes que la usan quedan intactos."
  *     security: [{ bearerAuth: [] }]
  *     parameters: [{ in: path, name: id, required: true, schema: { type: integer } }]
  *     responses:
- *       204: { description: "Lista eliminada." }
+ *       200: { description: "Lista desactivada." }
  *       403: { description: "Solo admin." }
- *       409: { description: "Hay clientes o ítems que la usan." }
+ *       404: { description: "Lista no encontrada." }
+ *       409: { description: "Ya estaba desactivada (`ALREADY_INACTIVE`)." }
  *
  * /catalog/price-list-items:
  *   get:
@@ -338,12 +344,15 @@ import {
  *       404: { description: "Ítem no encontrado." }
  *   delete:
  *     tags: [Catálogo]
- *     summary: "Elimina un precio"
+ *     summary: "Desactiva un precio"
+ *     description: "No borra: sale de `currentPrice` pero el registro queda, para que un pedido viejo siga explicando a cuánto se vendió."
  *     security: [{ bearerAuth: [] }]
  *     parameters: [{ in: path, name: id, required: true, schema: { type: integer } }]
  *     responses:
- *       204: { description: "Ítem eliminado." }
+ *       200: { description: "Precio desactivado." }
  *       403: { description: "Solo admin." }
+ *       404: { description: "Ítem no encontrado." }
+ *       409: { description: "Ya estaba desactivado (`ALREADY_INACTIVE`)." }
  */
 export const catalogRouter = Router();
 

@@ -102,6 +102,99 @@ PostgreSQL con los del servicio `postgres`.
 | `JWT_ACCESS_SECRET` | Secreto para firmar los tokens de acceso (caducan a los 15 minutos). |
 | `JWT_REFRESH_SECRET` | Secreto para firmar los tokens de refresco. |
 
+## Cargar la cartera (saldo inicial)
+
+La deuda que el negocio ya tiene no entra como una columna: se carga como un
+**cargo de tipo `apertura`** en el libro mayor, de modo que el saldo inicial se
+explica movimiento por movimiento como cualquier otro.
+
+```bash
+# 1. Simulación: devuelve el cuadre por cliente SIN escribir nada.
+curl -X POST http://localhost:3000/api/account/opening-balances \
+  -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+  -d '{
+        "corte": "corte-2026-09-29",
+        "modo": "simulacion",
+        "items": [{ "clientId": 1, "monto": "1250.00" }]
+      }'
+
+# 2. Comparar con la libreta y, cuando cuadre, confirmar con "commit".
+```
+
+El `corte` identifica la carga y solo se admite una vez: una doble carga
+duplicaría toda la deuda de la cartera.
+
+## Respaldos de la base de datos
+
+La sección 6 de la planificación pide respaldo diario fuera del servidor y una
+prueba de restauración. El servicio `backup` corre `pg_dump` todos los días a
+las **03:10 hora de Guatemala** (no a medianoche: el cierre de caja de la
+jornada anterior suele terminar cerca de esa hora) y guarda 30 días.
+
+```bash
+docker compose up -d backup      # levanta el servicio
+docker logs -f disprova-backup   # ver el respaldo de hoy
+```
+
+Los archivos quedan en `backups/` del host, que está en `.gitignore`: son datos
+del negocio, no código.
+
+### Probar que un respaldo sirve
+
+Un respaldo que nunca se restauró no es un respaldo: puede estar truncado y aun
+así parecer válido.
+
+```bash
+sh scripts/verify_backup.sh                       # lista los respaldos
+sh scripts/verify_backup.sh backups/disprova-20260929-031000.sql.gz
+```
+
+El script **nunca toca la base real**: crea una base temporal, restaura ahí,
+cuenta filas de las tablas críticas (clientes, pedidos, cuenta corriente,
+inventario, caja) y la elimina al final. Si vuelve todo en cero, avisa que el
+archivo está malo.
+
+Hacer esto **una vez por mes** y dejar constancia del resultado es lo que
+convierte el respaldo en una garantía y no en una costumbre.
+
+### Para restaurar de verdad
+
+Con el servicio de respaldo detenido:
+
+```bash
+docker compose stop backup
+gunzip -c backups/disprova-AAAA-MM-DD-HHMMSS.sql.gz | \
+  docker exec -i disprova-postgres psql -U disprova -d disprova
+docker compose start backup
+```
+
+> En Windows, `gunzip` no viene instalado. Usá el contenedor de PostgreSQL:
+> `docker run --rm -v "%cd%\backups:/backups" postgres:16-alpine gunzip -c /backups/ARCHIVO.sql.gz > salida.sql`
+> y subí `salida.sql` con `docker cp`. Redireccionar `gunzip` desde PowerShell
+> escribe el archivo en UTF-16 y la restauración falla con
+> `invalid byte sequence for encoding "UTF8"`.
+
+## Gastos de la jornada
+
+`cash_sessions.total_gastos` se alimentaba desde cero: el arqueo descuadraba con
+cualquier gasto real. Los gastos se registran sobre la caja abierta y se
+descontan del efectivo esperado al cerrar.
+
+```bash
+curl -X POST http://localhost:3000/api/cash-sessions/expenses \
+  -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+  -d '{ "concepto": "Combustible", "monto": "120.00", "reciboUrl": null }'
+```
+
+## Lotes y FEFO
+
+Los productos controlados (medicamentos) se despachan por **FEFO**: primero el
+lote que vence antes, repartiendo la cantidad entre los lotes necesarios cuando
+uno solo no cubre. Al confirmar un pedido, el lote elegido queda reservado en
+`order_item_batches`; la entrega consume esa reserva y no la que el vendedor
+escriba en el formulario. Un lote vencido entre la confirmación y la entrega se
+rechaza con `BATCH_EXPIRED`.
+
 ### Próximos módulos — no configurado aún
 
 Estas variables todavía no existen en el código: se agregarán a

@@ -3,7 +3,7 @@ import { requireAuth } from '../../middlewares/requireAuth.js';
 import { requireRole } from '../../middlewares/requireRole.js';
 import { validateBody, validateParams } from '../../shared/http/validate.js';
 import * as controller from './cash.controller.js';
-import { closeCashSessionSchema, idParamSchema, openCashSessionSchema } from './cash.schema.js';
+import { closeCashSessionSchema, createExpenseSchema, idParamSchema, openCashSessionSchema } from './cash.schema.js';
 
 /**
  * @openapi
@@ -42,13 +42,38 @@ import { closeCashSessionSchema, idParamSchema, openCashSessionSchema } from './
  *   post:
  *     tags: [Caja]
  *     summary: "Cierra la caja"
- *     description: "Calcula el arqueo contra lo cobrado. Solo el dueño de la caja o un admin."
+ *     description: "Calcula el arqueo contra lo cobrado menos lo gastado. Solo el dueño de la caja o un admin."
  *     security: [{ bearerAuth: [] }]
  *     parameters: [{ in: path, name: id, required: true, schema: { type: integer } }]
  *     responses:
  *       200: { description: "Caja cerrada con el arqueo." }
  *       403: { description: "La caja es de otro usuario y el rol no es `admin`." }
  *       422: { description: "La caja ya estaba cerrada." }
+ *
+ * /cash-sessions/expenses:
+ *   post:
+ *     tags: [Caja]
+ *     summary: "Registra un gasto de la jornada"
+ *     description: "Se suma a `totalGastos` de la caja abierta del usuario, en la misma transacción. Sin esto el arqueo descuadraba con cualquier gasto real."
+ *     security: [{ bearerAuth: [] }]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema: { type: object, required: [concepto, monto], properties: { concepto: { type: string, example: Combustible }, monto: { oneOf: [{ type: string }, { type: number }] }, reciboUrl: { type: string, nullable: true } } }
+ *     responses:
+ *       201: { description: "Gasto registrado y aplicado al total de la caja." }
+ *       409: { description: "No hay caja abierta (`CASH_SESSION_REQUIRED`)." }
+ *       422: { description: "Monto no positivo." }
+ *
+ * /cash-sessions/{id}/expenses:
+ *   get:
+ *     tags: [Caja]
+ *     summary: "Lista los gastos de una sesión"
+ *     security: [{ bearerAuth: [] }]
+ *     parameters: [{ in: path, name: id, required: true, schema: { type: integer } }]
+ *     responses:
+ *       200: { description: "Gastos de la sesión, del más antiguo al más reciente." }
  */
 export const cashRouter = Router();
 
@@ -58,6 +83,13 @@ const idParams = validateParams(idParamSchema);
 cashRouter.post('/', ...auth, validateBody(openCashSessionSchema), controller.openSession);
 cashRouter.get('/current', ...auth, controller.getCurrentSession);
 cashRouter.get('/', requireAuth, requireRole('admin'), controller.listSessions);
+cashRouter.post(
+  '/expenses',
+  ...auth,
+  validateBody(createExpenseSchema),
+  controller.createExpense,
+);
+cashRouter.get('/:id/expenses', ...auth, idParams, controller.listExpenses);
 cashRouter.post(
   '/:id/close',
   ...auth,

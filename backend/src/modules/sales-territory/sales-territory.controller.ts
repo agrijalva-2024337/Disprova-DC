@@ -31,8 +31,7 @@ export const updateZone = asyncHandler(async (req: Request, res: Response) => {
 });
 
 export const deleteZone = asyncHandler(async (req: Request, res: Response) => {
-  await salesTerritoryService.deleteZone(paramId(req), userId(req));
-  res.status(204).send();
+  res.status(200).json(await salesTerritoryService.deleteZone(paramId(req), userId(req)));
 });
 
 export const listClients = asyncHandler(async (_req: Request, res: Response) => {
@@ -52,8 +51,7 @@ export const updateClient = asyncHandler(async (req: Request, res: Response) => 
 });
 
 export const deleteClient = asyncHandler(async (req: Request, res: Response) => {
-  await salesTerritoryService.deleteClient(paramId(req), userId(req));
-  res.status(204).send();
+  res.status(200).json(await salesTerritoryService.deleteClient(paramId(req), userId(req)));
 });
 
 export const listClientContacts = asyncHandler(async (req: Request, res: Response) => {
