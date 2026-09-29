@@ -14,6 +14,7 @@
 | DISP-022 | Auditoría en módulos faltantes (Ventas, Inventario, Cobranzas, Devoluciones, Caja) | Listo |
 | DISP-023 | Endpoint de lectura de Auditoría (GET /api/audit-log) | Listo |
 | DISP-024 | Documentación Swagger: 11 endpoints faltantes | Listo |
+| DISP-030 | Frontend: cobranza (estado de cuenta, pagos, antigüedad) | Pendiente |
 
 ## Definition of Done
 
