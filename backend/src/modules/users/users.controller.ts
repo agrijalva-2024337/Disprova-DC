@@ -22,6 +22,10 @@ export const listUsers = asyncHandler(async (req: Request, res: Response) => {
   res.status(200).json(await usersService.listUsers(filtros));
 });
 
+export const getUser = asyncHandler(async (req: Request, res: Response) => {
+  res.status(200).json(await usersService.getUser(paramId(req)));
+});
+
 export const createUser = asyncHandler(async (req: Request, res: Response) => {
   res.status(201).json(await usersService.createUser(req.body, adminId(req)));
 });

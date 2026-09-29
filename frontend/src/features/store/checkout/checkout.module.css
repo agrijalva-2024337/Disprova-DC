@@ -1,0 +1,145 @@
+.header {
+  padding: 1rem 1rem 0.5rem;
+}
+
+.title {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--store-accent);
+}
+
+.back {
+  display: inline-block;
+  margin-top: 0.25rem;
+  font-size: 0.8125rem;
+  color: var(--store-muted);
+  text-decoration: none;
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem 1rem;
+}
+
+.line {
+  background: var(--store-surface);
+  border: 1px solid var(--store-border);
+  border-radius: 1rem;
+  padding: 0.75rem;
+}
+
+.lineName {
+  font-size: 0.9375rem;
+  font-weight: 600;
+}
+
+.lineMeta {
+  margin-top: 0.125rem;
+  font-size: 0.8125rem;
+  color: var(--store-muted);
+}
+
+.lineRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+.stepper {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.lineTotal {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--store-accent);
+}
+
+.remove {
+  margin-top: 0.5rem;
+  background: none;
+  border: 0;
+  padding: 0;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--store-muted);
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.pago {
+  border: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0 1rem 1rem;
+}
+
+.pagoTitle {
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.radio {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: var(--store-surface);
+  border: 1px solid var(--store-border);
+  border-radius: 0.75rem;
+  padding: 0.75rem;
+  font-size: 0.875rem;
+}
+
+.radio input {
+  accent-color: var(--store-accent);
+}
+
+.footer {
+  padding: 0 1rem 1.5rem;
+}
+
+.total {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 0.75rem;
+  font-size: 0.9375rem;
+  font-weight: 600;
+}
+
+.error {
+  margin-bottom: 0.75rem;
+  border-radius: 0.75rem;
+  background: var(--store-accent-soft);
+  color: var(--store-text);
+  padding: 0.75rem;
+  font-size: 0.875rem;
+}
+
+.empty {
+  padding: 3rem 1.5rem;
+  text-align: center;
+  color: var(--store-muted);
+}
+
+.numero {
+  font-size: 2.25rem;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  color: var(--store-accent);
+  line-height: 1.1;
+}
+
+.confirmText {
+  margin-top: 1rem;
+  max-width: 18rem;
+  font-size: 1rem;
+  line-height: 1.45;
+}

@@ -207,4 +207,198 @@ export type Invoice = {
     numero: string
     client?: { id: number; nombreComercial: string }
   }
+=======
+export type ReturnEstado = 'pendiente' | 'aceptada' | 'rechazada'
+export type ReturnDestino = 'reingreso' | 'merma'
+
+export type ReturnItem = {
+  id: number
+  returnId: number
+  orderItemId: number
+  cantidad: string
+  batchId: number | null
+  destino: ReturnDestino
+}
+
+export type MerchandiseReturn = {
+  id: number
+  clientId: number
+  orderId: number
+  userId: number
+  fecha: string
+  motivo: string
+  estado: ReturnEstado
+  /** Queda en 0 mientras está pendiente: se calcula al aceptarla. */
+  total: string
+  createdAt: string
+  items: ReturnItem[]
+}
+
+export type CreateReturnInput = {
+  clientId: number
+  orderId: number
+  motivo: string
+  items: Array<{
+    orderItemId: number
+    cantidad: string
+    batchId?: number | null
+    destino: ReturnDestino
+  }>
+}
+
+export type CashSessionEstado = 'abierta' | 'cerrada'
+
+export type CashSession = {
+  id: number
+  userId: number
+  fecha: string
+  fondoInicial: string
+  totalCobrado: string
+  totalGastos: string
+  conteoFinal: string | null
+  diferencia: string | null
+  estado: CashSessionEstado
+  createdAt: string
+  cerradaAt: string | null
+}
+
+export type CashSessionFilters = {
+  userId?: number
+  desde?: string
+  hasta?: string
+}
+
+/** Movimientos de la cuenta corriente. El backend los devuelve de más antiguo a más nuevo. */
+export type AccountMovement = {
+  id: number
+  clientId: number
+  tipo: 'cargo' | 'abono'
+  referenciaTipo: string
+  referenciaId: string
+  monto: string
+  saldoResultante: string
+  fecha: string
+  createdAt: string
+}
+
+export type AccountStatement = {
+  saldoActual: string
+  movements: AccountMovement[]
+}
+
+/** Los mismos cuatro buckets que arma el backend en `getAging`. */
+export type AgingBuckets = {
+  '0-15': string
+  '16-30': string
+  '31-60': string
+  '60+': string
+}
+
+export type ClientAging = {
+  saldoActual: string
+  buckets: AgingBuckets
+}
+
+/** Fila de `GET /api/reports/aging`: un cliente con saldo y sus buckets. */
+export type AgingRow = {
+  clientId: number
+  nombre: string
+  saldoActual: string
+  buckets: AgingBuckets
+}
+
+export type SalesTodayVendedor = {
+  userId: number
+  nombre: string
+  contado: string
+  credito: string
+  total: string
+}
+
+/**
+ * `GET /api/reports/sales-today`. Ojo: el backend NO devuelve la cantidad de
+ * pedidos por vendedor, solo los montos, asi que el dashboard no la muestra.
+ */
+export type SalesToday = {
+  total: string
+  porCondicion: { contado: string; credito: string }
+  porVendedor: SalesTodayVendedor[]
+}
+
+export type CollectionsTodayVendedor = {
+  userId: number
+  nombre: string
+  total: string
+}
+
+/**
+ * `GET /api/reports/collections-today`. Ojo: agrupa por VENDEDOR, no por método
+ * de pago. Para desglosar por efectivo/transferencia/cheque hace falta un
+ * endpoint nuevo (ver el aviso de DISP-033).
+ */
+export type CollectionsToday = {
+  total: string
+  porVendedor: CollectionsTodayVendedor[]
+}
+
+export type PaymentMethod = 'efectivo' | 'transferencia' | 'cheque'
+
+export type Payment = {
+  id: number
+  clientId: number
+  userId: number
+  fecha: string
+  monto: string
+  metodo: PaymentMethod
+  referencia: string | null
+  cashSessionId: number | null
+  createdAt: string
+}
+
+export type PaymentApplication = {
+  id: number
+  paymentId: number
+  orderId: number
+  montoAplicado: string
+}
+
+export type PaymentWithApplications = Payment & {
+  applications: PaymentApplication[]
+}
+
+export type PaymentInput = {
+  clientId: number
+  monto: string
+  metodo: PaymentMethod
+  referencia?: string | null
+}
+
+export type ApplyPaymentInput = {
+  applications: Array<{ orderId: number; monto: string }>
+}
+
+export type CollectionVisitResultado =
+  | 'pago_completo'
+  | 'pago_parcial'
+  | 'compromiso'
+  | 'sin_contacto'
+
+export type CollectionVisit = {
+  id: number
+  clientId: number
+  userId: number
+  fecha: string
+  resultado: CollectionVisitResultado
+  montoComprometido: string | null
+  fechaCompromiso: string | null
+  observaciones: string | null
+  createdAt: string
+}
+
+export type CollectionVisitInput = {
+  clientId: number
+  resultado: CollectionVisitResultado
+  montoComprometido?: string | null
+  fechaCompromiso?: string | null
+  observaciones?: string | null
 }

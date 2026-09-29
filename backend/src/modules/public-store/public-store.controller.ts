@@ -11,6 +11,10 @@ function clientId(req: Request): number {
   return Number(req.params.clientId);
 }
 
+function tokenId(req: Request): number {
+  return Number(req.params.id);
+}
+
 /** El token NO habilita endpoints internos: acá siempre hace falta JWT + admin. */
 export const createClientAccessToken = asyncHandler(async (req: Request, res: Response) => {
   res.status(201).json(
@@ -18,11 +22,19 @@ export const createClientAccessToken = asyncHandler(async (req: Request, res: Re
   );
 });
 
+export const listClientAccessTokens = asyncHandler(async (req: Request, res: Response) => {
+  res.status(200).json(await publicStoreService.listClientAccessTokens(clientId(req)));
+});
+
+export const revokeClientAccessToken = asyncHandler(async (req: Request, res: Response) => {
+  res.status(200).json(await publicStoreService.revokeClientAccessToken(tokenId(req), adminId(req)));
+});
+
 export const getPublicCatalog = asyncHandler(async (req: Request, res: Response) => {
   if (!req.publicClient) {
     throw new AppError('Token de acceso inválido', 401, 'PUBLIC_TOKEN_INVALID');
   }
-  res.status(200).json(await publicStoreService.getPublicCatalog(req.publicClient.priceListId));
+  res.status(200).json(await publicStoreService.getPublicCatalog(req.publicClient));
 });
 
 export const createPublicOrder = asyncHandler(async (req: Request, res: Response) => {
