@@ -183,3 +183,28 @@ export type RouteVisitInput = {
   resultado: 'pedido' | 'no_compro' | 'cerrado'
   motivo?: string | null
 }
+
+export type InvoiceEstado = 'pendiente_certificacion' | 'certificada' | 'error'
+
+/** `GET /api/invoices` incluye el pedido con su cliente, para no pedir otra cosa. */
+export type Invoice = {
+  id: number
+  orderId: number
+  serie: string
+  /** Correlativo interno. NO es el número fiscal: ese lo asigna el certificador. */
+  numero: number
+  /** UUID que devuelve la SAT al certificar. Null hasta entonces. */
+  uuidFel: string | null
+  fechaCertificacion: string | null
+  estado: InvoiceEstado
+  total: string
+  xmlUrl: string | null
+  pdfUrl: string | null
+  error: string | null
+  createdAt: string
+  order?: {
+    id: number
+    numero: string
+    client?: { id: number; nombreComercial: string }
+  }
+}
