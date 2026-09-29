@@ -61,6 +61,7 @@ export type PublicProduct = {
   descripcion: string | null
   marca: string | null
   categoryId: number
+  imagenUrl: string | null
   unidades: PublicUnit[]
 }
 

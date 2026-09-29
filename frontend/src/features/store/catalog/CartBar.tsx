@@ -19,9 +19,9 @@ export function CartBar({ token, catalog }: { token: string; catalog: PublicCata
     <div className={styles.bar}>
       <div>
         <p className={styles.barCount}>{etiqueta}</p>
-        <p className={styles.barTotal}>Q {total}</p>
+        <p className={`${styles.barTotal} font-display`}>Q {total}</p>
       </div>
-      <Link className={styles.addbtn} to={`/catalogo/${token}/pedido`}>
+      <Link className={`${styles.barLink} font-body`} to={`/catalogo/${token}/pedido`}>
         Ver pedido
       </Link>
     </div>
