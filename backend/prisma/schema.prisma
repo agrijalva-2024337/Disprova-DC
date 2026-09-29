@@ -76,6 +76,7 @@ model Category {
   children Category[] @relation("CategoryTree")
   products Product[]
 
+  @@index([activo], map: "categories_activo_idx")
   @@map("categories")
 }
 
@@ -98,6 +99,7 @@ model Product {
   stocks   Stock[]
   movements InventoryMovement[]
 
+  @@index([activo], map: "products_activo_idx")
   @@map("products")
 }
 
@@ -147,11 +149,15 @@ model PriceListItem {
   productUnitId Int      @map("product_unit_id")
   precio        Decimal  @db.Decimal(12, 2)
   vigenteDesde  DateTime @map("vigente_desde") @db.Date
+  /// false cuando el precio se deja de aplicar. El registro queda: un pedido
+  /// viejo tiene que poder seguir mostrando de dónde salió su precio.
+  activo        Boolean  @default(true)
 
   priceList   PriceList   @relation(fields: [priceListId], references: [id], onDelete: Restrict)
   productUnit ProductUnit @relation(fields: [productUnitId], references: [id], onDelete: Restrict)
 
   @@unique([priceListId, productUnitId, vigenteDesde])
+  @@index([priceListId, productUnitId, activo, vigenteDesde(sort: Desc)], map: "price_list_items_lookup_idx")
   @@map("price_list_items")
 }
 
@@ -217,6 +223,7 @@ model Client {
   accessTokens       ClientAccessToken[]
 
   @@unique([zoneId, ordenRuta])
+  @@index([activo, zoneId, ordenRuta], map: "clients_activo_zone_id_orden_ruta_idx")
   @@map("clients")
 }
 

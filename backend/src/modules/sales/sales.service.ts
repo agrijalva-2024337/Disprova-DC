@@ -42,15 +42,19 @@ async function sellerVehicle(tx: Prisma.TransactionClient, userId: number) {
 }
 
 /**
- * Precio vigente de una presentación en una lista de precios: el ítem más
- * reciente cuyo `vigenteDesde` ya pasó. Lo usan tanto el pedido de campo
- * (createOrder) como el catálogo público por token.
+ * Precio vigente de una presentación en una lista de precios: el ítem activo
+ * más reciente cuyo `vigenteDesde` ya pasó.
+ *
+ * Filtra por `activo: true` para que un precio desactivado deje de aplicarse
+ * sin que desaparezca de la historia: los pedidos viejos conservan el precio
+ * con que se tomaron, porque ese precio ya está copiado en `order_items`.
  */
 export async function currentPrice(priceListId: number, productUnitId: number) {
   return prisma.priceListItem.findFirst({
     where: {
       priceListId,
       productUnitId,
+      activo: true,
       vigenteDesde: { lte: new Date() },
     },
     orderBy: { vigenteDesde: 'desc' },
