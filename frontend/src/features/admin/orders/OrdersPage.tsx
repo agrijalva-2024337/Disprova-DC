@@ -3,10 +3,8 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { listOrders, type AdminOrder, type OrderCanal, type OrderEstado } from '../api/orders.ts'
 import { listClients } from '../api/territory.ts'
-import { DataTable, EmptyRow, Td, Th, Tr } from '../ui/DataTable.tsx'
 import { OrderStatus, QueryStatus } from '../ui/Status.tsx'
 import { RecordSheet, RowMoves } from '../ui/RecordSheet.tsx'
-import { PageHeader } from '../ui/StatCard.tsx'
 
 const canalLabel: Record<OrderCanal, string> = {
   campo: 'Campo',
@@ -47,17 +45,18 @@ export function OrdersPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader titulo="Pedidos" descripcion="Pedidos de campo, web y WhatsApp." />
+      <div>
+        <h1 className="text-xl font-semibold">Pedidos</h1>
+        <p className="text-sm text-slate-600">Pedidos de campo, web y WhatsApp.</p>
+      </div>
 
       <div className="flex flex-wrap gap-3">
         <label className="block text-sm">
-          <span className="mb-1.5 block text-[0.6875rem] font-semibold uppercase tracking-[0.1em] text-muted">
-            Estado
-          </span>
+          <span className="mb-1 block font-medium">Estado</span>
           <select
             value={estado}
             onChange={(event) => setEstado(event.target.value as '' | OrderEstado)}
-            className="rounded-[0.625rem] border border-line bg-surface px-3 py-2 text-sm text-ink outline-none focus:border-brand"
+            className="rounded border border-slate-300 px-3 py-2 text-sm"
           >
             <option value="">Todos</option>
             <option value="borrador">Borrador</option>
@@ -68,13 +67,11 @@ export function OrdersPage() {
           </select>
         </label>
         <label className="block text-sm">
-          <span className="mb-1.5 block text-[0.6875rem] font-semibold uppercase tracking-[0.1em] text-muted">
-            Cliente
-          </span>
+          <span className="mb-1 block font-medium">Cliente</span>
           <select
             value={clientId}
             onChange={(event) => setClientId(event.target.value)}
-            className="max-w-xs rounded-[0.625rem] border border-line bg-surface px-3 py-2 text-sm text-ink outline-none focus:border-brand"
+            className="max-w-xs rounded border border-slate-300 px-3 py-2 text-sm"
           >
             <option value="">Todos</option>
             {(clientsQuery.data ?? []).map((client) => (
@@ -85,13 +82,11 @@ export function OrdersPage() {
           </select>
         </label>
         <label className="block text-sm">
-          <span className="mb-1.5 block text-[0.6875rem] font-semibold uppercase tracking-[0.1em] text-muted">
-            Canal
-          </span>
+          <span className="mb-1 block font-medium">Canal</span>
           <select
             value={canal}
             onChange={(event) => setCanal(event.target.value as '' | OrderCanal)}
-            className="rounded-[0.625rem] border border-line bg-surface px-3 py-2 text-sm text-ink outline-none focus:border-brand"
+            className="rounded border border-slate-300 px-3 py-2 text-sm"
           >
             <option value="">Todos</option>
             <option value="campo">Campo</option>
@@ -101,82 +96,86 @@ export function OrdersPage() {
         </label>
       </div>
 
-
       <QueryStatus
         isLoading={ordersQuery.isLoading}
         errorMessage={ordersQuery.isError ? 'No se pudieron cargar los pedidos' : null}
       />
 
       {!ordersQuery.isLoading && !ordersQuery.isError ? (
-        <DataTable>
-          <thead>
-            <tr>
-              <Th>Número</Th>
-              <Th>Cliente</Th>
-              <Th>Vendedor</Th>
-              <Th>Canal</Th>
-              <Th>Estado</Th>
-              <Th>Condición de pago</Th>
-              <Th align="right">Total</Th>
-              <Th>Fecha</Th>
-              <Th>Acciones</Th>
-            </tr>
-          </thead>
-          <tbody>
-            {(ordersQuery.data ?? []).length === 0 ? (
-              <EmptyRow columnas={9}>No hay pedidos para mostrar.</EmptyRow>
-            ) : (
-              (ordersQuery.data ?? []).map((order) => (
-                <Tr key={order.id} className="cursor-pointer" onDoubleClick={() => setVisto(order)}>
-                  <Td>
-                    <Link
-                      to={`/admin/pedidos/${order.id}`}
-                      className="font-semibold text-brand underline-offset-2 hover:underline"
-                    >
-                      {order.numero}
-                    </Link>
-                  </Td>
-                  <Td className="font-medium text-ink">{order.client?.nombreComercial ?? '—'}</Td>
-                  <Td>{order.user?.nombre ?? '—'}</Td>
-                  <Td>{canalLabel[order.canal]}</Td>
-                  <Td>
-                    <OrderStatus estado={order.estado} />
-                  </Td>
-                  <Td>{pagoLabel[order.condicionPago]}</Td>
-                  <Td align="right" className="font-semibold tabular-nums text-ink">
-                    {quetzales(order.total)}
-                  </Td>
-                  <Td className="whitespace-nowrap text-muted">{fecha(order.createdAt)}</Td>
-                  <Td>
-                    <RowMoves onView={() => setVisto(order)} editTo={`/admin/pedidos/${order.id}`} />
-                  </Td>
-                </Tr>
-              ))
-            )}
-          </tbody>
-        </DataTable>
+        <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white">
+          <table className="min-w-full text-left text-sm">
+            <thead className="bg-slate-50 text-slate-600">
+              <tr>
+                <th className="px-3 py-2 font-medium">Número</th>
+                <th className="px-3 py-2 font-medium">Cliente</th>
+                <th className="px-3 py-2 font-medium">Vendedor</th>
+                <th className="px-3 py-2 font-medium">Canal</th>
+                <th className="px-3 py-2 font-medium">Estado</th>
+                <th className="px-3 py-2 font-medium">Condición de pago</th>
+                <th className="px-3 py-2 font-medium">Total</th>
+                <th className="px-3 py-2 font-medium">Fecha</th>
+                <th className="px-3 py-2 font-medium">Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              {(ordersQuery.data ?? []).length === 0 ? (
+                <tr>
+                  <td colSpan={9} className="px-3 py-6 text-center text-slate-500">
+                    No hay pedidos para mostrar.
+                  </td>
+                </tr>
+              ) : (
+                (ordersQuery.data ?? []).map((order) => (
+                  <tr
+                    key={order.id}
+                    className="cursor-pointer border-t border-slate-100"
+                    onDoubleClick={() => setVisto(order)}
+                  >
+                    <td className="px-3 py-2">
+                      <Link to={`/admin/pedidos/${order.id}`} className="font-medium text-slate-900 underline">
+                        {order.numero}
+                      </Link>
+                    </td>
+                    <td className="px-3 py-2">{order.client?.nombreComercial ?? '—'}</td>
+                    <td className="px-3 py-2">{order.user?.nombre ?? '—'}</td>
+                    <td className="px-3 py-2">{canalLabel[order.canal]}</td>
+                    <td className="px-3 py-2">
+                      <OrderStatus estado={order.estado} />
+                    </td>
+                    <td className="px-3 py-2">{pagoLabel[order.condicionPago]}</td>
+                    <td className="px-3 py-2">{quetzales(order.total)}</td>
+                    <td className="px-3 py-2">{fecha(order.createdAt)}</td>
+                    <td className="px-3 py-2">
+                      <RowMoves onView={() => setVisto(order)} editTo={`/admin/pedidos/${order.id}`} />
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
       ) : null}
       {visto ? (
         <RecordSheet title={visto.numero} onClose={() => setVisto(null)}>
           <dl className="grid gap-3 text-sm sm:grid-cols-2">
             <div>
-              <dt className="text-muted">Cliente</dt>
+              <dt className="text-slate-500">Cliente</dt>
               <dd>{visto.client?.nombreComercial ?? '—'}</dd>
             </div>
             <div>
-              <dt className="text-muted">Vendedor</dt>
+              <dt className="text-slate-500">Vendedor</dt>
               <dd>{visto.user?.nombre ?? '—'}</dd>
             </div>
             <div>
-              <dt className="text-muted">Canal</dt>
+              <dt className="text-slate-500">Canal</dt>
               <dd>{canalLabel[visto.canal]}</dd>
             </div>
             <div>
-              <dt className="text-muted">Total</dt>
+              <dt className="text-slate-500">Total</dt>
               <dd>{quetzales(visto.total)}</dd>
             </div>
           </dl>
-          <Link to={`/admin/pedidos/${visto.id}`} className="mt-4 inline-block rounded-full bg-ink px-4 py-2 text-sm text-parchment">
+          <Link to={`/admin/pedidos/${visto.id}`} className="mt-4 inline-block rounded-full bg-slate-900 px-4 py-2 text-sm text-white">
             Abrir pedido
           </Link>
         </RecordSheet>

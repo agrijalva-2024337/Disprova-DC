@@ -1,41 +1,54 @@
 @import 'tailwindcss';
 @config '../tailwind.config.js';
 
-/*
- * Base global del panel. Solo lo que aplica a toda la app; lo específico de
- * una pantalla va en CSS modules dentro de features/.
- */
+/* La misma paleta de la tienda, aplicada a las utilidades slate que ya usa
+   el admin y la ruta. El rojo queda para el filete y los números, no para
+   pintar botones: esos siguen en tinta porque slate-900 pasa a ser tinta. */
+@theme {
+  --color-slate-50: #faf8f4;
+  --color-slate-100: #f3efe8;
+  --color-slate-200: #e8e1d6;
+  --color-slate-300: #e8e1d6;
+  --color-slate-400: #8a7f73;
+  --color-slate-500: #8a7f73;
+  --color-slate-600: #5c534c;
+  --color-slate-700: #1c1512;
+  --color-slate-800: #1c1512;
+  --color-slate-900: #1c1512;
+  --font-sans: Outfit, sans-serif;
+}
 
 :root {
-  color-scheme: light;
+  --store-bg: #faf8f4;
+  --store-surface: #ffffff;
+  --store-border: #e8e1d6;
+  --store-ink: #1c1512;
+  --store-muted: #8a7f73;
+  --store-accent: #a3221c;
 }
 
 html {
-  -webkit-text-size-adjust: 100%;
+  background: var(--store-bg);
+  color: var(--store-ink);
 }
 
 body {
   margin: 0;
-  background: var(--color-parchment);
-  color: var(--color-ink);
-  font-family: Outfit, system-ui, sans-serif;
-  -webkit-font-smoothing: antialiased;
-  text-rendering: optimizeLegibility;
+  font-family: Outfit, sans-serif;
+  background: var(--store-bg);
+  color: var(--store-ink);
 }
 
 h1,
 .font-display {
   font-family: 'Bricolage Grotesque', sans-serif;
+  font-weight: 600;
   letter-spacing: -0.03em;
-}
-
-.font-body {
-  font-family: Outfit, system-ui, sans-serif;
 }
 
 .ficha {
   border-radius: 1.5rem;
-  border: 1px solid var(--color-line, #e8e1d6);
+  border: 1px solid var(--store-border);
   background: white;
   padding: 1.25rem;
   box-shadow: 0 18px 40px rgba(28, 21, 18, 0.06);
@@ -52,45 +65,9 @@ h1,
   padding: 0.65rem 0.9rem;
 }
 
-/* Cifras de dinero siempre alineadas, para que las columnas se lean. */
-.tabular-nums {
-  font-variant-numeric: tabular-nums;
-}
-
-/*
- * Quién pide menos movimiento no lo paga: la intro de marca y las entradas
- * se desactivan y el contenido aparece tal cual.
- */
-@media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    animation-duration: 0.001ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.001ms !important;
-    scroll-behavior: auto !important;
-  }
-}
-
-/* Barra de desplazamiento discreta, del color del borde de marca. */
-* {
-  scrollbar-width: thin;
-  scrollbar-color: #d8cfc1 transparent;
-}
-
-*::-webkit-scrollbar {
-  width: 10px;
-  height: 10px;
-}
-
-*::-webkit-scrollbar-thumb {
-  background: #d8cfc1;
-  border: 3px solid transparent;
-  background-clip: content-box;
-  border-radius: 999px;
-}
-
-*::-webkit-scrollbar-thumb:hover {
-  background: #b9ab99;
-  background-clip: content-box;
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid var(--store-accent);
+  outline-offset: 1px;
 }
