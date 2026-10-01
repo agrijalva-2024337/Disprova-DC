@@ -23,6 +23,8 @@ model User {
   id           Int      @id @default(autoincrement())
   nombre       String
   email        String   @unique
+  usuario      String?  @unique
+  avatarUrl    String?  @map("avatar_url") @db.Text
   passwordHash String   @map("password_hash")
   roleId       Int      @map("role_id")
   activo       Boolean  @default(true)

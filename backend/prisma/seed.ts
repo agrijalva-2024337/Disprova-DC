@@ -69,6 +69,7 @@ async function main() {
     data: {
       nombre: 'Pedidos Web',
       email: 'pedidos-web@disprova.local',
+      usuario: 'pedidos-web',
       passwordHash: await bcrypt.hash(randomBytes(32).toString('hex'), 10),
       roleId: sistemaRole.id,
       activo: false,
@@ -81,6 +82,7 @@ async function main() {
     data: {
       nombre: 'Administrador Demo',
       email: 'admin@disprova.local',
+      usuario: 'admin',
       passwordHash,
       roleId: adminRole.id,
       activo: true,

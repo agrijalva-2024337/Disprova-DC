@@ -268,6 +268,24 @@ export function NewOrderPage() {
     },
   })
 
+  return (
+    <div className="mx-auto flex min-h-screen w-full max-w-6xl flex-col bg-slate-100 pb-40">
+      <header className="sticky top-0 z-10 bg-white px-4 py-4">
+        <Link to="/ruta" className="text-base text-slate-600">
+          ← Ruta
+        </Link>
+        <h1 className="text-2xl font-semibold">{clientQuery.data?.nombreComercial ?? 'Pedido'}</h1>
+        <input
+          value={search}
+          onChange={(event) => {
+            setSearch(event.target.value)
+            setPickedProductId(null)
+          }}
+          placeholder="Nombre o código"
+          className="mt-3 h-14 w-full rounded-xl border border-slate-300 px-4 text-lg"
+        />
+      </header>
+=======
   const cargando = clientQuery.isLoading || productsQuery.isLoading || priceQuery.isLoading
   const errorCarga = [clientQuery, productsQuery, categoriesQuery, priceQuery].find(
     (query) => query.isError,
@@ -362,6 +380,43 @@ export function NewOrderPage() {
         ))}
       </nav>
 
+      <div className="fixed inset-x-0 bottom-0 z-10 mx-auto w-full max-w-6xl border-t border-slate-200 bg-white px-4 py-3">
+        <div className="max-h-40 space-y-2 overflow-y-auto">
+          {cart.map((line) => (
+            <div key={line.productUnitId} className="flex items-center justify-between gap-2">
+              <p className="text-sm">
+                {line.productName} · {line.unitName}
+              </p>
+              <input
+                aria-label={`Cantidad ${line.productName} ${line.unitName}`}
+                value={line.cantidad}
+                onChange={(event) =>
+                  setCart((current) =>
+                    current.map((item) =>
+                      item.productUnitId === line.productUnitId
+                        ? { ...item, cantidad: Number(event.target.value) || 0 }
+                        : item,
+                    ),
+                  )
+                }
+                className="h-12 w-16 rounded-lg border border-slate-300 text-center text-lg"
+              />
+            </div>
+          ))}
+        </div>
+        <p className="mt-2 text-lg font-semibold">Total Q{money(total).toFixed(2)}</p>
+        <button
+          type="button"
+          disabled={cart.length === 0 || saveMutation.isPending}
+          onClick={() => {
+            setErrorTitle(null)
+            setErrorDetail(null)
+            saveMutation.mutate()
+          }}
+          className="mt-2 h-14 w-full rounded-xl bg-slate-900 text-lg font-medium text-white disabled:opacity-50"
+        >
+          {saveMutation.isPending ? 'Confirmando…' : 'Confirmar pedido'}
+        </button>
       {!cargando && !mensajeCarga && visibles.length === 0 ? (
         <p className="mt-6 rounded-card border border-dashed border-line bg-surface px-4 py-10 text-center text-sm text-muted">
           {busqueda.trim() === ''

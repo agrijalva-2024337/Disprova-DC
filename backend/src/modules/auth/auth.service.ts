@@ -75,8 +75,40 @@ function invalidCredentials(): never {
   throw new AppError('Credenciales inválidas', 401, 'INVALID_CREDENTIALS');
 }
 
-export async function login(email: string, password: string) {
-  const user = await prisma.user.findUnique({ where: { email }, include: { role: true } });
+function toPublicUser(user: {
+  id: number;
+  nombre: string;
+  email: string;
+  usuario: string | null;
+  avatarUrl: string | null;
+  roleId: number;
+  activo: boolean;
+  role: { nombre: string };
+}) {
+  return {
+    id: user.id,
+    nombre: user.nombre,
+    email: user.email,
+    usuario: user.usuario,
+    avatarUrl: user.avatarUrl,
+    roleId: user.roleId,
+    rol: user.role.nombre,
+    activo: user.activo,
+  };
+}
+
+export async function login(identificador: { email?: string; usuario?: string }, password: string) {
+  const email = identificador.email?.trim();
+  const usuario = identificador.usuario?.trim();
+  const user = await prisma.user.findFirst({
+    where: {
+      OR: [
+        ...(email ? [{ email }] : []),
+        ...(usuario ? [{ usuario: { equals: usuario, mode: 'insensitive' as const } }] : []),
+      ],
+    },
+    include: { role: true },
+  });
 
   if (!user || !user.activo) {
     invalidCredentials();
@@ -91,15 +123,45 @@ export async function login(email: string, password: string) {
 
   return {
     ...tokens,
-    user: {
-      id: user.id,
-      nombre: user.nombre,
-      email: user.email,
-      roleId: user.roleId,
-      rol: user.role.nombre,
-      activo: user.activo,
-    },
+    user: toPublicUser(user),
   };
+}
+
+export async function getMe(userId: number) {
+  const user = await prisma.user.findUnique({ where: { id: userId }, include: { role: true } });
+  if (!user || !user.activo) {
+    throw new AppError('No autenticado', 401, 'UNAUTHORIZED');
+  }
+  return toPublicUser(user);
+}
+
+export async function updateMe(
+  userId: number,
+  input: { nombre?: string; usuario?: string; avatarUrl?: string | null },
+) {
+  if (input.usuario) {
+    const taken = await prisma.user.findFirst({
+      where: {
+        usuario: { equals: input.usuario, mode: 'insensitive' },
+        NOT: { id: userId },
+      },
+    });
+    if (taken) {
+      throw new AppError('Ese usuario ya existe', 409, 'USERNAME_TAKEN');
+    }
+  }
+
+  const user = await prisma.user.update({
+    where: { id: userId },
+    data: {
+      ...(input.nombre !== undefined ? { nombre: input.nombre } : {}),
+      ...(input.usuario !== undefined ? { usuario: input.usuario.toLowerCase() } : {}),
+      ...(input.avatarUrl !== undefined ? { avatarUrl: input.avatarUrl } : {}),
+    },
+    include: { role: true },
+  });
+
+  return toPublicUser(user);
 }
 
 export async function refresh(refreshToken: string) {

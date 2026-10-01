@@ -4,6 +4,7 @@ import { createZone, listZones, updateZone } from '../api/territory.ts'
 import type { Zone } from '../api/types.ts'
 import { ApiError } from '../api/http.ts'
 import { Alert, QueryStatus } from '../ui/Status.tsx'
+import { RecordSheet, RowMoves } from '../ui/RecordSheet.tsx'
 
 const DAY_OPTIONS = [
   { value: 1, label: 'Lun' },
@@ -25,6 +26,7 @@ export function ZonesPage() {
   const queryClient = useQueryClient()
   const zonesQuery = useQuery({ queryKey: ['zones'], queryFn: listZones })
   const [editing, setEditing] = useState<Zone | null>(null)
+  const [visto, setVisto] = useState<Zone | null>(null)
   const [nombre, setNombre] = useState('')
   const [semanaMes, setSemanaMes] = useState('1')
   const [dias, setDias] = useState<number[]>([1])
@@ -88,7 +90,7 @@ export function ZonesPage() {
           setFormError(null)
           saveMutation.mutate()
         }}
-        className="max-w-xl space-y-3 rounded-lg border border-slate-200 bg-white p-4"
+        className="ficha max-w-xl space-y-3"
       >
         <h2 className="text-sm font-semibold">{editing ? `Editar ${editing.nombre}` : 'Nueva zona'}</h2>
         {formError ? <Alert tone="error">{formError}</Alert> : null}
@@ -175,25 +177,55 @@ export function ZonesPage() {
             </thead>
             <tbody>
               {(zonesQuery.data ?? []).map((zone) => (
-                <tr key={zone.id} className="border-t border-slate-100">
+                <tr
+                  key={zone.id}
+                  className="cursor-pointer border-t border-slate-100"
+                  onDoubleClick={() => setVisto(zone)}
+                >
                   <td className="px-3 py-2">{zone.nombre}</td>
                   <td className="px-3 py-2">{zone.semanaMes}</td>
                   <td className="px-3 py-2">{dayLabels(zone.diasSemana)}</td>
                   <td className="px-3 py-2">{zone.activo ? 'Activa' : 'Inactiva'}</td>
                   <td className="px-3 py-2">
-                    <button
-                      type="button"
-                      onClick={() => loadZone(zone)}
-                      className="rounded border border-slate-300 px-2 py-1 text-xs hover:bg-slate-50"
-                    >
-                      Editar
-                    </button>
+                    <RowMoves
+                      onView={() => setVisto(zone)}
+                      onEdit={() => loadZone(zone)}
+                      onDisable={
+                        zone.activo
+                          ? () =>
+                              updateZone(zone.id, {
+                                nombre: zone.nombre,
+                                semanaMes: zone.semanaMes,
+                                diasSemana: zone.diasSemana,
+                                activo: false,
+                              }).then(() => queryClient.invalidateQueries({ queryKey: ['zones'] }))
+                          : undefined
+                      }
+                    />
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
+      ) : null}
+      {visto ? (
+        <RecordSheet title={visto.nombre} onClose={() => setVisto(null)}>
+          <dl className="grid gap-3 text-sm sm:grid-cols-2">
+            <div>
+              <dt className="text-slate-500">Semana</dt>
+              <dd>{visto.semanaMes}</dd>
+            </div>
+            <div>
+              <dt className="text-slate-500">Días</dt>
+              <dd>{dayLabels(visto.diasSemana)}</dd>
+            </div>
+            <div>
+              <dt className="text-slate-500">Estado</dt>
+              <dd>{visto.activo ? 'Activa' : 'Inactiva'}</dd>
+            </div>
+          </dl>
+        </RecordSheet>
       ) : null}
     </div>
   )

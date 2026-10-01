@@ -13,6 +13,33 @@ describe('POST /api/auth/login', () => {
     expect(response.body.accessToken).toEqual(expect.any(String));
     expect(response.body.refreshToken).toEqual(expect.any(String));
     expect(response.body.user.email).toBe('admin@disprova.local');
+    expect(response.body.user.usuario).toBe('admin');
+  });
+
+  it('inicia sesión con el nombre de usuario', async () => {
+    const response = await request(app).post('/api/auth/login').send({
+      usuario: 'admin',
+      password: 'Admin123!',
+    });
+
+    expect(response.status).toBe(200);
+    expect(response.body.user.email).toBe('admin@disprova.local');
+  });
+
+  it('rechaza un nombre de usuario que ya existe', async () => {
+    const session = await request(app).post('/api/auth/login').send({
+      usuario: 'admin',
+      password: 'Admin123!',
+    });
+    expect(session.status).toBe(200);
+
+    const taken = await request(app)
+      .patch('/api/auth/me')
+      .set('Authorization', `Bearer ${session.body.accessToken}`)
+      .send({ usuario: 'pedidos-web' });
+
+    expect(taken.status).toBe(409);
+    expect(taken.body.error.code).toBe('USERNAME_TAKEN');
   });
 
   it('rechaza una contraseña incorrecta con el mismo error genérico', async () => {

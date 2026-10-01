@@ -1,11 +1,12 @@
 import { useQuery } from '@tanstack/react-query'
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { listOrders, type OrderCanal, type OrderEstado } from '../api/orders.ts'
+import { listOrders, type AdminOrder, type OrderCanal, type OrderEstado } from '../api/orders.ts'
 import { listClients } from '../api/territory.ts'
 import { DataTable, EmptyRow, Td, Th, Tr } from '../ui/DataTable.tsx'
 import { OrderStatus, QueryStatus } from '../ui/Status.tsx'
-import { PageHeader } from '../ui/StatCard.tsx'
+import { RecordSheet, RowMoves } from '../ui/RecordSheet.tsx'
+import { PageHeader } from '../ui/StatCard.tsx'n
 
 const canalLabel: Record<OrderCanal, string> = {
   campo: 'Campo',
@@ -30,6 +31,7 @@ export function OrdersPage() {
   const [estado, setEstado] = useState<'' | OrderEstado>('')
   const [clientId, setClientId] = useState('')
   const [canal, setCanal] = useState<'' | OrderCanal>('')
+  const [visto, setVisto] = useState<AdminOrder | null>(null)
 
   const filters = {
     clientId: clientId ? Number(clientId) : undefined,
@@ -106,6 +108,58 @@ export function OrdersPage() {
       />
 
       {!ordersQuery.isLoading && !ordersQuery.isError ? (
+        <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white">
+          <table className="min-w-full text-left text-sm">
+            <thead className="bg-slate-50 text-slate-600">
+              <tr>
+                <th className="px-3 py-2 font-medium">Número</th>
+                <th className="px-3 py-2 font-medium">Cliente</th>
+                <th className="px-3 py-2 font-medium">Vendedor</th>
+                <th className="px-3 py-2 font-medium">Canal</th>
+                <th className="px-3 py-2 font-medium">Estado</th>
+                <th className="px-3 py-2 font-medium">Condición de pago</th>
+                <th className="px-3 py-2 font-medium">Total</th>
+                <th className="px-3 py-2 font-medium">Fecha</th>
+                <th className="px-3 py-2 font-medium">Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              {(ordersQuery.data ?? []).length === 0 ? (
+                <tr>
+                  <td colSpan={9} className="px-3 py-6 text-center text-slate-500">
+                    No hay pedidos para mostrar.
+                  </td>
+                </tr>
+              ) : (
+                (ordersQuery.data ?? []).map((order) => (
+                  <tr
+                    key={order.id}
+                    className="cursor-pointer border-t border-slate-100"
+                    onDoubleClick={() => setVisto(order)}
+                  >
+                    <td className="px-3 py-2">
+                      <Link to={`/admin/pedidos/${order.id}`} className="font-medium text-slate-900 underline">
+                        {order.numero}
+                      </Link>
+                    </td>
+                    <td className="px-3 py-2">{order.client?.nombreComercial ?? '—'}</td>
+                    <td className="px-3 py-2">{order.user?.nombre ?? '—'}</td>
+                    <td className="px-3 py-2">{canalLabel[order.canal]}</td>
+                    <td className="px-3 py-2">
+                      <OrderStatus estado={order.estado} />
+                    </td>
+                    <td className="px-3 py-2">{pagoLabel[order.condicionPago]}</td>
+                    <td className="px-3 py-2">{quetzales(order.total)}</td>
+                    <td className="px-3 py-2">{fecha(order.createdAt)}</td>
+                    <td className="px-3 py-2">
+                      <RowMoves onView={() => setVisto(order)} editTo={`/admin/pedidos/${order.id}`} />
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
         <DataTable>
           <thead>
             <tr>
@@ -149,6 +203,31 @@ export function OrdersPage() {
             )}
           </tbody>
         </DataTable>
+      ) : null}
+      {visto ? (
+        <RecordSheet title={visto.numero} onClose={() => setVisto(null)}>
+          <dl className="grid gap-3 text-sm sm:grid-cols-2">
+            <div>
+              <dt className="text-slate-500">Cliente</dt>
+              <dd>{visto.client?.nombreComercial ?? '—'}</dd>
+            </div>
+            <div>
+              <dt className="text-slate-500">Vendedor</dt>
+              <dd>{visto.user?.nombre ?? '—'}</dd>
+            </div>
+            <div>
+              <dt className="text-slate-500">Canal</dt>
+              <dd>{canalLabel[visto.canal]}</dd>
+            </div>
+            <div>
+              <dt className="text-slate-500">Total</dt>
+              <dd>{quetzales(visto.total)}</dd>
+            </div>
+          </dl>
+          <Link to={`/admin/pedidos/${visto.id}`} className="mt-4 inline-block rounded-full bg-slate-900 px-4 py-2 text-sm text-white">
+            Abrir pedido
+          </Link>
+        </RecordSheet>
       ) : null}
     </div>
   )

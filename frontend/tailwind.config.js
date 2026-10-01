@@ -12,8 +12,8 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        display: ['Fraunces', 'serif'],
-        body: ['"IBM Plex Sans"', 'sans-serif'],
+        display: ['"Bricolage Grotesque"', 'sans-serif'],
+        body: ['Outfit', 'sans-serif'],
       },
       colors: {
         // Rojo del "GyG" del logo.

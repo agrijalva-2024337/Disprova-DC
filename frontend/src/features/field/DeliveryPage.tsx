@@ -65,6 +65,14 @@ export function DeliveryPage() {
 
 
   return (
+
+    <div className="mx-auto min-h-screen w-full max-w-6xl bg-slate-100 px-4 py-4">
+      <Link to="/ruta/entregas" className="text-base text-slate-600">
+        ← Entregas
+      </Link>
+      <h1 className="mt-2 text-2xl font-semibold">{order?.client?.nombreComercial ?? 'Entrega'}</h1>
+      {ordersQuery.isLoading ? <p className="mt-4">Cargando…</p> : null}
+=======
     <FieldShell
       titulo={order?.client?.nombreComercial ?? 'Entrega'}
       subtitulo={

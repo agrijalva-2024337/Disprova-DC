@@ -1,8 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState, type FormEvent } from 'react'
-import { createCategory, listCategories } from '../api/catalog.ts'
+import { createCategory, listCategories, updateCategory } from '../api/catalog.ts'
+import type { Category } from '../api/types.ts'
 import { ApiError } from '../api/http.ts'
 import { Alert, QueryStatus } from '../ui/Status.tsx'
+import { RecordSheet, RowMoves } from '../ui/RecordSheet.tsx'
 
 export function CategoriesPage() {
   const queryClient = useQueryClient()
@@ -15,6 +17,7 @@ export function CategoriesPage() {
   const [orden, setOrden] = useState('0')
   const [formError, setFormError] = useState<string | null>(null)
   const [formSuccess, setFormSuccess] = useState<string | null>(null)
+  const [visto, setVisto] = useState<Category | null>(null)
 
   const createMutation = useMutation({
     mutationFn: createCategory,
@@ -119,23 +122,58 @@ export function CategoriesPage() {
                 <th className="px-3 py-2 font-medium">Padre</th>
                 <th className="px-3 py-2 font-medium">Orden</th>
                 <th className="px-3 py-2 font-medium">Estado</th>
+                <th className="px-3 py-2 font-medium">Acciones</th>
               </tr>
             </thead>
             <tbody>
               {categories.map((category) => {
                 const parent = categories.find((item) => item.id === category.parentId)
                 return (
-                  <tr key={category.id} className="border-t border-slate-100">
+                  <tr
+                    key={category.id}
+                    className="cursor-pointer border-t border-slate-100"
+                    onDoubleClick={() => setVisto(category)}
+                  >
                     <td className="px-3 py-2">{category.nombre}</td>
                     <td className="px-3 py-2">{parent?.nombre ?? '—'}</td>
                     <td className="px-3 py-2">{category.orden}</td>
                     <td className="px-3 py-2">{category.activo ? 'Activa' : 'Inactiva'}</td>
+                    <td className="px-3 py-2">
+                      <RowMoves
+                        onView={() => setVisto(category)}
+                        onDisable={
+                          category.activo
+                            ? () =>
+                                updateCategory(category.id, {
+                                  nombre: category.nombre,
+                                  parentId: category.parentId,
+                                  orden: category.orden,
+                                  activo: false,
+                                }).then(() => queryClient.invalidateQueries({ queryKey: ['categories'] }))
+                            : undefined
+                        }
+                      />
+                    </td>
                   </tr>
                 )
               })}
             </tbody>
           </table>
         </div>
+      ) : null}
+      {visto ? (
+        <RecordSheet title={visto.nombre} onClose={() => setVisto(null)}>
+          <dl className="grid gap-3 text-sm sm:grid-cols-2">
+            <div>
+              <dt className="text-slate-500">Orden</dt>
+              <dd>{visto.orden}</dd>
+            </div>
+            <div>
+              <dt className="text-slate-500">Estado</dt>
+              <dd>{visto.activo ? 'Activa' : 'Inactiva'}</dd>
+            </div>
+          </dl>
+        </RecordSheet>
       ) : null}
     </div>
   )

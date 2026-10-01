@@ -2,8 +2,10 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { listCategories, listProducts, updateProduct } from '../api/catalog.ts'
+import type { Product } from '../api/types.ts'
 import { ApiError } from '../api/http.ts'
 import { Alert, QueryStatus } from '../ui/Status.tsx'
+import { RecordSheet, RowMoves } from '../ui/RecordSheet.tsx'
 
 const PAGE_SIZE = 10
 
@@ -13,6 +15,7 @@ export function ProductsPage() {
   const [page, setPage] = useState(1)
   const [pendingId, setPendingId] = useState<number | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
+  const [visto, setVisto] = useState<Product | null>(null)
 
   const productsQuery = useQuery({
     queryKey: ['products'],
@@ -123,30 +126,23 @@ export function ProductsPage() {
                 </tr>
               ) : (
                 pageItems.map((product) => (
-                  <tr key={product.id} className="border-t border-slate-100">
+                  <tr
+                    key={product.id}
+                    className="cursor-pointer border-t border-slate-100"
+                    onDoubleClick={() => setVisto(product)}
+                  >
                     <td className="px-3 py-2 font-mono text-xs">{product.sku}</td>
                     <td className="px-3 py-2">{product.nombre}</td>
                     <td className="px-3 py-2">{categoryNameById.get(product.categoryId) ?? '—'}</td>
                     <td className="px-3 py-2">{product.units.length}</td>
                     <td className="px-3 py-2">{product.activo ? 'Activo' : 'Inactivo'}</td>
                     <td className="px-3 py-2">
-                      <div className="flex flex-wrap gap-2">
-                        <Link
-                          to={`/admin/productos/${product.id}`}
-                          className="rounded border border-slate-300 px-2 py-1 text-xs hover:bg-slate-50"
-                        >
-                          Editar
-                        </Link>
-                        {product.activo ? (
-                          <button
-                            type="button"
-                            onClick={() => setPendingId(product.id)}
-                            className="rounded border border-red-200 px-2 py-1 text-xs text-red-700 hover:bg-red-50"
-                          >
-                            Desactivar
-                          </button>
-                        ) : null}
-                      </div>
+                      <RowMoves
+                        onView={() => setVisto(product)}
+                        editTo={`/admin/productos/${product.id}`}
+                        onDisable={product.activo ? () => setPendingId(product.id) : undefined}
+                        disableLabel="Desactivar"
+                      />
                     </td>
                   </tr>
                 ))
@@ -178,6 +174,32 @@ export function ProductsPage() {
             Siguiente
           </button>
         </div>
+      ) : null}
+
+      {visto ? (
+        <RecordSheet title={visto.nombre} onClose={() => setVisto(null)}>
+          <dl className="grid gap-3 text-sm sm:grid-cols-2">
+            <div>
+              <dt className="text-slate-500">SKU</dt>
+              <dd>{visto.sku}</dd>
+            </div>
+            <div>
+              <dt className="text-slate-500">Categoría</dt>
+              <dd>{categoryNameById.get(visto.categoryId) ?? '—'}</dd>
+            </div>
+            <div>
+              <dt className="text-slate-500">Presentaciones</dt>
+              <dd>{visto.units.map((unit) => unit.nombre).join(', ') || '—'}</dd>
+            </div>
+            <div>
+              <dt className="text-slate-500">Estado</dt>
+              <dd>{visto.activo ? 'Activo' : 'Inactivo'}</dd>
+            </div>
+          </dl>
+          <Link to={`/admin/productos/${visto.id}`} className="mt-4 inline-block rounded-full bg-slate-900 px-4 py-2 text-sm text-white">
+            Editar ficha
+          </Link>
+        </RecordSheet>
       ) : null}
 
       {pendingProduct ? (

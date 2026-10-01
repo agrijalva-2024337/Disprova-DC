@@ -3,9 +3,19 @@ import { asyncHandler } from '../../shared/http/asyncHandler.js';
 import * as authService from './auth.service.js';
 
 export const loginController = asyncHandler(async (req: Request, res: Response) => {
-  const { email, password } = req.body as { email: string; password: string };
-  const result = await authService.login(email, password);
+  const { email, usuario, password } = req.body as { email?: string; usuario?: string; password: string };
+  const result = await authService.login({ email, usuario }, password);
   res.status(200).json(result);
+});
+
+export const meController = asyncHandler(async (req: Request, res: Response) => {
+  const profile = await authService.getMe(req.user!.id);
+  res.status(200).json(profile);
+});
+
+export const updateMeController = asyncHandler(async (req: Request, res: Response) => {
+  const profile = await authService.updateMe(req.user!.id, req.body);
+  res.status(200).json(profile);
 });
 
 export const refreshController = asyncHandler(async (req: Request, res: Response) => {
