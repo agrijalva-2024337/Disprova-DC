@@ -2,6 +2,8 @@ export type AuthUser = {
   id: number
   nombre: string
   email: string
+  usuario: string | null
+  avatarUrl: string | null
   roleId: number
   rol: string
   activo: boolean

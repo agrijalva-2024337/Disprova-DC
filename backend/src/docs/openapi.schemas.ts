@@ -28,10 +28,20 @@ export const ESQUEMAS: Record<string, any> = {
   },
   LoginBody: {
     type: 'object',
-    required: ['email', 'password'],
+    required: ['password'],
+    description: 'Entra con `email` o con `usuario`. Basta uno de los dos, más la contraseña.',
     properties: {
       email: { type: 'string', format: 'email' },
+      usuario: { type: 'string', example: 'admin' },
       password: { type: 'string', format: 'password' },
+    },
+  },
+  UpdateProfileBody: {
+    type: 'object',
+    properties: {
+      nombre: { type: 'string' },
+      usuario: { type: 'string', example: 'admin' },
+      avatarUrl: { type: 'string', nullable: true, description: 'Data URL JPG, PNG o WebP, o null para quitarla.' },
     },
   },
   RefreshBody: {

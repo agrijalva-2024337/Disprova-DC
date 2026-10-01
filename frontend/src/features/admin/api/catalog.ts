@@ -1,10 +1,14 @@
 import { apiRequest } from './http.ts'
 import type { Category, CategoryInput, LoginResponse, PriceList, PriceListInput, Product, ProductInput } from './types.ts'
 
-export function login(email: string, password: string) {
+export function login(identificador: string, password: string) {
+  const value = identificador.trim()
+  const body = value.includes('@')
+    ? { email: value, password }
+    : { usuario: value, password }
   return apiRequest<LoginResponse>('/api/auth/login', {
     method: 'POST',
-    body: { email, password },
+    body,
     skipAuth: true,
   })
 }

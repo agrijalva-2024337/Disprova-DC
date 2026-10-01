@@ -12,6 +12,8 @@ function toDto(user: {
   id: number;
   nombre: string;
   email: string;
+  usuario: string | null;
+  avatarUrl: string | null;
   roleId: number;
   activo: boolean;
   createdAt: Date;
@@ -21,6 +23,8 @@ function toDto(user: {
     id: user.id,
     nombre: user.nombre,
     email: user.email,
+    usuario: user.usuario,
+    avatarUrl: user.avatarUrl,
     roleId: user.roleId,
     rol: user.role.nombre,
     activo: user.activo,
