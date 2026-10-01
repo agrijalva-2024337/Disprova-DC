@@ -78,65 +78,6 @@ export function CashSessionPage() {
         ? 'border-line bg-surface'
         : 'border-brand/25 bg-brand-soft'
     return (
-      <div className="mx-auto flex min-h-screen w-full max-w-6xl flex-col bg-slate-100 text-slate-900">
-        <header className="border-b border-slate-200 bg-white px-4 py-4">
-          <h1 className="text-2xl font-semibold">Caja cerrada</h1>
-          <p className="text-sm text-slate-600">Sesión #{arqueo.id}</p>
-        </header>
-        <main className="flex-1 space-y-3 px-4 py-4">
-          <dl className="space-y-2 rounded-2xl bg-white px-4 py-4 text-base">
-            <div className="flex justify-between">
-              <dt className="text-slate-600">Fondo inicial</dt>
-              <dd className="tabular-nums">Q{money(arqueo.fondoInicial)}</dd>
-            </div>
-            <div className="flex justify-between">
-              <dt className="text-slate-600">Total cobrado</dt>
-              <dd className="tabular-nums">Q{money(arqueo.totalCobrado)}</dd>
-            </div>
-            <div className="flex justify-between">
-              <dt className="text-slate-600">Total gastos</dt>
-              <dd className="tabular-nums">−Q{money(arqueo.totalGastos)}</dd>
-            </div>
-            <div className="flex justify-between border-t border-slate-100 pt-2 font-semibold">
-              <dt>Esperado</dt>
-              <dd className="tabular-nums">Q{money(esperado(arqueo))}</dd>
-            </div>
-            <div className="flex justify-between">
-              <dt className="text-slate-600">Contado</dt>
-              <dd className="tabular-nums">Q{money(arqueo.conteoFinal ?? 0)}</dd>
-            </div>
-          </dl>
-
-
-          <div
-            className={`rounded-2xl px-4 py-4 ${
-              diferencia === 0
-                ? 'border border-green-200 bg-green-50'
-                : diferencia > 0
-                  ? 'border border-amber-300 bg-amber-50'
-                  : 'border border-red-300 bg-red-50'
-            }`}
-          >
-            <p className="text-sm font-medium uppercase tracking-wide text-slate-600">Diferencia</p>
-            <p
-              className={`mt-1 text-3xl font-semibold tabular-nums ${
-                diferencia === 0
-                  ? 'text-green-800'
-                  : diferencia > 0
-                    ? 'text-amber-800'
-                    : 'text-red-800'
-              }`}
-            >
-              {diferencia > 0 ? '+' : ''}Q{money(diferencia)}
-            </p>
-            <p className="mt-1 text-sm text-slate-700">
-              {diferencia === 0
-                ? 'La caja cuadró exacto.'
-                : diferencia > 0
-                  ? 'Sobró dinero en la caja.'
-                  : 'Faltó dinero en la caja.'}
-            </p>
-=======
       <FieldShell titulo="Caja cerrada" subtitulo={`Sesión #${arqueo.id}`}>
         <dl className="space-y-2 rounded-card border border-line bg-surface px-4 py-4 text-sm shadow-card">
           <Fila etiqueta="Fondo inicial" valor={quetzales(arqueo.fondoInicial)} />
@@ -145,7 +86,6 @@ export function CashSessionPage() {
           <div className="flex justify-between border-t border-line pt-2 font-semibold text-ink">
             <dt>Esperado</dt>
             <dd className="tabular-nums">{quetzales(esperado(arqueo))}</dd>
-
           </div>
           <Fila etiqueta="Contado" valor={quetzales(arqueo.conteoFinal ?? 0)} />
         </dl>
@@ -179,13 +119,6 @@ export function CashSessionPage() {
   }
 
   return (
-
-    <div className="mx-auto flex min-h-screen w-full max-w-6xl flex-col bg-slate-100 text-slate-900">
-      <header className="border-b border-slate-200 bg-white px-4 py-4">
-        <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Disprova</p>
-        <h1 className="text-2xl font-semibold">Mi caja</h1>
-      </header>
-
     <FieldShell
       titulo="Mi caja"
       subtitulo={
@@ -197,7 +130,6 @@ export function CashSessionPage() {
       {sessionQuery.isLoading ? (
         <p className="rounded-card bg-surface px-4 py-4 text-sm text-muted">Cargando caja…</p>
       ) : null}
-
 
       {otroError ? (
         <p className="rounded-card border border-brand/25 bg-brand-soft px-4 py-4 text-sm text-brand-deep">

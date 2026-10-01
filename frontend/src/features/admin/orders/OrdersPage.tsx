@@ -6,7 +6,7 @@ import { listClients } from '../api/territory.ts'
 import { DataTable, EmptyRow, Td, Th, Tr } from '../ui/DataTable.tsx'
 import { OrderStatus, QueryStatus } from '../ui/Status.tsx'
 import { RecordSheet, RowMoves } from '../ui/RecordSheet.tsx'
-import { PageHeader } from '../ui/StatCard.tsx'n
+import { PageHeader } from '../ui/StatCard.tsx'
 
 const canalLabel: Record<OrderCanal, string> = {
   campo: 'Campo',
@@ -108,58 +108,6 @@ export function OrdersPage() {
       />
 
       {!ordersQuery.isLoading && !ordersQuery.isError ? (
-        <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white">
-          <table className="min-w-full text-left text-sm">
-            <thead className="bg-slate-50 text-slate-600">
-              <tr>
-                <th className="px-3 py-2 font-medium">Número</th>
-                <th className="px-3 py-2 font-medium">Cliente</th>
-                <th className="px-3 py-2 font-medium">Vendedor</th>
-                <th className="px-3 py-2 font-medium">Canal</th>
-                <th className="px-3 py-2 font-medium">Estado</th>
-                <th className="px-3 py-2 font-medium">Condición de pago</th>
-                <th className="px-3 py-2 font-medium">Total</th>
-                <th className="px-3 py-2 font-medium">Fecha</th>
-                <th className="px-3 py-2 font-medium">Acciones</th>
-              </tr>
-            </thead>
-            <tbody>
-              {(ordersQuery.data ?? []).length === 0 ? (
-                <tr>
-                  <td colSpan={9} className="px-3 py-6 text-center text-slate-500">
-                    No hay pedidos para mostrar.
-                  </td>
-                </tr>
-              ) : (
-                (ordersQuery.data ?? []).map((order) => (
-                  <tr
-                    key={order.id}
-                    className="cursor-pointer border-t border-slate-100"
-                    onDoubleClick={() => setVisto(order)}
-                  >
-                    <td className="px-3 py-2">
-                      <Link to={`/admin/pedidos/${order.id}`} className="font-medium text-slate-900 underline">
-                        {order.numero}
-                      </Link>
-                    </td>
-                    <td className="px-3 py-2">{order.client?.nombreComercial ?? '—'}</td>
-                    <td className="px-3 py-2">{order.user?.nombre ?? '—'}</td>
-                    <td className="px-3 py-2">{canalLabel[order.canal]}</td>
-                    <td className="px-3 py-2">
-                      <OrderStatus estado={order.estado} />
-                    </td>
-                    <td className="px-3 py-2">{pagoLabel[order.condicionPago]}</td>
-                    <td className="px-3 py-2">{quetzales(order.total)}</td>
-                    <td className="px-3 py-2">{fecha(order.createdAt)}</td>
-                    <td className="px-3 py-2">
-                      <RowMoves onView={() => setVisto(order)} editTo={`/admin/pedidos/${order.id}`} />
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
         <DataTable>
           <thead>
             <tr>
@@ -171,14 +119,15 @@ export function OrdersPage() {
               <Th>Condición de pago</Th>
               <Th align="right">Total</Th>
               <Th>Fecha</Th>
+              <Th>Acciones</Th>
             </tr>
           </thead>
           <tbody>
             {(ordersQuery.data ?? []).length === 0 ? (
-              <EmptyRow columnas={8}>No hay pedidos para mostrar.</EmptyRow>
+              <EmptyRow columnas={9}>No hay pedidos para mostrar.</EmptyRow>
             ) : (
               (ordersQuery.data ?? []).map((order) => (
-                <Tr key={order.id}>
+                <Tr key={order.id} className="cursor-pointer" onDoubleClick={() => setVisto(order)}>
                   <Td>
                     <Link
                       to={`/admin/pedidos/${order.id}`}
@@ -198,6 +147,9 @@ export function OrdersPage() {
                     {quetzales(order.total)}
                   </Td>
                   <Td className="whitespace-nowrap text-muted">{fecha(order.createdAt)}</Td>
+                  <Td>
+                    <RowMoves onView={() => setVisto(order)} editTo={`/admin/pedidos/${order.id}`} />
+                  </Td>
                 </Tr>
               ))
             )}
@@ -208,23 +160,23 @@ export function OrdersPage() {
         <RecordSheet title={visto.numero} onClose={() => setVisto(null)}>
           <dl className="grid gap-3 text-sm sm:grid-cols-2">
             <div>
-              <dt className="text-slate-500">Cliente</dt>
+              <dt className="text-muted">Cliente</dt>
               <dd>{visto.client?.nombreComercial ?? '—'}</dd>
             </div>
             <div>
-              <dt className="text-slate-500">Vendedor</dt>
+              <dt className="text-muted">Vendedor</dt>
               <dd>{visto.user?.nombre ?? '—'}</dd>
             </div>
             <div>
-              <dt className="text-slate-500">Canal</dt>
+              <dt className="text-muted">Canal</dt>
               <dd>{canalLabel[visto.canal]}</dd>
             </div>
             <div>
-              <dt className="text-slate-500">Total</dt>
+              <dt className="text-muted">Total</dt>
               <dd>{quetzales(visto.total)}</dd>
             </div>
           </dl>
-          <Link to={`/admin/pedidos/${visto.id}`} className="mt-4 inline-block rounded-full bg-slate-900 px-4 py-2 text-sm text-white">
+          <Link to={`/admin/pedidos/${visto.id}`} className="mt-4 inline-block rounded-full bg-ink px-4 py-2 text-sm text-parchment">
             Abrir pedido
           </Link>
         </RecordSheet>

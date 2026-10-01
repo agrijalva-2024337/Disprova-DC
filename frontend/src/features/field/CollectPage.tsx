@@ -109,14 +109,6 @@ export function CollectPage() {
   const movimientos = cuentaQuery.data?.movements ?? []
 
   return (
-    <div className="mx-auto flex min-h-screen w-full max-w-6xl flex-col bg-slate-100 text-slate-900">
-      <header className="sticky top-0 z-10 border-b border-slate-200 bg-white px-4 py-4">
-        <Link to="/ruta" className="text-base text-slate-600">
-          ← Ruta
-        </Link>
-        <h1 className="text-2xl font-semibold">Cobro</h1>
-        <p className="mt-1 text-base text-slate-600">
-          Saldo actual <span className="font-semibold text-slate-900">Q{money(saldo)}</span>
     <FieldShell titulo="Cobro" subtitulo={<>Saldo actual {quetzales(saldo)}</>}>
       {cuentaQuery.isLoading ? (
         <p className="rounded-card bg-surface px-4 py-4 text-sm text-muted">Cargando saldo…</p>
