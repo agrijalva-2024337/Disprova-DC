@@ -1,11 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
 import { closeSession, getCurrentSession, openSession } from '../../admin/api/cash.ts'
 import { ApiError } from '../../admin/api/http.ts'
 import type { CashSession } from '../../admin/api/types.ts'
-
-const money = (value: string | number) => Number(value).toFixed(2)
+import { FieldShell } from '../FieldShell.tsx'
+import { quetzales } from '../format.ts'
 
 /**
  * El esperado lo calcula el frontend con los tres números que sí devuelve la
@@ -68,10 +67,16 @@ export function CashSessionPage() {
       ? closeMutation.error.message
       : null
 
+
   // El arqueo se muestra antes de volver a la pantalla principal: es el número
   // con el que se justifica un descuadre.
   if (arqueo) {
     const diferencia = Number(arqueo.diferencia ?? 0)
+    const clase = diferencia === 0
+      ? 'border-gold/30 bg-gold-soft'
+      : diferencia > 0
+        ? 'border-line bg-surface'
+        : 'border-brand/25 bg-brand-soft'
     return (
       <div className="mx-auto flex min-h-screen w-full max-w-6xl flex-col bg-slate-100 text-slate-900">
         <header className="border-b border-slate-200 bg-white px-4 py-4">
@@ -131,152 +136,200 @@ export function CashSessionPage() {
                   ? 'Sobró dinero en la caja.'
                   : 'Faltó dinero en la caja.'}
             </p>
-          </div>
+=======
+      <FieldShell titulo="Caja cerrada" subtitulo={`Sesión #${arqueo.id}`}>
+        <dl className="space-y-2 rounded-card border border-line bg-surface px-4 py-4 text-sm shadow-card">
+          <Fila etiqueta="Fondo inicial" valor={quetzales(arqueo.fondoInicial)} />
+          <Fila etiqueta="Total cobrado" valor={quetzales(arqueo.totalCobrado)} />
+          <Fila etiqueta="Total gastos" valor={quetzales(arqueo.totalGastos)} />
+          <div className="flex justify-between border-t border-line pt-2 font-semibold text-ink">
+            <dt>Esperado</dt>
+            <dd className="tabular-nums">{quetzales(esperado(arqueo))}</dd>
 
-          <button
-            type="button"
-            onClick={() => setArqueo(null)}
-            className="h-14 w-full rounded-xl bg-slate-900 text-lg font-medium text-white"
-          >
-            Volver
-          </button>
-        </main>
-      </div>
+          </div>
+          <Fila etiqueta="Contado" valor={quetzales(arqueo.conteoFinal ?? 0)} />
+        </dl>
+
+        <div className={`mt-3 rounded-card border px-4 py-4 ${clase}`}>
+          <p className="text-[0.625rem] font-semibold uppercase tracking-[0.12em] text-muted">
+            Diferencia
+          </p>
+          <p className="mt-0.5 font-display text-3xl font-semibold tabular-nums text-ink">
+            {diferencia > 0 ? '+' : ''}
+            {quetzales(diferencia)}
+          </p>
+          <p className="mt-1 text-sm text-ink-soft">
+            {diferencia === 0
+              ? 'La caja cuadró exacto.'
+              : diferencia > 0
+                ? 'Sobró dinero en la caja.'
+                : 'Faltó dinero en la caja.'}
+          </p>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => setArqueo(null)}
+          className="mt-4 h-14 w-full rounded-[0.625rem] bg-brand text-lg font-semibold text-white transition-colors hover:bg-brand-deep"
+        >
+          Volver
+        </button>
+      </FieldShell>
     )
   }
 
   return (
+
     <div className="mx-auto flex min-h-screen w-full max-w-6xl flex-col bg-slate-100 text-slate-900">
       <header className="border-b border-slate-200 bg-white px-4 py-4">
         <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Disprova</p>
         <h1 className="text-2xl font-semibold">Mi caja</h1>
       </header>
 
-      <main className="flex-1 space-y-3 px-4 py-4">
-        {sessionQuery.isLoading ? (
-          <p className="rounded-2xl bg-white px-4 py-4 text-base">Cargando caja…</p>
-        ) : null}
+    <FieldShell
+      titulo="Mi caja"
+      subtitulo={
+        session
+          ? `Esperado en caja: ${quetzales(esperado(session))}`
+          : 'Abrila para poder cobrar en efectivo'
+      }
+    >
+      {sessionQuery.isLoading ? (
+        <p className="rounded-card bg-surface px-4 py-4 text-sm text-muted">Cargando caja…</p>
+      ) : null}
 
-        {otroError ? (
-          <p className="rounded-2xl border border-red-200 bg-red-50 px-4 py-4 text-base text-red-800">
-            {otroError}
+
+      {otroError ? (
+        <p className="rounded-card border border-brand/25 bg-brand-soft px-4 py-4 text-sm text-brand-deep">
+          {otroError}
+        </p>
+      ) : null}
+
+      {sinCaja ? (
+        <form
+          className="space-y-3 rounded-card border border-line bg-surface p-4 shadow-card"
+          onSubmit={(event) => {
+            event.preventDefault()
+            openMutation.mutate()
+          }}
+        >
+          <h2 className="font-display text-lg font-semibold text-ink">Abrir caja</h2>
+          <p className="text-sm text-muted">
+            Con la caja abierta podés registrar pagos en efectivo.
           </p>
-        ) : null}
-
-        {sinCaja ? (
-          <form
-            className="space-y-3 rounded-2xl bg-white px-4 py-4"
-            onSubmit={(event) => {
-              event.preventDefault()
-              openMutation.mutate()
-            }}
-          >
-            <h2 className="text-lg font-semibold">Abrir caja</h2>
-            <p className="text-sm text-slate-600">
-              Con la caja abierta podés registrar pagos en efectivo.
+          <label className="block text-sm">
+            <span className="mb-1 block font-medium text-ink-soft">Fondo inicial</span>
+            <input
+              type="number"
+              step="0.01"
+              inputMode="decimal"
+              value={fondoInicial}
+              onChange={(event) => setFondoInicial(event.target.value)}
+              className="h-14 w-full rounded-[0.625rem] border border-line bg-parchment px-3 text-lg text-ink outline-none focus:border-brand"
+              placeholder="0.00"
+            />
+          </label>
+          {openError ? (
+            <p className="rounded-[0.625rem] border border-brand/25 bg-brand-soft px-3 py-2 text-sm text-brand-deep">
+              {openError}
             </p>
-            <label className="block text-sm">
-              <span className="mb-1 block font-medium">Fondo inicial</span>
-              <input
-                type="number"
-                step="0.01"
-                inputMode="decimal"
-                value={fondoInicial}
-                onChange={(event) => setFondoInicial(event.target.value)}
-                className="h-14 w-full rounded-xl border border-slate-300 px-3 text-lg"
-                placeholder="0.00"
-              />
-            </label>
-            {openError ? <p className="text-sm text-red-700">{openError}</p> : null}
-            <button
-              type="submit"
-              disabled={openMutation.isPending || fondoInicial.trim() === ''}
-              className="h-14 w-full rounded-xl bg-slate-900 text-lg font-medium text-white disabled:opacity-60"
+          ) : null}
+          <button
+            type="submit"
+            disabled={openMutation.isPending || fondoInicial.trim() === ''}
+            className="h-14 w-full rounded-[0.625rem] bg-brand text-lg font-semibold text-white transition-colors hover:bg-brand-deep disabled:opacity-60"
+          >
+            {openMutation.isPending ? 'Abriendo…' : 'Abrir caja'}
+          </button>
+        </form>
+      ) : null}
+
+
+      {session ? (
+        <>
+          <dl className="space-y-2 rounded-card border border-line bg-surface px-4 py-4 text-sm shadow-card">
+            <Fila etiqueta="Fondo inicial" valor={quetzales(session.fondoInicial)} />
+            <Fila etiqueta="Total cobrado" valor={quetzales(session.totalCobrado)} tono="text-ink" />
+            <Fila etiqueta="Total gastos" valor={quetzales(session.totalGastos)} tono="text-brand" />
+            <div className="flex justify-between border-t border-line pt-2 text-base font-semibold text-ink">
+              <dt>Esperado en caja</dt>
+              <dd className="tabular-nums">{quetzales(esperado(session))}</dd>
+            </div>
+          </dl>
+
+          {cerrando ? (
+            <form
+              className="mt-3 space-y-3 rounded-card border border-line bg-surface p-4 shadow-card"
+              onSubmit={(event) => {
+                event.preventDefault()
+                closeMutation.mutate(session.id)
+              }}
             >
-              {openMutation.isPending ? 'Abriendo…' : 'Abrir caja'}
-            </button>
-          </form>
-        ) : null}
-
-        {session ? (
-          <>
-            <dl className="space-y-2 rounded-2xl bg-white px-4 py-4 text-base">
-              <div className="flex justify-between">
-                <dt className="text-slate-600">Fondo inicial</dt>
-                <dd className="tabular-nums">Q{money(session.fondoInicial)}</dd>
-              </div>
-              <div className="flex justify-between">
-                <dt className="text-slate-600">Total cobrado</dt>
-                <dd className="tabular-nums text-green-700">+Q{money(session.totalCobrado)}</dd>
-              </div>
-              <div className="flex justify-between">
-                <dt className="text-slate-600">Total gastos</dt>
-                <dd className="tabular-nums text-red-700">−Q{money(session.totalGastos)}</dd>
-              </div>
-              <div className="flex justify-between border-t border-slate-100 pt-2 text-xl font-semibold">
-                <dt>Esperado en caja</dt>
-                <dd className="tabular-nums">Q{money(esperado(session))}</dd>
-              </div>
-            </dl>
-
-            {cerrando ? (
-              <form
-                className="space-y-3 rounded-2xl bg-white px-4 py-4"
-                onSubmit={(event) => {
-                  event.preventDefault()
-                  closeMutation.mutate(session.id)
-                }}
-              >
-                <h2 className="text-lg font-semibold">Cerrar caja</h2>
-                <p className="text-sm text-slate-600">
-                  Contá el efectivo y anotá cuánto hay. Esperado: Q{money(esperado(session))}.
+              <h2 className="font-display text-lg font-semibold text-ink">Cerrar caja</h2>
+              <p className="text-sm text-muted">
+                Contá el efectivo y anotá cuánto hay. Esperado: {quetzales(esperado(session))}.
+              </p>
+              <label className="block text-sm">
+                <span className="mb-1 block font-medium text-ink-soft">Conteo final</span>
+                <input
+                  type="number"
+                  step="0.01"
+                  inputMode="decimal"
+                  value={conteoFinal}
+                  onChange={(event) => setConteoFinal(event.target.value)}
+                  className="h-14 w-full rounded-[0.625rem] border border-line bg-parchment px-3 text-lg text-ink outline-none focus:border-brand"
+                  placeholder="0.00"
+                />
+              </label>
+              {closeError ? (
+                <p className="rounded-[0.625rem] border border-brand/25 bg-brand-soft px-3 py-2 text-sm text-brand-deep">
+                  {closeError}
                 </p>
-                <label className="block text-sm">
-                  <span className="mb-1 block font-medium">Conteo final</span>
-                  <input
-                    type="number"
-                    step="0.01"
-                    inputMode="decimal"
-                    value={conteoFinal}
-                    onChange={(event) => setConteoFinal(event.target.value)}
-                    className="h-14 w-full rounded-xl border border-slate-300 px-3 text-lg"
-                    placeholder="0.00"
-                  />
-                </label>
-                {closeError ? <p className="text-sm text-red-700">{closeError}</p> : null}
-                <button
-                  type="submit"
-                  disabled={closeMutation.isPending || conteoFinal.trim() === ''}
-                  className="h-14 w-full rounded-xl bg-amber-600 text-lg font-medium text-white disabled:opacity-60"
-                >
-                  {closeMutation.isPending ? 'Cerrando…' : 'Confirmar cierre'}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setCerrando(false)}
-                  className="h-12 w-full text-base text-slate-600"
-                >
-                  Cancelar
-                </button>
-              </form>
-            ) : (
+              ) : null}
+              <button
+                type="submit"
+                disabled={closeMutation.isPending || conteoFinal.trim() === ''}
+                className="h-14 w-full rounded-[0.625rem] bg-ink text-lg font-semibold text-parchment transition-colors hover:bg-ink-soft disabled:opacity-60"
+              >
+                {closeMutation.isPending ? 'Cerrando…' : 'Confirmar cierre'}
+              </button>
               <button
                 type="button"
-                onClick={() => setCerrando(true)}
-                className="h-14 w-full rounded-xl bg-amber-600 text-lg font-medium text-white"
+                onClick={() => setCerrando(false)}
+                className="h-12 w-full text-base text-muted"
               >
-                Cerrar caja
+                Cancelar
               </button>
-            )}
-          </>
-        ) : null}
-      </main>
+            </form>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setCerrando(true)}
+              className="mt-3 h-14 w-full rounded-[0.625rem] border border-gold/50 bg-gold-soft text-lg font-semibold text-ink transition-colors hover:bg-gold/25"
+            >
+              Cerrar caja
+            </button>
+          )}
+        </>
+      ) : null}
+    </FieldShell>
+  )
+}
 
-      <nav className="border-t border-slate-200 bg-white px-4 py-3">
-        <Link to="/ruta" className="block text-center text-sm text-slate-600">
-          Volver a mi ruta
-        </Link>
-      </nav>
+function Fila({
+  etiqueta,
+  valor,
+  tono = 'text-ink-soft',
+}: {
+  etiqueta: string
+  valor: string
+  tono?: string
+}) {
+  return (
+    <div className="flex justify-between gap-2">
+      <dt className="text-muted">{etiqueta}</dt>
+      <dd className={`tabular-nums ${tono}`}>{valor}</dd>
     </div>
   )
 }
+

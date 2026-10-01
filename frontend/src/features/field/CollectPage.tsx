@@ -1,7 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { useParams } from 'react-router-dom'
 import { ApiError } from '../admin/api/http.ts'
+import { FieldShell } from './FieldShell.tsx'
+import { quetzales } from './format.ts'
 import { createCollectionVisit, createPayment, getAccount } from './ordersApi.ts'
 
 const METODOS = [
@@ -9,8 +11,6 @@ const METODOS = [
   { valor: 'transferencia', etiqueta: 'Transferencia' },
   { valor: 'cheque', etiqueta: 'Cheque' },
 ] as const
-
-const money = (value: string | number) => Number(value).toFixed(2)
 
 /**
  * Cobro desde el móvil del vendedor.
@@ -106,6 +106,8 @@ export function CollectPage() {
     })
   }
 
+  const movimientos = cuentaQuery.data?.movements ?? []
+
   return (
     <div className="mx-auto flex min-h-screen w-full max-w-6xl flex-col bg-slate-100 text-slate-900">
       <header className="sticky top-0 z-10 border-b border-slate-200 bg-white px-4 py-4">
@@ -115,86 +117,55 @@ export function CollectPage() {
         <h1 className="text-2xl font-semibold">Cobro</h1>
         <p className="mt-1 text-base text-slate-600">
           Saldo actual <span className="font-semibold text-slate-900">Q{money(saldo)}</span>
+    <FieldShell titulo="Cobro" subtitulo={<>Saldo actual {quetzales(saldo)}</>}>
+      {cuentaQuery.isLoading ? (
+        <p className="rounded-card bg-surface px-4 py-4 text-sm text-muted">Cargando saldo…</p>
+      ) : null}
+      {cuentaQuery.isError ? (
+        <p className="rounded-card border border-brand/25 bg-brand-soft px-4 py-4 text-sm text-brand-deep">
+          {cuentaQuery.error instanceof ApiError
+            ? cuentaQuery.error.message
+            : 'No se pudo cargar la cuenta corriente'}
         </p>
-      </header>
+      ) : null}
 
-      <main className="flex flex-1 flex-col gap-4 px-4 py-4">
-        {cuentaQuery.isLoading ? (
-          <p className="rounded-xl bg-white px-4 py-4 text-base">Cargando saldo…</p>
-        ) : null}
-        {cuentaQuery.isError ? (
-          <p className="rounded-xl border border-red-200 bg-red-50 px-4 py-4 text-base text-red-800">
-            {cuentaQuery.error instanceof ApiError
-              ? cuentaQuery.error.message
-              : 'No se pudo cargar la cuenta corriente'}
-          </p>
-        ) : null}
+      {aviso ? (
+        <p className="mb-3 rounded-card border border-gold/30 bg-gold-soft px-4 py-3 text-sm font-medium text-ink">
+          {aviso}
+        </p>
+      ) : null}
+      {error ? (
+        <p className="mb-3 rounded-card border border-brand/25 bg-brand-soft px-4 py-3 text-sm text-brand-deep">
+          {error}
+        </p>
+      ) : null}
 
-        {aviso ? <p className="rounded-xl bg-green-50 px-4 py-3 text-base text-green-800">{aviso}</p> : null}
-        {error ? <p className="rounded-xl bg-red-50 px-4 py-3 text-base text-red-800">{error}</p> : null}
-
-        {cuentaQuery.data && cuentaQuery.data.movements.length > 0 ? (
-          <section className="rounded-2xl border border-slate-200 bg-white px-4 py-3">
-            <h2 className="text-sm font-medium uppercase tracking-wide text-slate-500">Últimos movimientos</h2>
-            <ul className="mt-2 space-y-1">
-              {cuentaQuery.data.movements
-                .slice(-5)
-                .reverse()
-                .map((mov) => (
-                  <li key={mov.id} className="flex items-center justify-between text-sm">
-                    <span className={mov.tipo === 'cargo' ? 'text-slate-700' : 'text-green-800'}>
-                      {mov.tipo === 'cargo' ? 'Cargo' : 'Abono'}
-                    </span>
-                    <span className="tabular-nums">
-                      Q{money(mov.monto)} · saldo Q{money(mov.saldoResultante)}
-                    </span>
-                  </li>
-                ))}
-            </ul>
-          </section>
-        ) : null}
-
-        <section className="space-y-3 rounded-2xl border border-slate-200 bg-white px-4 py-4">
-          <h2 className="text-lg font-semibold">Registrar pago</h2>
-          <label className="block text-sm font-medium text-slate-600" htmlFor="monto">
-            Monto
+      <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+        <section className="space-y-3 rounded-card border border-line bg-surface p-4 shadow-card">
+          <h2 className="font-display text-lg font-semibold text-ink">Registrar pago</h2>
+          <label className="block text-sm">
+            <span className="mb-1 block font-medium text-ink-soft">Monto</span>
+            <input
+              id="monto"
+              inputMode="decimal"
+              value={monto}
+              onChange={(event) => setMonto(event.target.value)}
+              placeholder="0.00"
+              className="h-14 w-full rounded-[0.625rem] border border-line bg-parchment px-3.5 text-lg text-ink outline-none focus:border-brand"
+            />
           </label>
-          <input
-            id="monto"
-            inputMode="decimal"
-            value={monto}
-            onChange={(event) => setMonto(event.target.value)}
-            placeholder="0.00"
-            className="h-14 w-full rounded-xl border border-slate-300 px-4 text-lg"
-          />
-          {Number(saldo) > 0 ? (
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={() => setMonto(saldo)}
-                className="h-12 flex-1 rounded-xl border border-slate-300 text-base font-medium text-slate-700"
-              >
-                Todo ({money(saldo)})
-              </button>
-              <button
-                type="button"
-                onClick={() => setMonto((Number(saldo) / 2).toFixed(2))}
-                className="h-12 flex-1 rounded-xl border border-slate-300 text-base font-medium text-slate-700"
-              >
-                Mitad
-              </button>
-            </div>
-          ) : null}
 
-          <label className="block text-sm font-medium text-slate-600">Método</label>
-          <div className="flex gap-2">
+          <div className="flex gap-2" role="group" aria-label="Método de pago">
             {METODOS.map((opcion) => (
               <button
                 key={opcion.valor}
                 type="button"
                 onClick={() => setMetodo(opcion.valor)}
-                className={`h-12 flex-1 rounded-xl text-base font-medium ${
-                  metodo === opcion.valor ? 'bg-slate-900 text-white' : 'border border-slate-300 text-slate-700'
+                aria-pressed={metodo === opcion.valor}
+                className={`h-12 flex-1 rounded-[0.625rem] text-sm font-medium transition-colors ${
+                  metodo === opcion.valor
+                    ? 'bg-ink text-parchment'
+                    : 'border border-line bg-parchment text-ink-soft hover:border-brand/40'
                 }`}
               >
                 {opcion.etiqueta}
@@ -203,71 +174,70 @@ export function CollectPage() {
           </div>
 
           {metodo !== 'efectivo' ? (
-            <>
-              <label className="block text-sm font-medium text-slate-600" htmlFor="referencia">
-                Referencia
-              </label>
+            <label className="block text-sm">
+              <span className="mb-1 block font-medium text-ink-soft">Referencia</span>
               <input
                 id="referencia"
                 value={referencia}
                 onChange={(event) => setReferencia(event.target.value)}
                 placeholder="Número de cheque o transferencia"
-                className="h-12 w-full rounded-xl border border-slate-300 px-4 text-base"
+                className="h-12 w-full rounded-[0.625rem] border border-line bg-parchment px-3.5 text-base text-ink outline-none focus:border-brand"
               />
-            </>
+            </label>
           ) : null}
 
           <button
             type="button"
             disabled={!montoValido || pagoMutation.isPending}
             onClick={cobrar}
-            className="h-14 w-full rounded-xl bg-green-700 text-lg font-medium text-white disabled:opacity-60"
+            className="h-14 w-full rounded-[0.625rem] bg-brand text-lg font-semibold text-white transition-colors hover:bg-brand-deep disabled:opacity-60"
           >
             {pagoMutation.isPending ? 'Guardando…' : 'Registrar pago'}
           </button>
         </section>
 
-        <section className="space-y-3 rounded-2xl border border-slate-200 bg-white px-4 py-4">
-          <h2 className="text-lg font-semibold">No pagó</h2>
-          <label className="flex items-center gap-3 text-base">
+
+        <section className="space-y-3 rounded-card border border-line bg-surface p-4 shadow-card">
+          <h2 className="font-display text-lg font-semibold text-ink">No pagó</h2>
+          <label className="flex items-center gap-3 text-base text-ink-soft">
             <input
               type="checkbox"
               checked={quedan}
               onChange={(event) => setQuedan(event.target.checked)}
-              className="h-6 w-6"
+              className="h-6 w-6 accent-[#A3221C]"
             />
             Quedaron de prometer pago
           </label>
           {quedan ? (
-            <>
-              <label className="block text-sm font-medium text-slate-600" htmlFor="compromiso">
-                Monto comprometido
+            <div className="space-y-3">
+              <label className="block text-sm">
+                <span className="mb-1 block font-medium text-ink-soft">Monto comprometido</span>
+                <input
+                  id="compromiso"
+                  inputMode="decimal"
+                  value={monto}
+                  onChange={(event) => setMonto(event.target.value)}
+                  placeholder="0.00"
+                  className="h-14 w-full rounded-[0.625rem] border border-line bg-parchment px-3.5 text-lg text-ink outline-none focus:border-brand"
+                />
               </label>
-              <input
-                id="compromiso"
-                inputMode="decimal"
-                value={monto}
-                onChange={(event) => setMonto(event.target.value)}
-                placeholder="0.00"
-                className="h-12 w-full rounded-xl border border-slate-300 px-4 text-base"
-              />
-              <label className="block text-sm font-medium text-slate-600" htmlFor="fecha-compromiso">
-                Fecha de pago
+              <label className="block text-sm">
+                <span className="mb-1 block font-medium text-ink-soft">Fecha de pago</span>
+                <input
+                  id="fecha-compromiso"
+                  type="date"
+                  value={fechaCompromiso}
+                  onChange={(event) => setFechaCompromiso(event.target.value)}
+                  className="h-14 w-full rounded-[0.625rem] border border-line bg-parchment px-3.5 text-base text-ink outline-none focus:border-brand"
+                />
               </label>
-              <input
-                id="fecha-compromiso"
-                type="date"
-                value={fechaCompromiso}
-                onChange={(event) => setFechaCompromiso(event.target.value)}
-                className="h-12 w-full rounded-xl border border-slate-300 px-4 text-base"
-              />
-            </>
+            </div>
           ) : null}
           <button
             type="button"
             disabled={visitaMutation.isPending}
             onClick={registrarSinPago}
-            className="h-14 w-full rounded-xl bg-slate-700 text-lg font-medium text-white disabled:opacity-60"
+            className="h-14 w-full rounded-[0.625rem] border border-line bg-parchment text-lg font-medium text-ink transition-colors hover:border-brand/40 hover:bg-brand-soft/50 disabled:opacity-60"
           >
             {visitaMutation.isPending
               ? 'Guardando…'
@@ -276,14 +246,34 @@ export function CollectPage() {
                 : 'Registrar que no atendió'}
           </button>
         </section>
+      </div>
 
-        {cubreSaldo ? (
-          <p className="rounded-xl bg-green-50 px-4 py-3 text-sm text-green-800">
-            Con este pago queda saldado. Queda pendiente de aplicarse a pedidos concretos desde el panel;
-            la cuenta corriente ya lo refleja como abono.
+      {movimientos.length > 0 ? (
+        <section className="mt-3 overflow-hidden rounded-card border border-line bg-surface shadow-card">
+          <p className="border-b border-line px-4 py-3 text-[0.625rem] font-semibold uppercase tracking-[0.12em] text-muted">
+            Últimos movimientos
           </p>
-        ) : null}
-      </main>
-    </div>
+          <ul className="divide-y divide-line/70">
+            {[...movimientos].reverse().slice(0, 6).map((mov) => (
+              <li key={mov.id} className="flex items-center justify-between gap-3 px-4 py-2.5 text-sm">
+                <span className={mov.tipo === 'cargo' ? 'text-ink-soft' : 'text-brand'}>
+                  {mov.tipo === 'cargo' ? 'Cargo' : 'Abono'}
+                </span>
+                <span className="tabular-nums text-ink-soft">
+                  {quetzales(mov.monto)} · saldo {quetzales(mov.saldoResultante)}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
+
+      {cubreSaldo ? (
+        <p className="mt-3 rounded-card border border-gold/30 bg-gold-soft px-4 py-3 text-sm text-ink">
+          Con este pago queda saldado. Queda pendiente de aplicarse a pedidos concretos desde el
+          panel; la cuenta corriente ya lo refleja como abono.
+        </p>
+      ) : null}
+    </FieldShell>
   )
 }

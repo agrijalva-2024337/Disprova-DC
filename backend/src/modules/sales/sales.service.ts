@@ -107,6 +107,18 @@ export function importeEntregado(
   );
 }
 
+/**
+ * Foto principal de cada producto, para que la lista de pedidos y la pantalla
+ * de entrega puedan mostrarla. Antes `listOrders` traía el producto pelado y el
+ * vendedor tenía que reconocer cada artículo por el nombre mientras cuenta
+ * la mercadería que baja del camión.
+ */
+const productConFoto = {
+  include: {
+    images: { where: { esPrincipal: true }, orderBy: { id: 'asc' }, take: 1 },
+  },
+} as const;
+
 export async function listOrders(filters: {
   clientId?: number;
   userId?: number;
@@ -133,7 +145,9 @@ export async function listOrders(filters: {
     include: {
       client: true,
       user: { select: { id: true, nombre: true } },
-      items: { include: { productUnit: { include: { product: true } }, deliveryItems: true } },
+      items: {
+        include: { productUnit: { include: { product: productConFoto } }, deliveryItems: true },
+      },
     },
     orderBy: { id: 'desc' },
   });
@@ -145,7 +159,9 @@ export async function getOrder(orderId: number) {
     include: {
       client: true,
       user: { select: { id: true, nombre: true } },
-      items: { include: { productUnit: { include: { product: true } }, deliveryItems: true } },
+      items: {
+        include: { productUnit: { include: { product: productConFoto } }, deliveryItems: true },
+      },
     },
   });
   if (!order) {

@@ -1,39 +1,73 @@
 import { useMutation, useQuery } from '@tanstack/react-query'
-import { useMemo, useState } from 'react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { useMemo, useState, type ReactNode } from 'react'
+import { useNavigate, useParams } from 'react-router-dom'
 import { ApiError } from '../admin/api/http.ts'
+import type { Category, PriceListItem, Product, ProductUnit } from '../admin/api/types.ts'
+import { FieldShell } from './FieldShell.tsx'
+import { OrderCart } from './OrderCart.tsx'
+import { OrderCartSheet } from './OrderCartSheet.tsx'
+import { ProductTile } from './ProductTile.tsx'
+import type { CartLine } from './cart.ts'
+import { claveIdempotencia, totales } from './cart.ts'
 import {
   confirmOrder,
   createOrder,
   getClient,
   getPriceList,
+  listCategories,
   listOrders,
   listProducts,
 } from './ordersApi.ts'
 
-type CartLine = {
-  productUnitId: number
-  productName: string
-  unitName: string
-  precio: number
-  cantidad: number
+/**
+ * Precio vigente de una presentación en la lista del cliente.
+ *
+ * Dos detalles que el backend ya resuelve y que esta pantalla tiene que copiar
+ * o el vendedor cotiza otra cosa:
+ *
+ * - Un precio desactivado (`activo: false`) deja de aplicar. Antes se tomaba el
+ *   último `vigenteDesde` sin mirar el `activo`, y se mostraba un precio que el
+ *   backend iba a rechazar al confirmar.
+ * - El backend compara `vigenteDesde <= ahora` con la fecha completa. Comparar
+ *   solo los diez primeros caracteres del ISO dejaba pasar precios que todavía
+ *   no rigen y rechazaba alguno que sí.
+ */
+function preciosVigentes(items: PriceListItem[] | undefined): Map<number, number> {
+  const mapa = new Map<number, number>()
+  const ahora = Date.now()
+  const ordenados = [...(items ?? [])].sort((a, b) =>
+    b.vigenteDesde.localeCompare(a.vigenteDesde),
+  )
+  for (const item of ordenados) {
+    if (item.activo === false) continue
+    const desde = Date.parse(item.vigenteDesde)
+    if (Number.isNaN(desde) || desde > ahora) continue
+    if (!mapa.has(item.productUnitId)) {
+      mapa.set(item.productUnitId, Number(item.precio))
+    }
+  }
+  return mapa
 }
 
-function money(value: number) {
-  return Math.round(value * 100) / 100
-}
-
-function lineTotal(precio: number, cantidad: number) {
-  const base = money(precio * cantidad)
-  return money(base + money(base * 0.12))
-}
-
+/**
+ * Tomar el pedido en la ruta del cliente.
+ *
+ * Antes era un campo de texto: había que recordar el nombre, apretar el
+ * resultado y recién entonces elegir la presentación. Ahora el catálogo se abre
+ * por CATEGORÍAS, con la foto de cada producto y un "+" por tarjeta; y si el
+ * producto se vende en varias presentaciones (fardo, media docena, docena) el
+ * desplegable de la tarjeta cambia de presentación y el "+" suma sobre esa.
+ *
+ * La grilla se adapta sola: dos columnas en el teléfono, hasta cinco en una
+ * pantalla ancha. En escritorio el pedido se fija en una columna lateral; en el
+ * teléfono, en una hoja que sube desde abajo.
+ */
 export function NewOrderPage() {
   const { clientId } = useParams()
   const id = Number(clientId)
   const navigate = useNavigate()
-  const [search, setSearch] = useState('')
-  const [pickedProductId, setPickedProductId] = useState<number | null>(null)
+  const [busqueda, setBusqueda] = useState('')
+  const [categoriaId, setCategoriaId] = useState<number | null>(null)
   const [cart, setCart] = useState<CartLine[]>([])
   const [condicion, setCondicion] = useState<'contado' | 'credito'>('contado')
   const [errorTitle, setErrorTitle] = useState<string | null>(null)
@@ -41,10 +75,11 @@ export function NewOrderPage() {
   // Una clave por PEDIDO, no por intento: nace con el formulario y sobrevive a
   // los reintentos. Si se regenerara en cada submit, un doble toque o un
   // reintento tras un corte de red abrirían dos pedidos del mismo cliente.
-  const [idempotencyKey] = useState(() => crypto.randomUUID())
+  const [idempotencyKey] = useState(claveIdempotencia)
 
   const clientQuery = useQuery({ queryKey: ['field-client', id], queryFn: () => getClient(id), enabled: Number.isFinite(id) })
   const productsQuery = useQuery({ queryKey: ['products'], queryFn: listProducts })
+  const categoriesQuery = useQuery({ queryKey: ['categories'], queryFn: listCategories })
   const priceQuery = useQuery({
     queryKey: ['price-list', clientQuery.data?.priceListId],
     queryFn: () => getPriceList(clientQuery.data!.priceListId),
@@ -56,52 +91,122 @@ export function NewOrderPage() {
     enabled: Number.isFinite(id),
   })
 
-  const priceByUnit = useMemo(() => {
-    const map = new Map<number, number>()
-    const items = [...(priceQuery.data?.items ?? [])].sort((a, b) => a.vigenteDesde.localeCompare(b.vigenteDesde))
-    for (const item of items) {
-      if (item.vigenteDesde.slice(0, 10) <= new Date().toISOString().slice(0, 10)) {
-        map.set(item.productUnitId, Number(item.precio))
-      }
-    }
-    return map
-  }, [priceQuery.data])
+  const priceByUnit = useMemo(() => preciosVigentes(priceQuery.data?.items), [priceQuery.data])
 
-  const results = useMemo(() => {
-    const term = search.trim().toLowerCase()
-    if (!term) return []
+  /**
+   * Solo se ofrece lo que se puede cotizar: un producto sin ninguna
+   * presentación con precio vigente no aparece, igual que en el catálogo
+   * público. Ver "sin precio" en todas partes solo hace dudar al vendedor
+   * parado en la puerta del cliente.
+   *
+   * De paso se caen las presentaciones dadas de baja: `GET /catalog/products`
+   * las sigue devolviendo y el precio queda en la lista, así que sin este
+   * filtro el vendedor podía pedir una presentación que el negocio ya no
+   * vende.
+   */
+  const vendibles = useMemo(() => {
     return (productsQuery.data ?? [])
-      .filter((product) => {
-        const barcode = product.units.some((unit) => unit.codigoBarras?.toLowerCase().includes(term))
-        return product.nombre.toLowerCase().includes(term) || product.sku.toLowerCase().includes(term) || barcode
-      })
-      .slice(0, 8)
-  }, [productsQuery.data, search])
+      .map((producto) => ({
+        ...producto,
+        units: producto.units.filter((unidad) => unidad.activo !== false),
+      }))
+      .filter((producto) => producto.units.length > 0)
+      .filter((producto) => producto.units.some((unidad) => priceByUnit.has(unidad.id)))
+  }, [productsQuery.data, priceByUnit])
 
-  const picked = (productsQuery.data ?? []).find((product) => product.id === pickedProductId) ?? null
-  const total = cart.reduce((sum, line) => sum + lineTotal(line.precio, line.cantidad), 0)
+  const porCategoria = useMemo(() => {
+    const mapa = new Map<number, Product[]>()
+    for (const producto of vendibles) {
+      const lista = mapa.get(producto.categoryId)
+      if (lista) lista.push(producto)
+      else mapa.set(producto.categoryId, [producto])
+    }
+    return mapa
+  }, [vendibles])
+
+  /** Pestañas de categoría. Solo las que tienen algo que vender. */
+  const categorias = useMemo(() => {
+    return (categoriesQuery.data ?? [])
+      .map((categoria: Category) => ({
+        id: categoria.id,
+        nombre: categoria.nombre,
+        total: porCategoria.get(categoria.id)?.length ?? 0,
+      }))
+      .filter((categoria) => categoria.total > 0)
+  }, [categoriesQuery.data, porCategoria])
+
+  const visibles = useMemo(() => {
+    const base = categoriaId === null ? vendibles : (porCategoria.get(categoriaId) ?? [])
+    const term = busqueda.trim().toLowerCase()
+    if (!term) return base
+    return base.filter((producto) => {
+      const codigoBarras = producto.units.some((unidad) =>
+        unidad.codigoBarras?.toLowerCase().includes(term),
+      )
+      return (
+        producto.nombre.toLowerCase().includes(term) ||
+        producto.sku.toLowerCase().includes(term) ||
+        codigoBarras
+      )
+    })
+  }, [vendibles, porCategoria, categoriaId, busqueda])
+
+  const { subtotal, impuesto, total } = totales(cart)
   const previous = previousQuery.data?.[0]
 
-  function addUnit(productName: string, unitId: number, unitName: string) {
-    const precio = priceByUnit.get(unitId)
+  const precioDe = (unidad: ProductUnit) => priceByUnit.get(unidad.id)
+  const cantidadDe = (unidadId: number) =>
+    cart.find((linea) => linea.productUnitId === unidadId)?.cantidad ?? 0
+
+  /**
+   * Suma o quita una presentación. Al bajar de 1 la línea desaparece: antes
+   * quedaban renglones con cantidad 0 que se mandaban al backend y terminaban
+   * como productos de importe cero en el pedido.
+   */
+  function cambiarCantidad(producto: Product, unidad: ProductUnit, nueva: number) {
+    const precio = precioDe(unidad)
     if (precio === undefined) {
       setErrorTitle('Sin precio')
-      setErrorDetail('Esta presentación no está en la lista del cliente.')
+      setErrorDetail('Esta presentación no está en la lista de precios de este cliente.')
       return
     }
     setErrorTitle(null)
     setErrorDetail(null)
+
     setCart((current) => {
-      const existing = current.find((line) => line.productUnitId === unitId)
-      if (existing) {
-        return current.map((line) =>
-          line.productUnitId === unitId ? { ...line, cantidad: line.cantidad + 1 } : line,
+      if (nueva <= 0) {
+        return current.filter((linea) => linea.productUnitId !== unidad.id)
+      }
+      const existente = current.find((linea) => linea.productUnitId === unidad.id)
+      if (existente) {
+        return current.map((linea) =>
+          linea.productUnitId === unidad.id ? { ...linea, cantidad: nueva, precio } : linea,
         )
       }
-      return [...current, { productUnitId: unitId, productName, unitName, precio, cantidad: 1 }]
+      const foto = producto.images.find((image) => image.esPrincipal) ?? producto.images[0]
+      return [
+        ...current,
+        {
+          productUnitId: unidad.id,
+          productId: producto.id,
+          productName: producto.nombre,
+          unitName: unidad.nombre,
+          imagen: foto?.url ?? null,
+          precio,
+          cantidad: nueva,
+        },
+      ]
     })
-    setPickedProductId(null)
-    setSearch('')
+  }
+
+  function cambiarLinea(linea: CartLine, nueva: number) {
+    setCart((current) =>
+      nueva <= 0
+        ? current.filter((item) => item.productUnitId !== linea.productUnitId)
+        : current.map((item) =>
+            item.productUnitId === linea.productUnitId ? { ...item, cantidad: nueva } : item,
+          ),
+    )
   }
 
   function repeatPrevious() {
@@ -110,13 +215,20 @@ export function NewOrderPage() {
       previous.items
         .map((item) => ({
           productUnitId: item.productUnitId,
+          productId: item.productUnit.product.id,
           productName: item.productUnit.product.nombre,
           unitName: item.productUnit.nombre,
+          imagen: item.productUnit.product.images?.[0]?.url ?? null,
           precio: priceByUnit.get(item.productUnitId) ?? Number(item.precioUnitario),
           cantidad: Number(item.cantidad),
         }))
-        .filter((line) => Number.isFinite(line.precio)),
+        // Una presentación que hoy no tiene precio no se arrastra: mandar el
+        // precio viejo dejaría al vendedor leyendo algo que el backend no
+        // va a aceptar.
+        .filter((linea) => Number.isFinite(linea.precio) && linea.cantidad > 0),
     )
+    setErrorTitle(null)
+    setErrorDetail(null)
   }
 
   const saveMutation = useMutation({
@@ -126,7 +238,9 @@ export function NewOrderPage() {
         canal: 'campo',
         condicionPago: condicion,
         idempotencyKey,
-        items: cart.map((line) => ({ productUnitId: line.productUnitId, cantidad: String(line.cantidad) })),
+        items: cart
+          .filter((linea) => linea.cantidad > 0)
+          .map((linea) => ({ productUnitId: linea.productUnitId, cantidad: String(linea.cantidad) })),
       })
       await confirmOrder(order.id)
       return order
@@ -139,10 +253,18 @@ export function NewOrderPage() {
         setErrorTitle('No pasa por crédito')
       } else if (err instanceof ApiError && err.code === 'INSUFFICIENT_STOCK') {
         setErrorTitle('No pasa por stock')
+      } else if (err instanceof ApiError && err.code === 'NO_VEHICLE_WAREHOUSE') {
+        // No es un fallo del pedido: el pedido se creó y lo que falta es la
+        // bodega del vendedor. Decirlo evita que lo intente otra vez igual.
+        setErrorTitle('Falta la bodega del vendedor')
       } else {
         setErrorTitle('No se confirmó el pedido')
       }
-      setErrorDetail(err instanceof ApiError ? err.message : 'No se pudo confirmar')
+      setErrorDetail(
+        err instanceof ApiError
+          ? err.message
+          : 'No se pudo confirmar. Revisá la señal e intentá de nuevo.',
+      )
     },
   })
 
@@ -163,62 +285,100 @@ export function NewOrderPage() {
           className="mt-3 h-14 w-full rounded-xl border border-slate-300 px-4 text-lg"
         />
       </header>
+=======
+  const cargando = clientQuery.isLoading || productsQuery.isLoading || priceQuery.isLoading
+  const errorCarga = [clientQuery, productsQuery, categoriesQuery, priceQuery].find(
+    (query) => query.isError,
+  )
+  const mensajeCarga = errorCarga
+    ? errorCarga.error instanceof ApiError
+      ? errorCarga.error.message
+      : 'No se pudo cargar el catálogo del cliente'
+    : null
 
-      <div className="flex gap-2 px-4 pt-3">
-        <button
-          type="button"
-          onClick={() => setCondicion('contado')}
-          className={`h-12 flex-1 rounded-xl text-base font-medium ${condicion === 'contado' ? 'bg-slate-900 text-white' : 'bg-white'}`}
-        >
-          Contado
-        </button>
-        <button
-          type="button"
-          onClick={() => setCondicion('credito')}
-          className={`h-12 flex-1 rounded-xl text-base font-medium ${condicion === 'credito' ? 'bg-slate-900 text-white' : 'bg-white'}`}
-        >
-          Crédito
-        </button>
-      </div>
+  // Se pasa el mismo objeto a la columna lateral de escritorio y a la hoja del
+  // teléfono. Que sea uno solo evita que las dos muestren totales distintos.
+  const pedido = {
+    lineas: cart,
+    onCantidad: cambiarLinea,
+    onVaciar: () => setCart([]),
+    subtotal,
+    impuesto,
+    total,
+    condicion,
+    onCondicion: setCondicion,
+    onConfirmar: () => {
+      setErrorTitle(null)
+      setErrorDetail(null)
+      saveMutation.mutate()
+    },
+    pendiente: saveMutation.isPending,
+  }
 
-      {previous ? (
-        <button type="button" onClick={repeatPrevious} className="mx-4 mt-3 h-14 rounded-xl bg-white text-lg font-medium">
-          Repetir pedido anterior
-        </button>
+  return (
+    <FieldShell
+      titulo={clientQuery.data?.nombreComercial ?? 'Nuevo pedido'}
+      subtitulo={
+        <span>
+          Elegí por categoría y apretá <span className="font-semibold text-ink">+</span> para
+          sumar. {visibles.length} {visibles.length === 1 ? 'producto' : 'productos'}
+          {categoriaId !== null ? ' en esta categoría' : ' en el catálogo'}
+        </span>
+      }
+      acciones={
+        previous ? (
+          <button
+            type="button"
+            onClick={repeatPrevious}
+            className="h-10 rounded-[0.625rem] border border-line bg-surface px-3.5 text-sm font-medium text-ink transition-colors hover:border-brand/40 hover:bg-brand-soft/60"
+          >
+            Repetir pedido anterior
+          </button>
+        ) : null
+      }
+      aside={<OrderCart {...pedido} />}
+    >
+      {cargando ? (
+        <p className="rounded-card bg-surface px-4 py-4 text-sm text-muted">Cargando catálogo…</p>
+      ) : null}
+
+      {mensajeCarga ? (
+        <p className="rounded-card border border-brand/25 bg-brand-soft px-4 py-4 text-sm text-brand-deep">
+          {mensajeCarga}
+        </p>
       ) : null}
 
       {errorTitle ? (
-        <div className="mx-4 mt-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3">
-          <p className="text-lg font-semibold text-red-900">{errorTitle}</p>
-          <p className="mt-1 text-base text-red-800">{errorDetail}</p>
+        <div className="mb-3 rounded-card border border-brand/25 bg-brand-soft px-4 py-3">
+          <p className="text-base font-semibold text-brand-deep">{errorTitle}</p>
+          <p className="mt-0.5 text-sm text-brand-deep">{errorDetail}</p>
         </div>
       ) : null}
 
-      <div className="space-y-2 px-4 py-3">
-        {results.map((product) => (
-          <button
-            key={product.id}
-            type="button"
-            onClick={() => setPickedProductId(product.id)}
-            className="h-14 w-full rounded-xl bg-white px-4 text-left text-lg font-medium"
+      {/* Búsqueda: apoyo para cuando el cliente pide algo puntual, no la forma
+          principal de encontrar el producto. */}
+      <input
+        value={busqueda}
+        onChange={(event) => setBusqueda(event.target.value)}
+        placeholder="Buscar por nombre, código o código de barras"
+        aria-label="Buscar productos"
+        className="h-12 w-full rounded-[0.625rem] border border-line bg-surface px-4 text-base text-ink outline-none transition-colors placeholder:text-muted focus:border-brand"
+      />
+
+      <nav className="-mx-4 mt-3 flex gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:flex-wrap sm:px-0">
+        <Chip activo={categoriaId === null} onClick={() => setCategoriaId(null)}>
+          Todos · {vendibles.length}
+        </Chip>
+        {categorias.map((categoria) => (
+          <Chip
+            key={categoria.id}
+            activo={categoriaId === categoria.id}
+            onClick={() => setCategoriaId(categoria.id)}
           >
-            {product.nombre}
-          </button>
+            {categoria.nombre} · {categoria.total}
+          </Chip>
         ))}
-        {picked
-          ? picked.units.map((unit) => (
-              <button
-                key={unit.id}
-                type="button"
-                onClick={() => addUnit(picked.nombre, unit.id, unit.nombre)}
-                className="h-14 w-full rounded-xl bg-slate-900 px-4 text-left text-lg font-medium text-white"
-              >
-                {unit.nombre}
-                {priceByUnit.has(unit.id) ? ` · Q${priceByUnit.get(unit.id)}` : ' · sin precio'}
-              </button>
-            ))
-          : null}
-      </div>
+      </nav>
 
       <div className="fixed inset-x-0 bottom-0 z-10 mx-auto w-full max-w-6xl border-t border-slate-200 bg-white px-4 py-3">
         <div className="max-h-40 space-y-2 overflow-y-auto">
@@ -257,7 +417,55 @@ export function NewOrderPage() {
         >
           {saveMutation.isPending ? 'Confirmando…' : 'Confirmar pedido'}
         </button>
+      {!cargando && !mensajeCarga && visibles.length === 0 ? (
+        <p className="mt-6 rounded-card border border-dashed border-line bg-surface px-4 py-10 text-center text-sm text-muted">
+          {busqueda.trim() === ''
+            ? 'Este cliente no tiene productos con precio en su lista.'
+            : 'Ningún producto de esta categoría coincide con la búsqueda.'}
+        </p>
+      ) : null}
+
+      <div className="mt-3 grid grid-cols-2 gap-2.5 sm:grid-cols-3 sm:gap-3 lg:grid-cols-4 2xl:grid-cols-5">
+        {visibles.map((producto) => (
+          <ProductTile
+            key={producto.id}
+            producto={producto}
+            precioDe={precioDe}
+            cantidadDe={cantidadDe}
+            onCantidad={(unidad, nueva) => cambiarCantidad(producto, unidad, nueva)}
+          />
+        ))}
       </div>
-    </div>
+
+      {/* En el teléfono el pedido vive en la hoja de abajo; en escritorio, en la
+          columna lateral que dibuja el FieldShell. Las dos leen el mismo estado,
+          así que nunca muestran totales distintos. */}
+      <OrderCartSheet {...pedido} />
+    </FieldShell>
+  )
+}
+
+function Chip({
+  activo,
+  onClick,
+  children,
+}: {
+  activo: boolean
+  onClick: () => void
+  children: ReactNode
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={activo}
+      className={`h-10 shrink-0 rounded-full px-4 text-sm font-medium transition-colors ${
+        activo
+          ? 'bg-ink text-parchment'
+          : 'border border-line bg-surface text-ink-soft hover:border-brand/40 hover:bg-brand-soft/50'
+      }`}
+    >
+      {children}
+    </button>
   )
 }

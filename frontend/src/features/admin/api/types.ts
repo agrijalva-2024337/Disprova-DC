@@ -30,6 +30,8 @@ export type ProductUnit = {
   factor: string
   codigoBarras: string | null
   precioBase: string
+  /** `false` = presentación dada de baja. El backend sigue devolviéndola. */
+  activo: boolean
 }
 
 export type ProductImage = {
@@ -69,6 +71,8 @@ export type PriceListItem = {
   productUnitId: number
   precio: string
   vigenteDesde: string
+  /** `false` = precio dado de baja. El backend no lo aplica aunque sea el último. */
+  activo: boolean
 }
 
 export type CategoryInput = {

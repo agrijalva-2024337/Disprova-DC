@@ -23,7 +23,14 @@ const decimalValue = z.union([z.string(), z.number()]).refine(
   'Número inválido',
 );
 
+/**
+ * `id` viene solo al editar. Sirve para distinguir "esta presentación ya
+ * existía, actualizala" de "esta es nueva, creala": sin eso, guardar un
+ * producto obligaba a borrar todas sus presentaciones y volver a crearlas, lo
+ * que revienta apenas el producto tenía un precio en una lista o un pedido.
+ */
 const productUnitInputSchema = z.object({
+  id: z.number().int().positive().optional(),
   nombre: z.string().min(1),
   factor: decimalValue,
   codigoBarras: z.string().min(1).nullable().optional(),
@@ -31,6 +38,7 @@ const productUnitInputSchema = z.object({
 });
 
 const productImageInputSchema = z.object({
+  id: z.number().int().positive().optional(),
   url: z.string().min(1),
   orden: z.number().int().optional(),
   esPrincipal: z.boolean().optional(),

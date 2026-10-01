@@ -6,6 +6,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { createProduct, getProduct, listCategories, updateProduct } from '../api/catalog.ts'
 import { ApiError } from '../api/http.ts'
 import { Alert, QueryStatus } from '../ui/Status.tsx'
+import { ProductImagesField } from './ProductImagesField.tsx'
 import { productFormSchema, type ProductFormValues } from './productFormSchema.ts'
 
 const emptyValues: ProductFormValues = {
@@ -18,6 +19,7 @@ const emptyValues: ProductFormValues = {
   controlado: false,
   activo: true,
   units: [{ nombre: '', factor: '1', codigoBarras: '', precioBase: '' }],
+  images: [],
 }
 
 export function ProductFormPage() {
@@ -64,12 +66,20 @@ export function ProductFormPage() {
       units:
         product.units.length > 0
           ? product.units.map((unit) => ({
+              // El id viaja al backend para que actualice esta presentación en
+              // vez de borrarla y recrearla.
+              id: unit.id,
               nombre: unit.nombre,
               factor: String(unit.factor),
               codigoBarras: unit.codigoBarras ?? '',
               precioBase: String(unit.precioBase),
             }))
           : emptyValues.units,
+      images: product.images.map((image) => ({
+        id: image.id,
+        url: image.url,
+        esPrincipal: image.esPrincipal,
+      })),
     })
   }, [form, productQuery.data])
 
@@ -85,10 +95,16 @@ export function ProductFormPage() {
         controlado: values.controlado,
         activo: values.activo,
         units: values.units.map((unit) => ({
+          id: unit.id,
           nombre: unit.nombre,
           factor: unit.factor,
           codigoBarras: unit.codigoBarras ? unit.codigoBarras : null,
           precioBase: unit.precioBase,
+        })),
+        images: values.images.map((image) => ({
+          id: image.id,
+          url: image.url,
+          esPrincipal: image.esPrincipal,
         })),
       }
       if (isEdit && productId) {
@@ -287,6 +303,10 @@ export function ProductFormPage() {
               </div>
             ))}
           </div>
+        </div>
+
+        <div className="space-y-3 rounded border border-slate-200 p-4">
+          <ProductImagesField control={form.control} />
         </div>
 
         <button

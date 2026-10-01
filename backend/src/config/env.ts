@@ -24,6 +24,20 @@ export const env = {
     accessSecret: required('JWT_ACCESS_SECRET'),
     refreshSecret: required('JWT_REFRESH_SECRET'),
   },
+  /// Límites de peticiones. Vienen por variable de entorno porque el número
+  /// que sirve en desarrollo no es el que sirve en producción: probando la
+  /// aplicación, 100 peticiones en 15 minutos se agotan recargando el panel, y
+  /// te deja afuera con un 429 que no dice nada. En producción los defaults
+  /// siguen siendo altos pero no infinitos, y se pueden bajar por entorno.
+  rateLimit: {
+    windowMs: Number(process.env.RATE_LIMIT_WINDOW_MS ?? 15 * 60 * 1000),
+    /// Peticiones a /api en general. Sube lo bastante para no estorbar al uso normal.
+    apiMax: Number(process.env.RATE_LIMIT_API_MAX ?? 600),
+    /// Intentos de ingreso. Alto a propósito: este límite frena a quien
+    /// adivina contraseñas, no a quien se equivoca una vez y necesita
+    /// volver a intentarlo.
+    loginMax: Number(process.env.RATE_LIMIT_LOGIN_MAX ?? 10),
+  },
   whatsapp: {
     provider: process.env.WHATSAPP_PROVIDER ?? 'wa_link',
     token: process.env.WHATSAPP_TOKEN,
