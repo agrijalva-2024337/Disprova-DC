@@ -47,18 +47,6 @@ export function TodayRoutePage() {
   const pendiente = porCobrar(clients)
 
   return (
-    <div className="mx-auto flex min-h-screen w-full max-w-6xl flex-col bg-slate-100 text-slate-900">
-      <header className="sticky top-0 z-10 border-b border-slate-200 bg-white px-4 py-4">
-        <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Disprova</p>
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <h1 className="text-2xl font-semibold">Mi ruta de hoy</h1>
-          <div className="flex gap-2">
-            <Link to="/ruta/caja" className="rounded-xl border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700">
-              Caja
-            </Link>
-            <Link to="/ruta/entregas" className="rounded-xl bg-slate-900 px-3 py-2 text-sm font-medium text-white">
-              Entregas
-            </Link>
     <FieldShell
       titulo="Mi ruta de hoy"
       subtitulo={
@@ -124,44 +112,6 @@ export function TodayRoutePage() {
         </section>
       ) : null}
 
-      <main className="grid flex-1 grid-cols-1 gap-3 px-4 py-4 md:grid-cols-2 xl:grid-cols-3">
-        {routeQuery.isLoading ? <p className="rounded-xl bg-white px-4 py-4 text-base">Cargando ruta…</p> : null}
-        {routeQuery.isError ? (
-          <p className="rounded-xl border border-red-200 bg-red-50 px-4 py-4 text-base text-red-800">
-            {routeQuery.error instanceof ApiError ? routeQuery.error.message : 'No se pudo cargar la ruta'}
-          </p>
-        ) : null}
-        {!routeQuery.isLoading && !routeQuery.isError && clients.length === 0 ? (
-          <p className="rounded-xl bg-white px-4 py-6 text-center text-base text-slate-600">
-            No hay clientes en la ruta de hoy.
-          </p>
-        ) : null}
-        {clients.map((client) =>
-          client.visitadoHoy ? (
-            <article key={client.id} className="rounded-2xl border border-slate-200 bg-white px-4 py-4 opacity-70">
-              <p className="text-lg font-semibold">{client.nombreComercial}</p>
-              <p className="mt-1 text-base text-slate-600">Saldo {client.saldoActual}</p>
-              <p className="mt-2 text-sm font-medium text-green-800">Visitado</p>
-            </article>
-          ) : (
-            <button
-              key={client.id}
-              type="button"
-              onClick={() => {
-                setActionError(null)
-                setAskingMotivo(false)
-                setSelected(client)
-              }}
-              className="rounded-2xl border border-slate-200 bg-white px-4 py-5 text-left shadow-sm active:bg-slate-50"
-            >
-              <p className="text-lg font-semibold">{client.nombreComercial}</p>
-              <p className="mt-1 text-base text-slate-600">Saldo {client.saldoActual}</p>
-              <p className="mt-2 text-sm font-medium text-slate-500">Sin visitar</p>
-            </button>
-          ),
-        )}
-      </main>
-      
       {routeQuery.data && clients.length === 0 ? (
         <SinRutaHoy />
       ) : null}
