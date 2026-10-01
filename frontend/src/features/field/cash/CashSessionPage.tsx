@@ -73,7 +73,7 @@ export function CashSessionPage() {
   if (arqueo) {
     const diferencia = Number(arqueo.diferencia ?? 0)
     return (
-      <div className="mx-auto flex min-h-screen w-full max-w-md flex-col bg-slate-100 text-slate-900">
+      <div className="mx-auto flex min-h-screen w-full max-w-6xl flex-col bg-slate-100 text-slate-900">
         <header className="border-b border-slate-200 bg-white px-4 py-4">
           <h1 className="text-2xl font-semibold">Caja cerrada</h1>
           <p className="text-sm text-slate-600">Sesión #{arqueo.id}</p>
@@ -146,7 +146,7 @@ export function CashSessionPage() {
   }
 
   return (
-    <div className="mx-auto flex min-h-screen w-full max-w-md flex-col bg-slate-100 text-slate-900">
+    <div className="mx-auto flex min-h-screen w-full max-w-6xl flex-col bg-slate-100 text-slate-900">
       <header className="border-b border-slate-200 bg-white px-4 py-4">
         <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Disprova</p>
         <h1 className="text-2xl font-semibold">Mi caja</h1>

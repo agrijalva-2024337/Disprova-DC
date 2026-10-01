@@ -147,7 +147,7 @@ export function NewOrderPage() {
   })
 
   return (
-    <div className="mx-auto flex min-h-screen w-full max-w-md flex-col bg-slate-100 pb-40">
+    <div className="mx-auto flex min-h-screen w-full max-w-6xl flex-col bg-slate-100 pb-40">
       <header className="sticky top-0 z-10 bg-white px-4 py-4">
         <Link to="/ruta" className="text-base text-slate-600">
           ← Ruta
@@ -220,7 +220,7 @@ export function NewOrderPage() {
           : null}
       </div>
 
-      <div className="fixed inset-x-0 bottom-0 z-10 mx-auto w-full max-w-md border-t border-slate-200 bg-white px-4 py-3">
+      <div className="fixed inset-x-0 bottom-0 z-10 mx-auto w-full max-w-6xl border-t border-slate-200 bg-white px-4 py-3">
         <div className="max-h-40 space-y-2 overflow-y-auto">
           {cart.map((line) => (
             <div key={line.productUnitId} className="flex items-center justify-between gap-2">

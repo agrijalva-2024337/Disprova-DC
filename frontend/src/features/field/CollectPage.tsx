@@ -107,7 +107,7 @@ export function CollectPage() {
   }
 
   return (
-    <div className="mx-auto flex min-h-screen w-full max-w-md flex-col bg-slate-100 text-slate-900">
+    <div className="mx-auto flex min-h-screen w-full max-w-6xl flex-col bg-slate-100 text-slate-900">
       <header className="sticky top-0 z-10 border-b border-slate-200 bg-white px-4 py-4">
         <Link to="/ruta" className="text-base text-slate-600">
           ← Ruta

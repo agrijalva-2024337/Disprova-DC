@@ -8,7 +8,7 @@ export function DeliveriesPage() {
   const orders = query.data ?? []
 
   return (
-    <div className="mx-auto flex min-h-screen w-full max-w-md flex-col bg-slate-100">
+    <div className="mx-auto flex min-h-screen w-full max-w-6xl flex-col bg-slate-100">
       <header className="bg-white px-4 py-4">
         <Link to="/ruta" className="text-base text-slate-600">
           ← Ruta

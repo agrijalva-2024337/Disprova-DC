@@ -47,7 +47,7 @@ export function DeliveryPage() {
   })
 
   return (
-    <div className="mx-auto min-h-screen w-full max-w-md bg-slate-100 px-4 py-4">
+    <div className="mx-auto min-h-screen w-full max-w-6xl bg-slate-100 px-4 py-4">
       <Link to="/ruta/entregas" className="text-base text-slate-600">
         ← Entregas
       </Link>

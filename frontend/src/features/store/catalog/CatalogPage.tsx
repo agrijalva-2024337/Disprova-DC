@@ -4,9 +4,19 @@ import { useParams } from 'react-router-dom'
 import { getCatalog, isPublicStoreError, type PublicCatalog } from '../api/publicStore.ts'
 import { useCart } from '../cart/CartContext.tsx'
 import { theme } from '../theme.ts'
+import { BrandIntro } from './BrandIntro.tsx'
 import { CartBar } from './CartBar.tsx'
 import { ProductCard } from './ProductCard.tsx'
 import styles from './catalog.module.css'
+
+const INTRO_CLAVE = 'disprova-intro-visto'
+
+function saltarIntro() {
+  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    return true
+  }
+  return window.sessionStorage.getItem(INTRO_CLAVE) === '1'
+}
 
 const storeVars = {
   '--store-bg': theme.bg,
@@ -16,7 +26,6 @@ const storeVars = {
   '--store-ink': theme.text,
   '--store-muted': theme.textMuted,
   '--store-accent': theme.accent,
-  '--store-accent-soft': theme.accentSoft,
 } as CSSProperties
 
 function CatalogSkeleton() {
@@ -101,6 +110,7 @@ function Catalogo({ token, catalog }: { token: string; catalog: PublicCatalog })
 
 function CatalogScreen() {
   const { token } = useParams()
+  const [verIntro, setVerIntro] = useState(() => !saltarIntro())
   const catalogQuery = useQuery({
     queryKey: ['public-catalog', token],
     queryFn: () => getCatalog(token ?? ''),
@@ -132,6 +142,14 @@ function CatalogScreen() {
         ) : null}
         {catalogQuery.data && token ? <Catalogo token={token} catalog={catalogQuery.data} /> : null}
       </div>
+      {verIntro ? (
+        <BrandIntro
+          onFinish={() => {
+            window.sessionStorage.setItem(INTRO_CLAVE, '1')
+            setVerIntro(false)
+          }}
+        />
+      ) : null}
     </main>
   )
 }

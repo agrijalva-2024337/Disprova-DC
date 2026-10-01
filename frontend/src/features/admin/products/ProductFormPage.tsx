@@ -146,7 +146,7 @@ export function ProductFormPage() {
 
       <form
         onSubmit={form.handleSubmit((values) => saveMutation.mutate(values))}
-        className="space-y-5 rounded-lg border border-slate-200 bg-white p-4"
+        className="ficha space-y-5"
       >
         <div className="grid gap-4 sm:grid-cols-2">
           <label className="block text-sm">

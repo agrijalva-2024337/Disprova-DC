@@ -23,7 +23,7 @@ export function CreateUserForm({
 
   return (
     <form
-      className="mt-4 grid gap-3 sm:grid-cols-2"
+      className="ficha mt-4 grid gap-3 sm:grid-cols-2"
       onSubmit={form.handleSubmit(onSubmit)}
     >
       <label className="block text-sm">

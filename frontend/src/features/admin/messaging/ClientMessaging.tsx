@@ -78,7 +78,7 @@ export function ClientMessaging({ clientId }: { clientId: number }) {
       {abierto ? (
         <div className="space-y-4 rounded-lg border border-slate-200 bg-white p-4">
           <div className="flex flex-wrap items-end gap-3">
-            <label className="block min-w-64 text-sm">
+            <label className="block min-w-0 text-sm sm:min-w-64">
               <span className="mb-1 block font-medium">Plantilla</span>
               <select
                 value={templateId}

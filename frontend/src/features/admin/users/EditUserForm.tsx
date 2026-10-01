@@ -36,7 +36,7 @@ export function EditUserForm({
   })
 
   return (
-    <form className="grid gap-3 sm:grid-cols-2" onSubmit={form.handleSubmit(onSubmit)}>
+    <form className="ficha grid gap-3 sm:grid-cols-2" onSubmit={form.handleSubmit(onSubmit)}>
       <label className="block text-sm">
         <span className="mb-1 block font-medium">Nombre</span>
         <input

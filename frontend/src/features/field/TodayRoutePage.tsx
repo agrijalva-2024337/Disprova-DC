@@ -36,10 +36,10 @@ export function TodayRoutePage() {
   const clients = routeQuery.data?.clients ?? []
 
   return (
-    <div className="mx-auto flex min-h-screen w-full max-w-md flex-col bg-slate-100 text-slate-900">
+    <div className="mx-auto flex min-h-screen w-full max-w-6xl flex-col bg-slate-100 text-slate-900">
       <header className="sticky top-0 z-10 border-b border-slate-200 bg-white px-4 py-4">
         <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Disprova</p>
-        <div className="flex items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center justify-between gap-3">
           <h1 className="text-2xl font-semibold">Mi ruta de hoy</h1>
           <div className="flex gap-2">
             <Link to="/ruta/caja" className="rounded-xl border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700">
@@ -57,7 +57,7 @@ export function TodayRoutePage() {
         ) : null}
       </header>
 
-      <main className="flex flex-1 flex-col gap-3 px-4 py-4">
+      <main className="grid flex-1 grid-cols-1 gap-3 px-4 py-4 md:grid-cols-2 xl:grid-cols-3">
         {routeQuery.isLoading ? <p className="rounded-xl bg-white px-4 py-4 text-base">Cargando ruta…</p> : null}
         {routeQuery.isError ? (
           <p className="rounded-xl border border-red-200 bg-red-50 px-4 py-4 text-base text-red-800">
