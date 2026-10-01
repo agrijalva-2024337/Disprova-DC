@@ -1,7 +1,6 @@
 import type { ReactNode } from 'react'
 import { NavLink, Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../admin/auth/AuthContext.tsx'
-import { BrandMark, BrandLogo } from '../admin/ui/BrandLogo.tsx'
 
 /**
  * Marco de las pantallas de campo.
@@ -39,15 +38,13 @@ export function FieldShell({
   }
 
   return (
-    <div className="min-h-screen bg-parchment text-ink lg:flex">
-      {/* Menú lateral: solo cuando hay ancho para una columna de contenido. */}
-      <aside className="sticky top-0 hidden h-screen w-60 shrink-0 flex-col border-r border-line bg-surface lg:flex xl:w-64">
-        <div className="border-b border-line px-4 py-4">
+    <div className="min-h-screen bg-slate-50 font-body text-slate-900 lg:flex">
+      <aside className="sticky top-0 hidden h-screen w-56 shrink-0 flex-col border-r border-slate-200 bg-white lg:flex">
+        <div className="border-b border-slate-200 px-4 py-4">
           <Link to="/ruta" className="block">
-            <BrandLogo size="md" />
-            <p className="mt-1 text-[0.625rem] font-semibold uppercase tracking-[0.16em] text-muted">
-              Ruta de campo
-            </p>
+            <p className="font-display text-xl font-semibold text-slate-900">Disprova GyG</p>
+            <div className="mt-2 h-0.5 w-12 bg-[var(--store-accent)]" />
+            <p className="mt-2 text-xs text-slate-500">Ruta de campo</p>
           </Link>
         </div>
 
@@ -56,10 +53,10 @@ export function FieldShell({
           <Tab to="/ruta/entregas" label="Entregas" icono="entregas" />
           <Tab to="/ruta/caja" label="Caja" icono="caja" />
         </nav>
-        <div className="space-y-2 border-t border-line p-3">
+        <div className="space-y-2 border-t border-slate-200 p-3">
           <Link
             to="/admin"
-            className="flex h-10 items-center gap-2.5 rounded-[0.625rem] px-3 text-sm font-medium text-ink-soft transition-colors hover:bg-brand-soft hover:text-brand-deep"
+            className="flex h-10 items-center gap-2.5 rounded px-3 text-sm font-medium text-slate-700 hover:bg-slate-100"
           >
             <IconoPanel />
             Volver al panel
@@ -67,7 +64,7 @@ export function FieldShell({
           <button
             type="button"
             onClick={salir}
-            className="flex h-10 w-full items-center gap-2.5 rounded-[0.625rem] px-3 text-sm font-medium text-ink-soft transition-colors hover:bg-brand-soft hover:text-brand-deep"
+            className="flex h-10 w-full items-center gap-2.5 rounded px-3 text-sm font-medium text-slate-700 hover:bg-slate-100"
           >
             <IconoSalir />
             Cerrar sesión
@@ -76,19 +73,16 @@ export function FieldShell({
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-20 border-b border-line bg-parchment/90 px-4 pb-3.5 pt-3 backdrop-blur-md sm:px-6">
-          <div className="mx-auto flex w-full max-w-[1600px] items-center gap-2.5">
-            <BrandMark size={28} />
-            <span className="text-[0.6875rem] uppercase tracking-[0.16em] text-muted">
-              Disprova GyG
-            </span>
+        <header className="sticky top-0 z-20 border-b border-slate-200 bg-white px-4 pb-3.5 pt-3 sm:px-6">
+          <div className="mx-auto flex w-full max-w-6xl items-center gap-2.5">
+            <span className="font-display text-sm font-semibold text-slate-900">Disprova GyG</span>
 
             <div className="ml-auto flex items-center gap-1.5">
               {/* En el teléfono no hay menú lateral, así que la salida al panel
                   vive también acá y no solo en el aside de escritorio. */}
               <Link
                 to="/admin"
-                className="flex h-9 items-center gap-1.5 rounded-[0.625rem] border border-line bg-surface px-2.5 text-xs font-medium text-ink-soft transition-colors hover:border-brand/40 hover:bg-brand-soft/60 sm:text-sm"
+                className="flex h-9 items-center gap-1.5 rounded border border-slate-300 bg-white px-2.5 text-xs font-medium text-slate-700 sm:text-sm"
               >
                 <svg
                   viewBox="0 0 24 24"
@@ -109,7 +103,7 @@ export function FieldShell({
                 type="button"
                 onClick={salir}
                 title="Cerrar sesión"
-                className="flex h-9 w-9 items-center justify-center rounded-[0.625rem] border border-line bg-surface text-ink-soft transition-colors hover:border-brand/40 hover:bg-brand-soft/60"
+                className="flex h-9 w-9 items-center justify-center rounded border border-slate-300 bg-white text-slate-700"
               >
                 <svg
                   viewBox="0 0 24 24"
@@ -129,10 +123,10 @@ export function FieldShell({
             </div>
           </div>
 
-          <div className="mx-auto mt-2.5 flex w-full max-w-[1600px] flex-wrap items-end justify-between gap-x-4 gap-y-2">
+          <div className="mx-auto mt-2.5 flex w-full max-w-6xl flex-wrap items-end justify-between gap-x-4 gap-y-2">
             <div className="min-w-0">
-              <h1 className="font-display text-2xl font-semibold text-ink">{titulo}</h1>
-              {subtitulo ? <div className="mt-0.5 text-sm text-muted">{subtitulo}</div> : null}
+              <h1 className="font-display text-2xl font-semibold text-slate-900">{titulo}</h1>
+              {subtitulo ? <div className="mt-0.5 text-sm text-slate-600">{subtitulo}</div> : null}
             </div>
             {acciones ? <div className="flex flex-wrap items-center gap-2">{acciones}</div> : null}
           </div>
@@ -145,8 +139,8 @@ export function FieldShell({
           <div
             className={
               aside
-                ? 'mx-auto grid w-full max-w-[1600px] grid-cols-1 items-start gap-5 xl:grid-cols-[minmax(0,1fr)_23rem]'
-                : 'mx-auto w-full max-w-[1600px]'
+                ? 'mx-auto grid w-full max-w-6xl grid-cols-1 items-start gap-5 xl:grid-cols-[minmax(0,1fr)_23rem]'
+                : 'mx-auto w-full max-w-6xl'
             }
           >
             <div className="min-w-0">{children}</div>
@@ -155,7 +149,7 @@ export function FieldShell({
         </main>
 
         <nav className="fixed inset-x-0 bottom-0 z-20 lg:hidden">
-          <div className="mx-auto flex w-full max-w-md border-t border-line bg-surface/95 backdrop-blur-md">
+          <div className="flex w-full border-t border-slate-200 bg-white">
             <Tab to="/ruta" label="Ruta" icono="ruta" exact />
             <Tab to="/ruta/entregas" label="Entregas" icono="entregas" />
             <Tab to="/ruta/caja" label="Caja" icono="caja" />
@@ -228,8 +222,8 @@ function Tab({
         // barra de abajo es una columna angosta bajo el ícono. El mismo
         // componente cubre los dos porque es el mismo destino.
         isActive
-          ? 'flex flex-1 flex-col items-center gap-1 rounded-[0.625rem] bg-brand-soft py-2.5 text-[0.6875rem] font-semibold text-brand-deep lg:w-full lg:flex-row lg:justify-start lg:gap-2.5 lg:px-3 lg:py-2.5 lg:text-sm'
-          : 'flex flex-1 flex-col items-center gap-1 py-2.5 text-[0.6875rem] font-medium text-muted transition-colors hover:bg-brand-soft/50 hover:text-ink-soft lg:w-full lg:flex-row lg:justify-start lg:gap-2.5 lg:px-3 lg:py-2.5 lg:text-sm'
+          ? 'flex flex-1 flex-col items-center gap-1 py-2.5 text-[0.6875rem] font-semibold text-slate-900 shadow-[inset_0_-2px_0_var(--store-accent)] lg:w-full lg:flex-row lg:justify-start lg:gap-2.5 lg:rounded lg:px-3 lg:py-2.5 lg:text-sm lg:shadow-[inset_0_-2px_0_var(--store-accent)]'
+          : 'flex flex-1 flex-col items-center gap-1 py-2.5 text-[0.6875rem] font-medium text-slate-600 hover:bg-slate-100 lg:w-full lg:flex-row lg:justify-start lg:gap-2.5 lg:rounded lg:px-3 lg:py-2.5 lg:text-sm'
       }
     >
       {({ isActive }) => (
@@ -237,7 +231,7 @@ function Tab({
           <svg
             viewBox="0 0 24 24"
             className={`h-[1.35rem] w-[1.35rem] shrink-0 lg:h-[1.15rem] lg:w-[1.15rem] ${
-              isActive ? 'text-brand' : ''
+              isActive ? 'text-[var(--store-accent)]' : ''
             }`}
             fill="none"
             stroke="currentColor"

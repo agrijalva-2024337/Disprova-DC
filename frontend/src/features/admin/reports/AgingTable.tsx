@@ -1,6 +1,5 @@
 import { Link } from 'react-router-dom'
 import type { AgingReportRow } from '../api/types.ts'
-import { DataTable, EmptyRow, Td, Th, Tr } from '../ui/DataTable.tsx'
 
 const bucketLabels: Record<string, string> = {
   '0-15': '0-15 días',
@@ -26,59 +25,58 @@ export function AgingTable({
   rows: AgingReportRow[]
   emptyText?: string
 }) {
-  const columnas = 3 + Object.keys(bucketLabels).length
-
   return (
-    <DataTable>
-      <thead>
-        <tr>
-          <Th>Cliente</Th>
-          <Th align="right">Saldo</Th>
-          {Object.keys(bucketLabels).map((key) => (
-            <Th key={key} align="right">
-              {bucketLabels[key]}
-            </Th>
-          ))}
-          <Th>Acciones</Th>
-        </tr>
-      </thead>
-      <tbody>
-        {rows.length === 0 ? (
-          <EmptyRow columnas={columnas}>{emptyText}</EmptyRow>
-        ) : (
-          rows.map((row) => (
-            <Tr key={row.clientId}>
-              <Td className="font-medium text-ink">{row.nombre}</Td>
-              <Td align="right" className="font-semibold tabular-nums text-ink">
-                {money(row.saldoActual)}
-              </Td>
-              {Object.keys(bucketLabels).map((key) => {
-                const value = row.buckets[key as keyof typeof row.buckets]
-                // Lo que pasó de 60 días se marca en rojo: es la deuda que hay
-                // que ir a buscar primero.
-                const masViejo = key === '60+' && Number(value) > 0
-                return (
-                  <Td
-                    key={key}
-                    align="right"
-                    className={`tabular-nums ${masViejo ? 'font-semibold text-brand' : ''}`}
+    <div className="registros">
+      <table className="min-w-full text-left text-sm">
+        <thead className="bg-slate-50 text-slate-600">
+          <tr>
+            <th className="px-3 py-2 font-medium">Cliente</th>
+            <th className="px-3 py-2 font-medium">Saldo</th>
+            {Object.keys(bucketLabels).map((key) => (
+              <th key={key} className="px-3 py-2 font-medium">
+                {bucketLabels[key]}
+              </th>
+            ))}
+            <th className="px-3 py-2 font-medium">Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.length === 0 ? (
+            <tr>
+              <td colSpan={7} className="px-3 py-6 text-center text-slate-500">
+                {emptyText}
+              </td>
+            </tr>
+          ) : (
+            rows.map((row) => (
+              <tr key={row.clientId} className="border-t border-slate-100">
+                <td className="px-3 py-2 font-medium">{row.nombre}</td>
+                <td className="px-3 py-2 font-semibold tabular-nums">{money(row.saldoActual)}</td>
+                {Object.keys(bucketLabels).map((key) => {
+                  const value = row.buckets[key as keyof typeof row.buckets]
+                  const masViejo = key === '60+' && Number(value) > 0
+                  return (
+                    <td
+                      key={key}
+                      className={masViejo ? 'px-3 py-2 font-semibold text-red-700' : 'px-3 py-2'}
+                    >
+                      {money(value)}
+                    </td>
+                  )
+                })}
+                <td className="px-3 py-2">
+                  <Link
+                    to={`/admin/cobranza/${row.clientId}`}
+                    className="rounded border border-slate-300 px-2 py-1 text-xs hover:bg-slate-50"
                   >
-                    {money(value)}
-                  </Td>
-                )
-              })}
-              <Td>
-                <Link
-                  to={`/admin/cobranza/${row.clientId}`}
-                  className="inline-block rounded-[0.5rem] border border-line px-2.5 py-1 text-xs font-medium text-ink-soft transition-colors hover:border-brand/40 hover:bg-brand-soft/50 hover:text-brand-deep"
-                >
-                  Estado de cuenta
-                </Link>
-              </Td>
-            </Tr>
-          ))
-        )}
-      </tbody>
-    </DataTable>
+                    Estado de cuenta
+                  </Link>
+                </td>
+              </tr>
+            ))
+          )}
+        </tbody>
+      </table>
+    </div>
   )
 }

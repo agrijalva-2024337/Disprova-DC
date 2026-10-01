@@ -21,7 +21,7 @@ export function OrderConfirmationPage() {
 
   return (
     <main className={`${catalogStyles.page} font-body`} style={storeVars}>
-      <div className="mx-auto flex min-h-screen w-full max-w-md flex-col items-center justify-center px-6 text-center">
+      <div className="mx-auto flex min-h-screen w-full max-w-xl flex-col items-center justify-center px-6 text-center">
         <p className="text-sm" style={{ color: theme.textMuted }}>
           Número de pedido
         </p>

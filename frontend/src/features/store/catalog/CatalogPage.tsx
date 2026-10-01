@@ -2,7 +2,6 @@ import { useQuery } from '@tanstack/react-query'
 import { useMemo, useState, type CSSProperties } from 'react'
 import { useParams } from 'react-router-dom'
 import { getCatalog, isPublicStoreError, type PublicCatalog } from '../api/publicStore.ts'
-import { useCart } from '../cart/CartContext.tsx'
 import { theme } from '../theme.ts'
 import { BrandIntro } from './BrandIntro.tsx'
 import { CartBar } from './CartBar.tsx'
@@ -42,8 +41,25 @@ function CatalogSkeleton() {
   )
 }
 
+const PORTADAS: Record<string, { imagen: string; titulo?: string; detalle: string }> = {
+  medicamentos: { imagen: '/catalogo/farmacia.jpg', titulo: 'Farmacia', detalle: 'Medicamentos de mostrador' },
+  farmacia: { imagen: '/catalogo/farmacia.jpg', detalle: 'Medicamentos de mostrador' },
+  'higiene personal': { imagen: '/catalogo/higiene.jpg', detalle: 'Cuidado de todos los días' },
+  bebidas: { imagen: '/catalogo/bebidas.jpg', detalle: 'Para la tienda y el camino' },
+  abarrotes: { imagen: '/catalogo/abarrotes.jpg', detalle: 'Despensa de todos los días' },
+  'comida oriental': { imagen: '/catalogo/oriental.jpg', detalle: 'Salsas, fideos y despensa' },
+}
+
+function portadaDe(nombre: string) {
+  return (
+    PORTADAS[nombre.trim().toLowerCase()] ?? {
+      imagen: '/catalogo/abarrotes.jpg',
+      detalle: 'Productos de esta sección',
+    }
+  )
+}
+
 function Catalogo({ token, catalog }: { token: string; catalog: PublicCatalog }) {
-  const { totalItems } = useCart()
   const [busqueda, setBusqueda] = useState('')
   const [categoriaId, setCategoriaId] = useState<number | null>(null)
   const termino = busqueda.trim().toLowerCase()
@@ -59,12 +75,19 @@ function Catalogo({ token, catalog }: { token: string; catalog: PublicCatalog })
     })
   }, [catalog.productos, categoriaId, termino])
 
+  const secciones = catalog.categorias.filter((categoria) =>
+    catalog.productos.some((producto) => producto.categoryId === categoria.id),
+  )
+  const mostrarProductos = categoriaId !== null || termino.length > 0
+
   return (
-    <div className={totalItems > 0 ? 'pb-24' : undefined}>
+    <div className={styles.shell}>
       <header className={styles.header}>
-        <h1 className={`${styles.brand} font-display`}>Disprova GyG</h1>
-        <div className={styles.rule} aria-hidden="true" />
-        <p className={`${styles.clientName} font-body`}>{catalog.cliente.nombreComercial}</p>
+        <div>
+          <h1 className={`${styles.brand} font-display`}>Disprova GyG</h1>
+          <div className={styles.rule} aria-hidden="true" />
+          <p className={`${styles.clientName} font-body`}>{catalog.cliente.nombreComercial}</p>
+        </div>
         <input
           className={`${styles.search} font-body`}
           value={busqueda}
@@ -73,36 +96,47 @@ function Catalogo({ token, catalog }: { token: string; catalog: PublicCatalog })
           aria-label="Buscar productos"
         />
       </header>
-      <div className={styles.chips}>
-        <button
-          type="button"
-          className={`${styles.chip} ${categoriaId === null ? styles.chipActive : ''} font-body`}
-          onClick={() => setCategoriaId(null)}
-        >
-          Todos
-        </button>
-        {catalog.categorias.map((categoria) => (
-          <button
-            key={categoria.id}
-            type="button"
-            className={`${styles.chip} ${categoriaId === categoria.id ? styles.chipActive : ''} font-body`}
-            onClick={() => setCategoriaId(categoria.id)}
-          >
-            {categoria.nombre}
+      <div className={styles.sectionHead}>
+        <h2 className={`${styles.sectionTitle} font-display`}>Elige una sección</h2>
+        {categoriaId !== null ? (
+          <button type="button" className={`${styles.sectionReset} font-body`} onClick={() => setCategoriaId(null)}>
+            Ver secciones
           </button>
-        ))}
+        ) : null}
       </div>
-      {productosVisibles.length === 0 ? (
-        <p className="px-4 py-8 text-center text-sm font-body" style={{ color: theme.textMuted }}>
-          No hay productos con esa búsqueda.
-        </p>
-      ) : (
+      <div className={categoriaId === null ? styles.sections : styles.sectionsCompact}>
+        {secciones.map((categoria) => {
+          const portada = portadaDe(categoria.nombre)
+          const activa = categoriaId === categoria.id
+          return (
+            <button
+              key={categoria.id}
+              type="button"
+              className={`${styles.section} ${activa ? styles.sectionActive : ''}`}
+              onClick={() => setCategoriaId(activa ? null : categoria.id)}
+            >
+              <img className={styles.sectionImg} src={portada.imagen} alt="" />
+              <span className={styles.sectionCopy}>
+                <span className={`${styles.sectionName} font-display`}>{portada.titulo ?? categoria.nombre}</span>
+                <span className={`${styles.sectionHint} font-body`}>{portada.detalle}</span>
+              </span>
+            </button>
+          )
+        })}
+      </div>
+      {mostrarProductos && productosVisibles.length === 0 ? (
+        <p className={`${styles.elige} font-body`}>No hay productos con esa búsqueda.</p>
+      ) : null}
+      {mostrarProductos && productosVisibles.length > 0 ? (
         <div className={styles.grid}>
           {productosVisibles.map((producto) => (
             <ProductCard key={producto.id} producto={producto} />
           ))}
         </div>
-      )}
+      ) : null}
+      {!mostrarProductos ? (
+        <p className={`${styles.elige} font-body`}>Toca una sección para ver sus productos y precios.</p>
+      ) : null}
       <CartBar token={token} catalog={catalog} />
     </div>
   )
@@ -124,7 +158,7 @@ function CatalogScreen() {
 
   return (
     <main className={`${styles.page} font-body`} style={storeVars}>
-      <div className="mx-auto min-h-screen w-full max-w-md">
+      <div className="min-h-screen w-full">
         {catalogQuery.isPending ? <CatalogSkeleton /> : null}
         {enlaceInvalido ? (
           <div className="flex min-h-screen items-center px-6 text-center">

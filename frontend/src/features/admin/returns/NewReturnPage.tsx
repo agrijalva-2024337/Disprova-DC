@@ -158,7 +158,7 @@ export function NewReturnPage() {
                   : 'Ningún pedido entregado coincide con la búsqueda.'}
               </p>
             ) : (
-              <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white">
+              <div className="registros">
                 <table className="min-w-full text-left text-sm">
                   <thead className="bg-slate-50 text-slate-600">
                     <tr>
@@ -218,7 +218,7 @@ export function NewReturnPage() {
             </button>
           </div>
 
-          <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white">
+          <div className="registros">
             <table className="min-w-full text-left text-sm">
               <thead className="bg-slate-50 text-slate-600">
                 <tr>

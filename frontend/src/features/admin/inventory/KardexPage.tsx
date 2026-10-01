@@ -35,7 +35,7 @@ export function KardexPage() {
         <Alert tone="info">Este producto no tiene movimientos.</Alert>
       ) : null}
       {rows.length > 0 ? (
-        <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white">
+        <div className="registros">
           <table className="min-w-full text-left text-sm">
             <thead className="bg-slate-50 text-slate-600">
               <tr>

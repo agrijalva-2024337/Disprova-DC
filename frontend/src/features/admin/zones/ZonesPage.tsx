@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { createZone, listZones, updateZone } from '../api/territory.ts'
 import type { Zone } from '../api/types.ts'
 import { ApiError } from '../api/http.ts'
+import { AddButton, ModuleHead, SearchBox } from '../ui/ListTools.tsx'
 import { Alert, QueryStatus } from '../ui/Status.tsx'
 import { RecordSheet, RowMoves } from '../ui/RecordSheet.tsx'
 
@@ -33,6 +34,8 @@ export function ZonesPage() {
   const [activo, setActivo] = useState(true)
   const [formError, setFormError] = useState<string | null>(null)
   const [formSuccess, setFormSuccess] = useState<string | null>(null)
+  const [formulario, setFormulario] = useState(false)
+  const [busqueda, setBusqueda] = useState('')
 
   function loadZone(zone: Zone | null) {
     setEditing(zone)
@@ -57,6 +60,7 @@ export function ZonesPage() {
     onSuccess: async () => {
       const message = editing ? 'Zona actualizada' : 'Zona creada'
       loadZone(null)
+      setFormulario(false)
       setFormError(null)
       setFormSuccess(message)
       await queryClient.invalidateQueries({ queryKey: ['zones'] })
@@ -75,11 +79,23 @@ export function ZonesPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-xl font-semibold">Zonas</h1>
-        <p className="text-sm text-slate-600">Semana del mes y días de visita de cada ruta.</p>
-      </div>
+      <ModuleHead
+        title="Zonas"
+        text="Semana del mes y días de visita de cada ruta."
+        action={
+          <AddButton
+            onClick={() => {
+              loadZone(null)
+              setFormulario(true)
+            }}
+          >
+            Agregar zona
+          </AddButton>
+        }
+      />
+      <SearchBox value={busqueda} onChange={setBusqueda} placeholder="Buscar zona" />
 
+      {formulario || editing ? (
       <form
         onSubmit={(event) => {
           event.preventDefault()
@@ -144,13 +160,19 @@ export function ZonesPage() {
           >
             {saveMutation.isPending ? 'Guardando…' : editing ? 'Guardar cambios' : 'Crear zona'}
           </button>
-          {editing ? (
-            <button type="button" onClick={() => loadZone(null)} className="rounded border border-slate-300 px-4 py-2 text-sm">
-              Cancelar
-            </button>
-          ) : null}
+          <button
+            type="button"
+            onClick={() => {
+              loadZone(null)
+              setFormulario(false)
+            }}
+            className="rounded border border-slate-300 px-4 py-2 text-sm"
+          >
+            Cancelar
+          </button>
         </div>
       </form>
+      ) : null}
 
       <QueryStatus
         isLoading={zonesQuery.isLoading}
@@ -164,7 +186,7 @@ export function ZonesPage() {
       />
 
       {(zonesQuery.data ?? []).length > 0 ? (
-        <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white">
+        <div className="registros">
           <table className="min-w-full text-left text-sm">
             <thead className="bg-slate-50 text-slate-600">
               <tr>
@@ -176,7 +198,9 @@ export function ZonesPage() {
               </tr>
             </thead>
             <tbody>
-              {(zonesQuery.data ?? []).map((zone) => (
+              {(zonesQuery.data ?? [])
+                .filter((zone) => zone.nombre.toLowerCase().includes(busqueda.trim().toLowerCase()))
+                .map((zone) => (
                 <tr
                   key={zone.id}
                   className="cursor-pointer border-t border-slate-100"
@@ -189,7 +213,10 @@ export function ZonesPage() {
                   <td className="px-3 py-2">
                     <RowMoves
                       onView={() => setVisto(zone)}
-                      onEdit={() => loadZone(zone)}
+                      onEdit={() => {
+                        loadZone(zone)
+                        setFormulario(true)
+                      }}
                       onDisable={
                         zone.activo
                           ? () =>
