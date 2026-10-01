@@ -189,6 +189,112 @@ export async function createProduct(input: CreateProductInput, userId: number) {
   }
 }
 
+/**
+ * Sincroniza las presentaciones con las que vienen en el formulario.
+ *
+ * Antes se borraban todas y se recreaban, y eso rompía el producto apenas
+ * tenía algo apuntándole: 26 precios de lista y 133 líneas de pedido apuntan a
+ * product_units, así que el borraba fallaba con "referencias existentes" y el
+ * producto quedaba sin poder editar nunca más.
+ *
+ * Ahora cada fila se actualiza por su id, la que no tiene id se crea, y la que
+ * desaparece se desactiva en vez de borrarse: un producto con pedidos viejos
+ * tiene que seguir mostrando cómo se vendió, aunque hoy esa presentación ya no
+ * se ofrezca.
+ */
+async function syncUnits(
+  tx: Prisma.TransactionClient,
+  productId: number,
+  units: NonNullable<UpdateProductInput['units']>,
+) {
+  const actuales = await tx.productUnit.findMany({ where: { productId } });
+  const porId = new Map(actuales.map((unit) => [unit.id, unit]));
+  const conservados = new Set<number>();
+  const nuevos: Prisma.ProductUnitCreateManyInput[] = [];
+
+  for (const unit of units) {
+    const datos = {
+      nombre: unit.nombre,
+      factor: String(unit.factor),
+      codigoBarras: unit.codigoBarras ?? null,
+      precioBase: String(unit.precioBase),
+    };
+
+    if (unit.id !== undefined && porId.has(unit.id)) {
+      conservados.add(unit.id);
+      // Se reactiva: si estaba desactivada y el usuario la deja en pantalla,
+      // quiere volver a ofrecerla.
+      await tx.productUnit.update({ where: { id: unit.id }, data: { ...datos, activo: true } });
+      continue;
+    }
+
+    nuevos.push({ ...datos, productId, activo: true });
+  }
+
+  if (nuevos.length > 0) {
+    await tx.productUnit.createMany({ data: nuevos });
+  }
+
+  const sobrantes = actuales.filter((unit) => !conservados.has(unit.id));
+  if (sobrantes.length > 0) {
+    await tx.productUnit.updateMany({
+      where: { id: { in: sobrantes.map((unit) => unit.id) } },
+      data: { activo: false },
+    });
+  }
+}
+
+/**
+ * Sincroniza las imágenes del producto. A diferencia de las presentaciones,
+ * estas sí se pueden borrar: nadie apunta a ellas.
+ */
+async function syncImages(
+  tx: Prisma.TransactionClient,
+  productId: number,
+  images: NonNullable<UpdateProductInput['images']>,
+) {
+  const actuales = await tx.productImage.findMany({ where: { productId } });
+  const porId = new Map(actuales.map((image) => [image.id, image]));
+  const conservados = new Set<number>();
+  const nuevos: Prisma.ProductImageCreateManyInput[] = [];
+
+  images.forEach((image, index) => {
+    const datos = {
+      url: image.url,
+      orden: image.orden ?? index,
+      esPrincipal: image.esPrincipal ?? false,
+    };
+
+    if (image.id !== undefined && porId.has(image.id)) {
+      conservados.add(image.id);
+      void tx.productImage.update({ where: { id: image.id }, data: datos });
+      return;
+    }
+
+    nuevos.push({ ...datos, productId });
+  });
+
+  if (nuevos.length > 0) {
+    await tx.productImage.createMany({ data: nuevos });
+  }
+
+  const sobrantes = actuales.filter((image) => !conservados.has(image.id));
+  if (sobrantes.length > 0) {
+    await tx.productImage.deleteMany({ where: { id: { in: sobrantes.map((image) => image.id) } } });
+  }
+
+  // Solo una puede ser la principal. Se aplica al final para que el orden de
+  // las operaciones no importe.
+  const principal = images.find((image) => image.esPrincipal);
+  if (principal) {
+    await clearPrincipal(
+      tx,
+      productId,
+      principal.id !== undefined ? principal.id : undefined,
+    );
+  }
+}
+
 export async function updateProduct(id: number, input: UpdateProductInput, userId: number) {
   const { units, images, ...productData } = input;
   try {
@@ -201,37 +307,23 @@ export async function updateProduct(id: number, input: UpdateProductInput, userI
         throw new AppError('Producto no encontrado', 404, 'NOT_FOUND');
       }
 
+      // Primero los datos simples del producto, después los hijos. Separado
+      // para que unit e image no viajen como relación anidada en el mismo
+      // update.
+      const base = await tx.product.update({
+        where: { id },
+        data: productData,
+      });
+
       if (units) {
-        await tx.productUnit.deleteMany({ where: { productId: id } });
+        await syncUnits(tx, id, units);
       }
       if (images) {
-        await tx.productImage.deleteMany({ where: { productId: id } });
+        await syncImages(tx, id, images);
       }
 
-      const updated = await tx.product.update({
-        where: { id },
-        data: {
-          ...productData,
-          units: units
-            ? {
-                create: units.map((unit) => ({
-                  nombre: unit.nombre,
-                  factor: String(unit.factor),
-                  codigoBarras: unit.codigoBarras,
-                  precioBase: String(unit.precioBase),
-                })),
-              }
-            : undefined,
-          images: images
-            ? {
-                create: images.map((image) => ({
-                  url: image.url,
-                  orden: image.orden,
-                  esPrincipal: image.esPrincipal,
-                })),
-              }
-            : undefined,
-        },
+      const updated = await tx.product.findUniqueOrThrow({
+        where: { id: base.id },
         include: productInclude,
       });
 

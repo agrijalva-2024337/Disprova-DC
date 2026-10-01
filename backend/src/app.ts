@@ -1,9 +1,10 @@
 import cors from 'cors';
 import express from 'express';
-import rateLimit from 'express-rate-limit';
+import rateLimit, { type Options } from 'express-rate-limit';
 import helmet from 'helmet';
 import swaggerUi from 'swagger-ui-express';
 import { checkDatabaseConnection } from './config/database.js';
+import { env } from './config/env.js';
 import { errorHandler } from './shared/errors/errorHandler.js';
 import { authRouter } from './modules/auth/auth.routes.js';
 import { catalogRouter } from './modules/catalog/catalog.routes.js';
@@ -24,8 +25,6 @@ import { openApiSpec } from './docs/openapi.js';
 
 export const app = express();
 
-const windowMs = 15 * 60 * 1000;
-
 app.use(helmet());
 app.use(
   cors({
@@ -34,23 +33,53 @@ app.use(
 );
 app.use(express.json());
 
+/**
+ * El limitador de express-rate-limit respondía texto plano, pero el frontend
+ * (y cualquier cliente) lee los errores como JSON con la forma
+ * { error: { message, code } }. Sin esto, un 429 llegaba al navegador como
+ * "Error 429": un código sin explicación, que es justo lo que hace que un
+ * bloqueo de quince minutos parezca un fallo del sistema.
+ *
+ * Se incluye el tiempo que falta para reintentar, que viene en la cabecera
+ * RateLimit-Reset.
+ */
+function limiteExceedido(minutos: number): Options['handler'] {
+  return (_req, res) => {
+    const reset = Number(res.getHeader('RateLimit-Reset') ?? 0);
+    const minutosRestantes = reset > 0 ? Math.max(1, Math.ceil(reset / 60)) : minutos;
+    res.status(429).json({
+      error: {
+        message:
+          `Demasiados intentos. Esperá ${minutosRestantes} ` +
+          `${minutosRestantes === 1 ? 'minuto' : 'minutos'} e intentá de nuevo.`,
+        code: 'RATE_LIMITED',
+        details: { retryAfterSeconds: reset || minutos * 60 },
+      },
+    });
+  };
+}
+
 if (process.env.NODE_ENV !== 'test') {
+  const ventanaMin = Math.round(env.rateLimit.windowMs / 60000);
+
   app.use(
     '/api',
     rateLimit({
-      windowMs,
-      limit: 100,
+      windowMs: env.rateLimit.windowMs,
+      limit: env.rateLimit.apiMax,
       standardHeaders: true,
       legacyHeaders: false,
+      handler: limiteExceedido(ventanaMin),
     }),
   );
   app.use(
     '/api/auth/login',
     rateLimit({
-      windowMs,
-      limit: 5,
+      windowMs: env.rateLimit.windowMs,
+      limit: env.rateLimit.loginMax,
       standardHeaders: true,
       legacyHeaders: false,
+      handler: limiteExceedido(ventanaMin),
     }),
   );
 }

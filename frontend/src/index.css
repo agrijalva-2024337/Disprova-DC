@@ -1,2 +1,78 @@
 @import 'tailwindcss';
 @config '../tailwind.config.js';
+
+/*
+ * Base global del panel. Solo lo que aplica a toda la app; lo específico de
+ * una pantalla va en CSS modules dentro de features/.
+ */
+
+:root {
+  color-scheme: light;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--color-parchment);
+  color: var(--color-ink);
+  font-family: 'IBM Plex Sans', system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Fraunces es la serif del logo: ahí se titulan pantallas y cifras. */
+.font-display {
+  font-family: 'Fraunces', Georgia, serif;
+  font-variation-settings: 'SOFT' 0, 'WONK' 0;
+  letter-spacing: -0.015em;
+}
+
+.font-body {
+  font-family: 'IBM Plex Sans', system-ui, sans-serif;
+}
+
+/* Cifras de dinero siempre alineadas, para que las columnas se lean. */
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+/*
+ * Quién pide menos movimiento no lo paga: la intro de marca y las entradas
+ * se desactivan y el contenido aparece tal cual.
+ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Barra de desplazamiento discreta, del color del borde de marca. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #d8cfc1 transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: #d8cfc1;
+  border: 3px solid transparent;
+  background-clip: content-box;
+  border-radius: 999px;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: #b9ab99;
+  background-clip: content-box;
+}

@@ -1,5 +1,5 @@
 import { apiRequest } from '../admin/api/http.ts'
-import type { PriceList, Product } from '../admin/api/types.ts'
+import type { Category, PriceList, Product } from '../admin/api/types.ts'
 
 export type FieldOrderItem = {
   id: number
@@ -7,7 +7,17 @@ export type FieldOrderItem = {
   cantidad: string
   precioUnitario: string
   totalLinea: string
-  productUnit: { id: number; nombre: string; product: { id: number; nombre: string; sku: string } }
+  productUnit: {
+    id: number
+    nombre: string
+    product: {
+      id: number
+      nombre: string
+      sku: string
+      /** Foto principal, si el backend la incluye. Se usa en entregas. */
+      images?: Array<{ url: string; esPrincipal: boolean }>
+    }
+  }
   deliveryItems?: Array<{ cantidadEntregada: string }>
 }
 
@@ -28,6 +38,11 @@ export function getClient(id: number) {
 
 export function listProducts() {
   return apiRequest<Product[]>('/api/catalog/products')
+}
+
+/** Categorías del catálogo. La pantalla de pedidos navega por ellas, no por texto. */
+export function listCategories() {
+  return apiRequest<Category[]>('/api/catalog/categories')
 }
 
 export function getPriceList(id: number) {

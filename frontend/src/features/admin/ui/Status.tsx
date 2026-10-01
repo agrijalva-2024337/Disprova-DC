@@ -5,14 +5,18 @@ export function Alert({
   tone: 'error' | 'info' | 'success'
   children: string
 }) {
+  // Los tonos usan la paleta de marca en vez de los colores genéricos: el
+  // error es el rojo de "GyG", no un rojo genérico que desentone con el logo.
   const classes =
     tone === 'error'
-      ? 'border-red-200 bg-red-50 text-red-800'
+      ? 'border-brand/25 bg-brand-soft text-brand-deep'
       : tone === 'success'
-        ? 'border-green-200 bg-green-50 text-green-800'
-        : 'border-slate-200 bg-slate-50 text-slate-700'
+        ? 'border-gold/30 bg-gold-soft text-ink'
+        : 'border-line bg-parchment text-ink-soft'
 
-  return <p className={`rounded border px-3 py-2 text-sm ${classes}`}>{children}</p>
+  return (
+    <p className={`rounded-[0.625rem] border px-3.5 py-2.5 text-sm ${classes}`}>{children}</p>
+  )
 }
 
 const estadoLabel: Record<string, string> = {
@@ -24,16 +28,20 @@ const estadoLabel: Record<string, string> = {
 }
 
 const estadoClass: Record<string, string> = {
-  borrador: 'bg-slate-100 text-slate-700',
-  confirmado: 'bg-blue-100 text-blue-800',
-  entregado_parcial: 'bg-amber-100 text-amber-800',
-  entregado: 'bg-green-100 text-green-800',
-  cancelado: 'bg-red-100 text-red-800',
+  borrador: 'bg-parchment text-muted ring-1 ring-inset ring-line',
+  confirmado: 'bg-gold-soft text-ink ring-1 ring-inset ring-gold/30',
+  entregado_parcial: 'bg-brand-soft text-brand-deep ring-1 ring-inset ring-brand/25',
+  entregado: 'bg-ink text-parchment ring-1 ring-inset ring-ink',
+  cancelado: 'bg-brand text-white ring-1 ring-inset ring-brand-deep',
 }
 
 export function OrderStatus({ estado }: { estado: string }) {
   return (
-    <span className={`inline-block rounded px-2 py-0.5 text-xs font-medium ${estadoClass[estado] ?? 'bg-slate-100 text-slate-700'}`}>
+    <span
+      className={`inline-block rounded-full px-2.5 py-1 text-[0.6875rem] font-semibold uppercase tracking-[0.06em] ${
+        estadoClass[estado] ?? estadoClass.borrador
+      }`}
+    >
       {estadoLabel[estado] ?? estado}
     </span>
   )
