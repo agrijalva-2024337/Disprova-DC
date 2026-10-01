@@ -4,6 +4,7 @@ import { createUser, listRoles, listUsers, updateUser } from '../api/users.ts'
 import { ApiError } from '../api/http.ts'
 import { useAuth } from '../auth/AuthContext.tsx'
 import { Alert, QueryStatus } from '../ui/Status.tsx'
+import { RecordSheet, RowMoves } from '../ui/RecordSheet.tsx'
 import type { AuthUser } from '../api/types.ts'
 import { CreateUserForm } from './CreateUserForm.tsx'
 import { EditUserForm } from './EditUserForm.tsx'
@@ -14,6 +15,7 @@ export function UsersPage() {
   const isAdmin = user?.rol === 'admin'
   const queryClient = useQueryClient()
   const [editando, setEditando] = useState<AuthUser | null>(null)
+  const [visto, setVisto] = useState<AuthUser | null>(null)
 
   const usersQuery = useQuery({ queryKey: ['users'], queryFn: () => listUsers() })
   const rolesQuery = useQuery({ queryKey: ['roles'], queryFn: listRoles })
@@ -126,7 +128,11 @@ export function UsersPage() {
                 </tr>
               ) : (
                 (usersQuery.data ?? []).map((row) => (
-                  <tr key={row.id} className="border-t border-slate-100">
+                  <tr
+                    key={row.id}
+                    className="cursor-pointer border-t border-slate-100"
+                    onDoubleClick={() => setVisto(row)}
+                  >
                     <td className="px-3 py-2 font-medium">{row.nombre}</td>
                     <td className="px-3 py-2">{row.email}</td>
                     <td className="px-3 py-2">{row.rol}</td>
@@ -142,13 +148,24 @@ export function UsersPage() {
                       )}
                     </td>
                     <td className="px-3 py-2">
-                      <button
-                        type="button"
-                        onClick={() => setEditando(row)}
-                        className="rounded border border-slate-300 px-2 py-1 text-xs hover:bg-slate-50"
-                      >
-                        Editar
-                      </button>
+                      <RowMoves
+                        onView={() => setVisto(row)}
+                        onEdit={() => setEditando(row)}
+                        onDisable={
+                          row.activo
+                            ? () =>
+                                updateMutation.mutate({
+                                  id: row.id,
+                                  values: {
+                                    nombre: row.nombre,
+                                    email: row.email,
+                                    roleId: row.roleId,
+                                    activo: false,
+                                  },
+                                })
+                            : undefined
+                        }
+                      />
                     </td>
                   </tr>
                 ))
@@ -156,6 +173,28 @@ export function UsersPage() {
             </tbody>
           </table>
         </div>
+      ) : null}
+      {visto ? (
+        <RecordSheet title={visto.nombre} onClose={() => setVisto(null)}>
+          <dl className="grid gap-3 text-sm sm:grid-cols-2">
+            <div>
+              <dt className="text-slate-500">Correo</dt>
+              <dd>{visto.email}</dd>
+            </div>
+            <div>
+              <dt className="text-slate-500">Usuario</dt>
+              <dd>{visto.usuario || '—'}</dd>
+            </div>
+            <div>
+              <dt className="text-slate-500">Rol</dt>
+              <dd>{visto.rol}</dd>
+            </div>
+            <div>
+              <dt className="text-slate-500">Estado</dt>
+              <dd>{visto.activo ? 'Activo' : 'Inactivo'}</dd>
+            </div>
+          </dl>
+        </RecordSheet>
       ) : null}
     </div>
   )

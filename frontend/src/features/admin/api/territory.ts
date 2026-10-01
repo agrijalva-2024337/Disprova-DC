@@ -38,6 +38,10 @@ export function updateClient(id: number, input: ClientInput) {
   return apiRequest<Client>(`/api/clients/${id}`, { method: 'PUT', body: input })
 }
 
+export function disableClient(id: number) {
+  return apiRequest<Client>(`/api/clients/${id}`, { method: 'DELETE' })
+}
+
 export function listContacts(clientId: number) {
   return apiRequest<ClientContact[]>(`/api/clients/${clientId}/contacts`)
 }

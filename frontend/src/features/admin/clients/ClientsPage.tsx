@@ -1,9 +1,13 @@
-import { useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { listClients, listZones } from '../api/territory.ts'
+import { disableClient, listClients, listZones } from '../api/territory.ts'
+import { ApiError } from '../api/http.ts'
+import type { Client } from '../api/types.ts'
 import { QueryStatus } from '../ui/Status.tsx'
+import { RecordSheet, RowMoves } from '../ui/RecordSheet.tsx'
 import { ClientMessaging } from '../messaging/ClientMessaging.tsx'
+import { PublicCatalogSection } from './PublicCatalogSection.tsx'
 
 const tipoLabel: Record<string, string> = {
   tienda: 'Tienda',
@@ -13,9 +17,23 @@ const tipoLabel: Record<string, string> = {
 }
 
 export function ClientsPage() {
+  const queryClient = useQueryClient()
   const [zoneId, setZoneId] = useState('')
   const [mensajeriaClientId, setMensajeriaClientId] = useState<number | null>(null)
+  const [abierto, setAbierto] = useState<Client | null>(null)
+  const [accionError, setAccionError] = useState<string | null>(null)
   const clientsQuery = useQuery({ queryKey: ['clients'], queryFn: listClients })
+  const disableMutation = useMutation({
+    mutationFn: disableClient,
+    onSuccess: async () => {
+      setAbierto(null)
+      setAccionError(null)
+      await queryClient.invalidateQueries({ queryKey: ['clients'] })
+    },
+    onError: (err) => {
+      setAccionError(err instanceof ApiError ? err.message : 'No se pudo deshabilitar el cliente')
+    },
+  })
   const zonesQuery = useQuery({ queryKey: ['zones'], queryFn: listZones })
 
   const zoneName = useMemo(() => {
@@ -94,7 +112,11 @@ export function ClientsPage() {
                 </tr>
               ) : (
                 rows.map((client) => (
-                  <tr key={client.id} className="border-t border-slate-100">
+                  <tr
+                    key={client.id}
+                    className="cursor-pointer border-t border-slate-100"
+                    onDoubleClick={() => setAbierto(client)}
+                  >
                     <td className="px-3 py-2">{client.nombreComercial}</td>
                     <td className="px-3 py-2">{zoneName.get(client.zoneId) ?? '—'}</td>
                     <td className="px-3 py-2">{tipoLabel[client.tipoNegocio]}</td>
@@ -103,25 +125,20 @@ export function ClientsPage() {
                     <td className="px-3 py-2">{client.plazoDias} días</td>
                     <td className="px-3 py-2">{client.contacts?.length ?? 0}</td>
                     <td className="px-3 py-2">
-                      <div className="flex flex-wrap gap-2">
-                        <Link
-                          to={`/admin/clientes/${client.id}`}
-                          className="rounded border border-slate-300 px-2 py-1 text-xs hover:bg-slate-50"
-                        >
-                          Editar
-                        </Link>
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setMensajeriaClientId(
-                              mensajeriaClientId === client.id ? null : client.id,
-                            )
-                          }
-                          className="rounded bg-green-600 px-2 py-1 text-xs font-medium text-white hover:bg-green-700"
-                        >
-                          Enviar WhatsApp
-                        </button>
-                      </div>
+                      <RowMoves
+                        onView={() => setAbierto(client)}
+                        editTo={`/admin/clientes/${client.id}`}
+                        onDisable={client.activo ? () => disableMutation.mutate(client.id) : undefined}
+                      />
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setMensajeriaClientId(mensajeriaClientId === client.id ? null : client.id)
+                        }
+                        className="mt-2 rounded-full bg-slate-900 px-3 py-1 text-xs font-medium text-white"
+                      >
+                        WhatsApp
+                      </button>
                     </td>
                   </tr>
                 ))
@@ -131,7 +148,48 @@ export function ClientsPage() {
         </div>
       ) : null}
 
+      {accionError ? <p className="text-sm text-red-700">{accionError}</p> : null}
       {mensajeriaClientId !== null ? <ClientMessaging clientId={mensajeriaClientId} /> : null}
+      {abierto ? (
+        <RecordSheet title={abierto.nombreComercial} onClose={() => setAbierto(null)}>
+          <dl className="grid gap-3 text-sm sm:grid-cols-2">
+            <div>
+              <dt className="text-slate-500">Zona</dt>
+              <dd>{zoneName.get(abierto.zoneId) ?? '—'}</dd>
+            </div>
+            <div>
+              <dt className="text-slate-500">Tipo</dt>
+              <dd>{tipoLabel[abierto.tipoNegocio]}</dd>
+            </div>
+            <div>
+              <dt className="text-slate-500">Dirección</dt>
+              <dd>{abierto.direccion}</dd>
+            </div>
+            <div>
+              <dt className="text-slate-500">Crédito</dt>
+              <dd>
+                {abierto.limiteCredito} · {abierto.plazoDias} días
+              </dd>
+            </div>
+            <div>
+              <dt className="text-slate-500">NIT</dt>
+              <dd>{abierto.nit || '—'}</dd>
+            </div>
+            <div>
+              <dt className="text-slate-500">Estado</dt>
+              <dd>{abierto.activo ? 'Activo' : 'Deshabilitado'}</dd>
+            </div>
+          </dl>
+          <div className="mt-4 flex flex-wrap gap-2">
+            <Link to={`/admin/clientes/${abierto.id}`} className="rounded-full bg-slate-900 px-4 py-2 text-sm text-white">
+              Editar ficha
+            </Link>
+          </div>
+          <div className="mt-6">
+            <PublicCatalogSection clientId={abierto.id} />
+          </div>
+        </RecordSheet>
+      ) : null}
     </div>
   )
 }
