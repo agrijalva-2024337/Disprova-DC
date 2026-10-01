@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { listOrders, type AdminOrder, type OrderCanal, type OrderEstado } from '../api/orders.ts'
 import { listClients } from '../api/territory.ts'
+import { SearchBox } from '../ui/ListTools.tsx'
 import { OrderStatus, QueryStatus } from '../ui/Status.tsx'
 import { RecordSheet, RowMoves } from '../ui/RecordSheet.tsx'
 
@@ -30,6 +31,7 @@ export function OrdersPage() {
   const [clientId, setClientId] = useState('')
   const [canal, setCanal] = useState<'' | OrderCanal>('')
   const [visto, setVisto] = useState<AdminOrder | null>(null)
+  const [busqueda, setBusqueda] = useState('')
 
   const filters = {
     clientId: clientId ? Number(clientId) : undefined,
@@ -50,7 +52,8 @@ export function OrdersPage() {
         <p className="text-sm text-slate-600">Pedidos de campo, web y WhatsApp.</p>
       </div>
 
-      <div className="flex flex-wrap gap-3">
+      <div className="flex flex-wrap items-end gap-3">
+        <SearchBox value={busqueda} onChange={setBusqueda} placeholder="Buscar por número o cliente" />
         <label className="block text-sm">
           <span className="mb-1 block font-medium">Estado</span>
           <select
@@ -102,7 +105,7 @@ export function OrdersPage() {
       />
 
       {!ordersQuery.isLoading && !ordersQuery.isError ? (
-        <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white">
+        <div className="registros">
           <table className="min-w-full text-left text-sm">
             <thead className="bg-slate-50 text-slate-600">
               <tr>
@@ -118,14 +121,30 @@ export function OrdersPage() {
               </tr>
             </thead>
             <tbody>
-              {(ordersQuery.data ?? []).length === 0 ? (
+              {(ordersQuery.data ?? []).filter((order) => {
+                const term = busqueda.trim().toLowerCase()
+                if (!term) return true
+                return (
+                  order.numero.toLowerCase().includes(term) ||
+                  (order.client?.nombreComercial ?? '').toLowerCase().includes(term)
+                )
+              }).length === 0 ? (
                 <tr>
                   <td colSpan={9} className="px-3 py-6 text-center text-slate-500">
                     No hay pedidos para mostrar.
                   </td>
                 </tr>
               ) : (
-                (ordersQuery.data ?? []).map((order) => (
+                (ordersQuery.data ?? [])
+                  .filter((order) => {
+                    const term = busqueda.trim().toLowerCase()
+                    if (!term) return true
+                    return (
+                      order.numero.toLowerCase().includes(term) ||
+                      (order.client?.nombreComercial ?? '').toLowerCase().includes(term)
+                    )
+                  })
+                  .map((order) => (
                   <tr
                     key={order.id}
                     className="cursor-pointer border-t border-slate-100"

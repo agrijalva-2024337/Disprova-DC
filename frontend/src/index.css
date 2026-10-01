@@ -65,6 +65,39 @@ h1,
   padding: 0.65rem 0.9rem;
 }
 
+.registros {
+  overflow-x: auto;
+  border-radius: 1rem;
+  border: 1px solid #e8e1d6;
+  background: #fff;
+  box-shadow: 0 12px 32px rgba(28, 21, 18, 0.05);
+}
+
+.registros table {
+  width: 100%;
+  min-width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  font-size: 0.875rem;
+}
+
+.registros thead th {
+  background: #1c1512;
+  color: #faf8f4;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.registros tbody tr {
+  border-top: 1px solid #f0ebe3;
+}
+
+.registros tbody tr:hover {
+  background: #faf8f4;
+}
+
 input:focus-visible,
 select:focus-visible,
 textarea:focus-visible {

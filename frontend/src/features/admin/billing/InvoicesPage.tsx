@@ -4,6 +4,7 @@ import { createInvoiceForOrder, listInvoices } from '../api/billing.ts'
 import { ApiError } from '../api/http.ts'
 import { listOrders } from '../../field/ordersApi.ts'
 import type { InvoiceEstado } from '../api/types.ts'
+import { SearchBox } from '../ui/ListTools.tsx'
 import { Alert, QueryStatus } from '../ui/Status.tsx'
 
 const money = (value: string) => Number(value).toFixed(2)
@@ -25,6 +26,7 @@ const estadoClasses: Record<InvoiceEstado, string> = {
 export function InvoicesPage() {
   const [estado, setEstado] = useState<InvoiceEstado | ''>('')
   const [orderId, setOrderId] = useState('')
+  const [busqueda, setBusqueda] = useState('')
   const queryClient = useQueryClient()
 
   const invoicesQuery = useQuery({
@@ -47,6 +49,17 @@ export function InvoicesPage() {
   })
 
   const invoices = invoicesQuery.data ?? []
+  const terminoFactura = busqueda.trim().toLowerCase()
+  const facturasVisibles = invoices.filter((invoice) => {
+    if (!terminoFactura) return true
+    const cliente = invoice.order?.client?.nombreComercial ?? ''
+    const pedido = invoice.order?.numero ?? ''
+    return (
+      `${invoice.serie}-${invoice.numero}`.toLowerCase().includes(terminoFactura) ||
+      cliente.toLowerCase().includes(terminoFactura) ||
+      pedido.toLowerCase().includes(terminoFactura)
+    )
+  })
   const pendientes = invoices.filter((row) => row.estado === 'pendiente_certificacion').length
   // Se arma un solo string porque `Alert` recibe `children: string`, y mezclar
   // texto con un número suelto no compila.
@@ -70,6 +83,7 @@ export function InvoicesPage() {
       </div>
 
       <div className="flex flex-wrap items-end gap-3 rounded-lg border border-slate-200 bg-white p-4">
+        <SearchBox value={busqueda} onChange={setBusqueda} placeholder="Buscar factura, cliente o pedido" />
         <label className="block min-w-56 text-sm">
           <span className="mb-1 block font-medium">Estado</span>
           <select
@@ -122,7 +136,7 @@ export function InvoicesPage() {
       />
 
       {!invoicesQuery.isLoading && !invoicesQuery.isError ? (
-        <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white">
+        <div className="registros">
           <table className="min-w-full text-left text-sm">
             <thead className="bg-slate-50 text-slate-600">
               <tr>
@@ -135,14 +149,14 @@ export function InvoicesPage() {
               </tr>
             </thead>
             <tbody>
-              {invoices.length === 0 ? (
+              {facturasVisibles.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="px-3 py-6 text-center text-slate-500">
                     No hay facturas para mostrar.
                   </td>
                 </tr>
               ) : (
-                invoices.map((invoice) => (
+                facturasVisibles.map((invoice) => (
                   <tr key={invoice.id} className="border-t border-slate-100">
                     <td className="px-3 py-2">
                       <p className="font-medium">

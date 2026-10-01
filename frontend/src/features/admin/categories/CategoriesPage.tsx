@@ -3,6 +3,7 @@ import { useState, type FormEvent } from 'react'
 import { createCategory, listCategories, updateCategory } from '../api/catalog.ts'
 import type { Category } from '../api/types.ts'
 import { ApiError } from '../api/http.ts'
+import { AddButton, ModuleHead, SearchBox } from '../ui/ListTools.tsx'
 import { Alert, QueryStatus } from '../ui/Status.tsx'
 import { RecordSheet, RowMoves } from '../ui/RecordSheet.tsx'
 
@@ -18,6 +19,9 @@ export function CategoriesPage() {
   const [formError, setFormError] = useState<string | null>(null)
   const [formSuccess, setFormSuccess] = useState<string | null>(null)
   const [visto, setVisto] = useState<Category | null>(null)
+  const [formulario, setFormulario] = useState(false)
+  const [editando, setEditando] = useState<Category | null>(null)
+  const [busqueda, setBusqueda] = useState('')
 
   const createMutation = useMutation({
     mutationFn: createCategory,
@@ -26,7 +30,9 @@ export function CategoriesPage() {
       setParentId('')
       setOrden('0')
       setFormError(null)
-      setFormSuccess('Categoría creada')
+      setFormulario(false)
+      setEditando(null)
+      setFormSuccess(editando ? 'Categoría actualizada' : 'Categoría creada')
       await queryClient.invalidateQueries({ queryKey: ['categories'] })
     },
     onError: (err) => {
@@ -39,25 +45,67 @@ export function CategoriesPage() {
     event.preventDefault()
     setFormError(null)
     setFormSuccess(null)
-    createMutation.mutate({
+    const input = {
       nombre: nombre.trim(),
       parentId: parentId ? Number(parentId) : null,
       orden: Number(orden) || 0,
       activo: true,
-    })
+    }
+    if (editando) {
+      updateCategory(editando.id, input)
+        .then(async () => {
+          setFormulario(false)
+          setEditando(null)
+          setNombre('')
+          await queryClient.invalidateQueries({ queryKey: ['categories'] })
+        })
+        .catch((err) => {
+          setFormError(err instanceof ApiError ? err.message : 'No se pudo guardar la categoría')
+        })
+      return
+    }
+    createMutation.mutate(input)
   }
 
   const categories = categoriesQuery.data ?? []
+  const termino = busqueda.trim().toLowerCase()
+  const visibles = categories.filter((category) =>
+    termino ? category.nombre.toLowerCase().includes(termino) : true,
+  )
+
+  function editar(category: Category) {
+    setEditando(category)
+    setNombre(category.nombre)
+    setParentId(category.parentId ? String(category.parentId) : '')
+    setOrden(String(category.orden))
+    setFormulario(true)
+    setVisto(null)
+  }
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-xl font-semibold">Categorías</h1>
-        <p className="text-sm text-slate-600">Organiza el catálogo por familia de producto.</p>
-      </div>
+      <ModuleHead
+        title="Categorías"
+        text="Organiza el catálogo por familia de producto."
+        action={
+          <AddButton
+            onClick={() => {
+              setEditando(null)
+              setNombre('')
+              setParentId('')
+              setOrden('0')
+              setFormulario(true)
+            }}
+          >
+            Agregar categoría
+          </AddButton>
+        }
+      />
+      <SearchBox value={busqueda} onChange={setBusqueda} placeholder="Buscar categoría" />
 
-      <form onSubmit={onSubmit} className="max-w-xl space-y-3 rounded-lg border border-slate-200 bg-white p-4">
-        <h2 className="text-sm font-semibold">Nueva categoría</h2>
+      {formulario ? (
+      <form onSubmit={onSubmit} className="ficha max-w-xl space-y-3">
+        <h2 className="font-display text-xl">{editando ? `Editar ${editando.nombre}` : 'Nueva categoría'}</h2>
         {formError ? <Alert tone="error">{formError}</Alert> : null}
         {formSuccess ? <Alert tone="success">{formSuccess}</Alert> : null}
         <label className="block text-sm">
@@ -98,9 +146,13 @@ export function CategoriesPage() {
           disabled={createMutation.isPending}
           className="rounded bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-60"
         >
-          {createMutation.isPending ? 'Guardando…' : 'Crear categoría'}
+          {createMutation.isPending ? 'Guardando…' : 'Guardar'}
+        </button>
+        <button type="button" onClick={() => setFormulario(false)} className="ml-2 min-h-11 rounded-full border border-slate-300 px-4 text-sm">
+          Cancelar
         </button>
       </form>
+      ) : null}
 
       <QueryStatus
         isLoading={categoriesQuery.isLoading}
@@ -113,8 +165,8 @@ export function CategoriesPage() {
         }
       />
 
-      {categories.length > 0 ? (
-        <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white">
+      {!categoriesQuery.isLoading && !categoriesQuery.isError ? (
+        <div className="registros">
           <table className="min-w-full text-left text-sm">
             <thead className="bg-slate-50 text-slate-600">
               <tr>
@@ -126,7 +178,7 @@ export function CategoriesPage() {
               </tr>
             </thead>
             <tbody>
-              {categories.map((category) => {
+              {visibles.map((category) => {
                 const parent = categories.find((item) => item.id === category.parentId)
                 return (
                   <tr
@@ -141,6 +193,7 @@ export function CategoriesPage() {
                     <td className="px-3 py-2">
                       <RowMoves
                         onView={() => setVisto(category)}
+                        onEdit={() => editar(category)}
                         onDisable={
                           category.activo
                             ? () =>

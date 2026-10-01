@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { listReturns } from '../api/returns.ts'
 import type { ReturnEstado } from '../api/types.ts'
+import { SearchBox } from '../ui/ListTools.tsx'
 import { QueryStatus } from '../ui/Status.tsx'
 
 const estadoLabel: Record<ReturnEstado, string> = {
@@ -29,11 +30,20 @@ function fecha(value: string) {
 export function ReturnsListPage() {
   const navigate = useNavigate()
   const [estado, setEstado] = useState<'' | ReturnEstado>('')
+  const [busqueda, setBusqueda] = useState('')
   const returnsQuery = useQuery({
     queryKey: ['returns', estado],
     queryFn: () => listReturns(estado ? { estado } : {}),
   })
-  const rows = returnsQuery.data?.data ?? []
+  const rows = (returnsQuery.data?.data ?? []).filter((row) => {
+    const term = busqueda.trim().toLowerCase()
+    if (!term) return true
+    return (
+      row.client.nombreComercial.toLowerCase().includes(term) ||
+      row.order.numero.toLowerCase().includes(term) ||
+      row.motivo.toLowerCase().includes(term)
+    )
+  })
 
   return (
     <div className="space-y-6">
@@ -46,11 +56,13 @@ export function ReturnsListPage() {
           to="/admin/devoluciones/nueva"
           className="rounded bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800"
         >
-          Nueva devolución
+          Agregar devolución
         </Link>
       </div>
 
-      <label className="block max-w-xs text-sm">
+      <div className="flex flex-wrap items-end gap-3">
+      <SearchBox value={busqueda} onChange={setBusqueda} placeholder="Buscar cliente, pedido o motivo" />
+      <label className="block min-w-48 text-sm">
         <span className="mb-1 block font-medium">Estado</span>
         <select
           value={estado}
@@ -63,6 +75,7 @@ export function ReturnsListPage() {
           <option value="rechazada">Rechazada</option>
         </select>
       </label>
+      </div>
 
       <QueryStatus
         isLoading={returnsQuery.isLoading}
@@ -70,7 +83,7 @@ export function ReturnsListPage() {
       />
 
       {!returnsQuery.isLoading && !returnsQuery.isError ? (
-        <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white">
+        <div className="registros">
           <table className="min-w-full text-left text-sm">
             <thead className="bg-slate-50 text-slate-600">
               <tr>

@@ -6,6 +6,7 @@ import { useAuth } from '../auth/AuthContext.tsx'
 import { Alert, QueryStatus } from '../ui/Status.tsx'
 import { RecordSheet, RowMoves } from '../ui/RecordSheet.tsx'
 import type { AuthUser } from '../api/types.ts'
+import { AddButton, ModuleHead, SearchBox } from '../ui/ListTools.tsx'
 import { CreateUserForm } from './CreateUserForm.tsx'
 import { EditUserForm } from './EditUserForm.tsx'
 import type { CreateUserFormValues, UpdateUserFormValues } from './userFormSchema.ts'
@@ -16,6 +17,9 @@ export function UsersPage() {
   const queryClient = useQueryClient()
   const [editando, setEditando] = useState<AuthUser | null>(null)
   const [visto, setVisto] = useState<AuthUser | null>(null)
+  const [alta, setAlta] = useState(false)
+  const [busqueda, setBusqueda] = useState('')
+  const [rolFiltro, setRolFiltro] = useState('')
 
   const usersQuery = useQuery({ queryKey: ['users'], queryFn: () => listUsers() })
   const rolesQuery = useQuery({ queryKey: ['roles'], queryFn: listRoles })
@@ -24,6 +28,7 @@ export function UsersPage() {
   const createMutation = useMutation({
     mutationFn: createUser,
     onSuccess: async () => {
+      setAlta(false)
       await queryClient.invalidateQueries({ queryKey: ['users'] })
     },
   })
@@ -68,12 +73,29 @@ export function UsersPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-xl font-semibold">Usuarios</h1>
-        <p className="text-sm text-slate-600">Quién entra al sistema y con qué permisos.</p>
+      <ModuleHead
+        title="Usuarios"
+        text="Quién entra al sistema y con qué permisos."
+        action={<AddButton onClick={() => setAlta((value) => !value)}>Agregar usuario</AddButton>}
+      />
+      <div className="flex flex-wrap items-center gap-3">
+        <SearchBox value={busqueda} onChange={setBusqueda} placeholder="Buscar por nombre, usuario o correo" />
+        <select
+          value={rolFiltro}
+          onChange={(event) => setRolFiltro(event.target.value)}
+          className="min-h-11 rounded-full border border-slate-300 bg-white px-4 text-sm"
+        >
+          <option value="">Todos los roles</option>
+          {roles.map((role) => (
+            <option key={role.id} value={role.id}>
+              {role.nombre}
+            </option>
+          ))}
+        </select>
       </div>
 
-      <section className="rounded-lg border border-slate-200 bg-white p-5">
+      {alta ? (
+      <section className="ficha max-w-xl">
         <h2 className="text-sm font-semibold">Nuevo usuario</h2>
         <CreateUserForm
           roles={roles}
@@ -82,6 +104,7 @@ export function UsersPage() {
           error={createError}
         />
       </section>
+      ) : null}
 
       <QueryStatus
         isLoading={usersQuery.isLoading || rolesQuery.isLoading}
@@ -108,7 +131,7 @@ export function UsersPage() {
       ) : null}
 
       {!usersQuery.isLoading && !usersQuery.isError ? (
-        <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white">
+        <div className="registros">
           <table className="min-w-full text-left text-sm">
             <thead className="bg-slate-50 text-slate-600">
               <tr>
@@ -127,7 +150,17 @@ export function UsersPage() {
                   </td>
                 </tr>
               ) : (
-                (usersQuery.data ?? []).map((row) => (
+                (usersQuery.data ?? [])
+                  .filter((row) => {
+                    const term = busqueda.trim().toLowerCase()
+                    const coincide =
+                      !term ||
+                      row.nombre.toLowerCase().includes(term) ||
+                      row.email.toLowerCase().includes(term) ||
+                      (row.usuario ?? '').toLowerCase().includes(term)
+                    return coincide && (!rolFiltro || row.roleId === Number(rolFiltro))
+                  })
+                  .map((row) => (
                   <tr
                     key={row.id}
                     className="cursor-pointer border-t border-slate-100"

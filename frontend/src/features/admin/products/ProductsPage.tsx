@@ -74,7 +74,7 @@ export function ProductsPage() {
           to="/admin/productos/nuevo"
           className="rounded bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800"
         >
-          Nuevo producto
+          Agregar producto
         </Link>
       </div>
 
@@ -105,7 +105,7 @@ export function ProductsPage() {
       />
 
       {!productsQuery.isLoading && !productsQuery.isError ? (
-        <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white">
+        <div className="registros">
           <table className="min-w-full text-left text-sm">
             <thead className="bg-slate-50 text-slate-600">
               <tr>

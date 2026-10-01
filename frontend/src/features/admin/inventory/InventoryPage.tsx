@@ -11,6 +11,7 @@ import {
   type StockRow,
 } from '../api/inventory.ts'
 import { useAuth } from '../auth/AuthContext.tsx'
+import { SearchBox } from '../ui/ListTools.tsx'
 import { Alert, QueryStatus } from '../ui/Status.tsx'
 
 function asNumber(value: string) {
@@ -77,6 +78,7 @@ export function InventoryPage() {
   const [warehouseId, setWarehouseId] = useState('')
   const [productId, setProductId] = useState('')
   const [openKey, setOpenKey] = useState<string | null>(null)
+  const [busqueda, setBusqueda] = useState('')
 
   const [originId, setOriginId] = useState('')
   const [destId, setDestId] = useState('')
@@ -109,7 +111,12 @@ export function InventoryPage() {
   const warehousesQuery = useQuery({ queryKey: ['warehouses'], queryFn: listWarehouses })
   const productsQuery = useQuery({ queryKey: ['products'], queryFn: listProducts })
 
-  const groups = useMemo(() => groupStock(stockQuery.data ?? []), [stockQuery.data])
+  const groups = useMemo(() => {
+    const term = busqueda.trim().toLowerCase()
+    return groupStock(stockQuery.data ?? []).filter((group) =>
+      term ? group.sku.toLowerCase().includes(term) || group.nombre.toLowerCase().includes(term) : true,
+    )
+  }, [stockQuery.data, busqueda])
   const transferProduct = (productsQuery.data ?? []).find((product) => product.id === Number(transferProductId))
   const originLines = (allStockQuery.data ?? []).filter(
     (row) => row.productId === Number(transferProductId) && row.warehouseId === Number(originId),
@@ -166,7 +173,8 @@ export function InventoryPage() {
         <p className="text-sm text-slate-600">Existencias por producto y bodega.</p>
       </div>
 
-      <div className="flex flex-wrap gap-3">
+      <div className="flex flex-wrap items-end gap-3">
+        <SearchBox value={busqueda} onChange={setBusqueda} placeholder="Buscar por SKU o nombre" />
         <label className="text-sm">
           <span className="mb-1 block font-medium">Bodega</span>
           <select
@@ -211,7 +219,7 @@ export function InventoryPage() {
       />
 
       {!stockQuery.isLoading && !stockQuery.isError ? (
-        <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white">
+        <div className="registros">
           <table className="min-w-full text-left text-sm">
             <thead className="bg-slate-50 text-slate-600">
               <tr>

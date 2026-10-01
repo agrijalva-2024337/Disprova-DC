@@ -8,6 +8,7 @@ import {
   type MessageCanal,
   type MessageTemplateInput,
 } from '../api/types.ts'
+import { AddButton, ModuleHead, SearchBox } from '../ui/ListTools.tsx'
 import { Alert, QueryStatus } from '../ui/Status.tsx'
 
 const variables = ALLOWED_TEMPLATE_VARIABLES.map((name) => `{${name}}`)
@@ -30,6 +31,8 @@ const vacio: MessageTemplateInput = { nombre: '', canal: 'wa_link', cuerpo: '' }
 export function TemplatesPage() {
   const queryClient = useQueryClient()
   const [form, setForm] = useState<MessageTemplateInput>(vacio)
+  const [alta, setAlta] = useState(false)
+  const [busqueda, setBusqueda] = useState('')
 
   const templatesQuery = useQuery({ queryKey: ['message-templates'], queryFn: listTemplates })
 
@@ -37,6 +40,7 @@ export function TemplatesPage() {
     mutationFn: createTemplate,
     onSuccess: async () => {
       setForm(vacio)
+      setAlta(false)
       await queryClient.invalidateQueries({ queryKey: ['message-templates'] })
     },
   })
@@ -60,14 +64,15 @@ export function TemplatesPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-xl font-semibold">Plantillas</h1>
-        <p className="text-sm text-slate-600">
-          Los textos que se mandan por WhatsApp. El cuerpo solo puede usar las variables de abajo.
-        </p>
-      </div>
+      <ModuleHead
+        title="Plantillas"
+        text="Los textos que se mandan por WhatsApp. El cuerpo solo puede usar las variables permitidas."
+        action={<AddButton onClick={() => setAlta((value) => !value)}>Agregar plantilla</AddButton>}
+      />
+      <SearchBox value={busqueda} onChange={setBusqueda} placeholder="Buscar plantilla" />
 
-      <section className="rounded-lg border border-slate-200 bg-white p-5">
+      {alta ? (
+      <section className="ficha max-w-2xl">
         <h2 className="text-sm font-semibold">Nueva plantilla</h2>
 
         <div className="mt-4 grid gap-3 sm:grid-cols-2">
@@ -140,6 +145,7 @@ export function TemplatesPage() {
           </Link>
         </div>
       </section>
+      ) : null}
 
       <QueryStatus
         isLoading={templatesQuery.isLoading}
@@ -147,7 +153,7 @@ export function TemplatesPage() {
       />
 
       {!templatesQuery.isLoading && !templatesQuery.isError ? (
-        <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white">
+        <div className="registros">
           <table className="min-w-full text-left text-sm">
             <thead className="bg-slate-50 text-slate-600">
               <tr>
@@ -166,7 +172,11 @@ export function TemplatesPage() {
                   </td>
                 </tr>
               ) : (
-                (templatesQuery.data ?? []).map((template) => (
+                (templatesQuery.data ?? [])
+                  .filter((template) =>
+                    template.nombre.toLowerCase().includes(busqueda.trim().toLowerCase()),
+                  )
+                  .map((template) => (
                   <tr key={template.id} className="border-t border-slate-100">
                     <td className="px-3 py-2 font-medium">{template.nombre}</td>
                     <td className="px-3 py-2">

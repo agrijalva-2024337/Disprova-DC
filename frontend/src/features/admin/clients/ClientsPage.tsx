@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom'
 import { disableClient, listClients, listZones } from '../api/territory.ts'
 import { ApiError } from '../api/http.ts'
 import type { Client } from '../api/types.ts'
+import { SearchBox } from '../ui/ListTools.tsx'
 import { QueryStatus } from '../ui/Status.tsx'
 import { RecordSheet, RowMoves } from '../ui/RecordSheet.tsx'
 import { ClientMessaging } from '../messaging/ClientMessaging.tsx'
@@ -19,6 +20,7 @@ const tipoLabel: Record<string, string> = {
 export function ClientsPage() {
   const queryClient = useQueryClient()
   const [zoneId, setZoneId] = useState('')
+  const [busqueda, setBusqueda] = useState('')
   const [mensajeriaClientId, setMensajeriaClientId] = useState<number | null>(null)
   const [abierto, setAbierto] = useState<Client | null>(null)
   const [accionError, setAccionError] = useState<string | null>(null)
@@ -44,9 +46,14 @@ export function ClientsPage() {
     return map
   }, [zonesQuery.data])
 
-  const rows = (clientsQuery.data ?? []).filter((client) =>
-    zoneId ? client.zoneId === Number(zoneId) : true,
-  )
+  const rows = (clientsQuery.data ?? []).filter((client) => {
+    if (zoneId && client.zoneId !== Number(zoneId)) return false
+    const term = busqueda.trim().toLowerCase()
+    if (!term) return true
+    return (
+      client.nombreComercial.toLowerCase().includes(term) || (client.nit ?? '').toLowerCase().includes(term)
+    )
+  })
 
   return (
     <div className="space-y-6">
@@ -59,11 +66,13 @@ export function ClientsPage() {
           to="/admin/clientes/nuevo"
           className="rounded bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800"
         >
-          Nuevo cliente
+          Agregar cliente
         </Link>
       </div>
 
-      <label className="block max-w-xs text-sm">
+      <div className="flex flex-wrap items-end gap-3">
+      <SearchBox value={busqueda} onChange={setBusqueda} placeholder="Buscar cliente" />
+      <label className="block min-w-48 text-sm">
         <span className="mb-1 block font-medium">Zona</span>
         <select
           value={zoneId}
@@ -78,6 +87,7 @@ export function ClientsPage() {
           ))}
         </select>
       </label>
+      </div>
 
       <QueryStatus
         isLoading={clientsQuery.isLoading || zonesQuery.isLoading}
@@ -89,7 +99,7 @@ export function ClientsPage() {
       />
 
       {!clientsQuery.isLoading && !clientsQuery.isError ? (
-        <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white">
+        <div className="registros">
           <table className="min-w-full text-left text-sm">
             <thead className="bg-slate-50 text-slate-600">
               <tr>
