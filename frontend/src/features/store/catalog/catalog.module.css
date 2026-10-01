@@ -4,16 +4,27 @@
   color: var(--store-text);
 }
 
+.shell {
+  width: min(1180px, 100%);
+  margin: 0 auto;
+  padding: 0 1.25rem 6.5rem;
+}
+
 .header {
   position: sticky;
   top: 0;
   z-index: 10;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1rem;
   background: var(--store-bg);
-  padding: 1rem 1rem 0.75rem;
+  padding: 1.25rem 0 0.75rem;
 }
 
 .brand {
-  font-size: 1.25rem;
+  font-size: clamp(1.6rem, 2vw, 2.1rem);
   font-weight: 600;
   letter-spacing: -0.02em;
   color: var(--store-ink);
@@ -33,8 +44,8 @@
 }
 
 .search {
-  width: 100%;
-  margin-top: 0.75rem;
+  width: min(100%, 22rem);
+  margin-top: 0;
   border: 1px solid var(--store-border);
   border-radius: 999px;
   background: var(--store-bg);
@@ -48,11 +59,112 @@
   border-color: var(--store-accent);
 }
 
+.sectionHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  margin: 0.5rem 0 0.75rem;
+}
+
+.sectionTitle {
+  font-size: 1.35rem;
+  font-weight: 600;
+  color: var(--store-ink);
+}
+
+.sectionReset {
+  cursor: pointer;
+  border: 0;
+  background: none;
+  color: var(--store-accent);
+  font-size: 0.875rem;
+  font-weight: 600;
+  padding: 0;
+}
+
+.sections {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.75rem;
+}
+
+.sectionsCompact {
+  display: flex;
+  gap: 0.6rem;
+  overflow-x: auto;
+  padding-bottom: 0.25rem;
+}
+
+.section {
+  position: relative;
+  overflow: hidden;
+  min-height: 168px;
+  border: 0;
+  border-radius: 1.25rem;
+  padding: 0;
+  cursor: pointer;
+  color: #fff;
+  text-align: left;
+}
+
+.sectionsCompact .section {
+  flex: 0 0 168px;
+  min-height: 104px;
+}
+
+.sectionActive {
+  outline: 3px solid var(--store-accent);
+  outline-offset: 3px;
+}
+
+.sectionImg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.sectionCopy {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  min-height: 168px;
+  padding: 1rem;
+  background: linear-gradient(to top, rgba(28, 21, 18, 0.82), rgba(28, 21, 18, 0.08));
+}
+
+.sectionsCompact .sectionCopy {
+  min-height: 104px;
+  padding: 0.75rem;
+}
+
+.sectionName {
+  font-size: 1.35rem;
+  font-weight: 600;
+  line-height: 1.1;
+}
+
+.sectionHint {
+  margin-top: 0.2rem;
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.86);
+}
+
+.elige {
+  margin: 1.25rem 0 0;
+  font-size: 0.95rem;
+  color: var(--store-muted);
+}
+
 .chips {
   display: flex;
   gap: 0.5rem;
   overflow-x: auto;
-  padding: 0.75rem 1rem 0.25rem;
+  padding: 0.75rem 0 0.25rem;
 }
 
 .chip {
@@ -78,8 +190,8 @@
 .grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 0.75rem;
-  padding: 0.75rem 1rem 1.5rem;
+  gap: 0.9rem;
+  padding: 1rem 0 1.5rem;
 }
 
 .card {
@@ -208,10 +320,11 @@
 
 .bar {
   position: fixed;
-  right: 0;
+  right: max(1rem, calc(50% - 590px));
   bottom: 0;
-  left: 0;
+  left: max(1rem, calc(50% - 590px));
   z-index: 20;
+  border-radius: 1rem 1rem 0 0;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -257,6 +370,26 @@
   to {
     transform: translateY(0);
     opacity: 1;
+  }
+}
+
+@media (min-width: 720px) {
+  .sections {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (min-width: 1100px) {
+  .sections {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .grid {
+    grid-template-columns: repeat(4, 1fr);
   }
 }
 

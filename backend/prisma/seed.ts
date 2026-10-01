@@ -172,6 +172,14 @@ async function main() {
     },
   ] as const;
 
+  const FOTO_POR_SKU: Record<string, string> = {
+    'MED-001': '/catalogo/paracetamol.jpg',
+    'MED-002': '/catalogo/ibuprofeno.jpg',
+    'HIG-001': '/catalogo/jabon.jpg',
+    'BEB-001': '/catalogo/agua.jpg',
+    'MED-003': '/catalogo/amoxicilina.jpg',
+  };
+
   const createdUnits: { id: number; precioLista: string }[] = [];
   const createdProducts: { id: number; sku: string; controlado: boolean }[] = [];
 
@@ -196,7 +204,7 @@ async function main() {
         },
         images: {
           create: {
-            url: `https://placehold.co/400x400?text=${encodeURIComponent(p.sku)}`,
+            url: FOTO_POR_SKU[p.sku] ?? `/catalogo/abarrotes.jpg`,
             orden: 0,
             esPrincipal: true,
           },

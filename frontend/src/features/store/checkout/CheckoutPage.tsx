@@ -139,7 +139,7 @@ export function CheckoutPage() {
 
   return (
     <main className={`${catalogStyles.page} font-body`} style={storeVars}>
-      <div className="mx-auto min-h-screen w-full max-w-md">
+      <div className="mx-auto min-h-screen w-full max-w-3xl">
         <header className={styles.header}>
           <h1 className={`${styles.title} font-display`}>Tu pedido</h1>
           <div className={styles.rule} aria-hidden="true" />

@@ -17,12 +17,18 @@ export function ProductCard({ producto }: { producto: PublicProduct }) {
   const [unitId, setUnitId] = useState(inicial?.id)
   const unidad = producto.unidades.find((item) => item.id === unitId) ?? inicial
   const cantidad = unidad ? (cantidades[unidad.id] ?? 0) : 0
+  const [fotoRota, setFotoRota] = useState(false)
 
   return (
     <article className={styles.card}>
       <div className={styles.photo}>
-        {producto.imagenUrl ? (
-          <img className={styles.photoImg} src={producto.imagenUrl} alt="" />
+        {producto.imagenUrl && !fotoRota ? (
+          <img
+            className={styles.photoImg}
+            src={producto.imagenUrl}
+            alt={producto.nombre}
+            onError={() => setFotoRota(true)}
+          />
         ) : (
           <span className={styles.photoEmpty} aria-hidden="true">
             <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" strokeWidth="1.5">
