@@ -76,7 +76,7 @@ function lineasDelCarrito(catalog: PublicCatalog, cantidades: Record<number, num
 export function CheckoutPage() {
   const { token } = useParams()
   const navigate = useNavigate()
-  const { cantidades, add, setQty, remove, clear, subtotal } = useCart()
+  const { cantidades, add, setQty, remove, clear, subtotal, ivaIncluido } = useCart()
   const [pago, setPago] = useState<'contado' | 'credito'>('contado')
   // Existe antes del primer envío. Un doble tap y un reintento tras un corte
   // de red mandan la misma clave, así el backend no abre otro pedido.
@@ -248,6 +248,7 @@ export function CheckoutPage() {
                 <span className="font-body">Total</span>
                 <span className={`${styles.totalAmount} font-display`}>{quetzales(subtotal(catalog))}</span>
               </div>
+              <p className={styles.iva}>IVA incluido: {quetzales(ivaIncluido(catalog))}</p>
               {errorLinea ? <p className={styles.error}>{errorLinea}</p> : null}
               <button
                 type="button"

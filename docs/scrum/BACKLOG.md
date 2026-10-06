@@ -33,7 +33,7 @@
 | DISP-043 | Soft-delete en zonas, clientes y catálogo (regla "nada se borra") | Listo |
 | DISP-044 | Frontend: cobranza en `features/field` (cobro desde el móvil) | Listo |
 | DISP-045 | Respaldo `pg_dump` programado y prueba de restauración | Listo |
-| DISP-046 | Confirmar con el negocio si el precio de lista incluye IVA (hoy se suma 12%) | Pendiente |
+| DISP-046 | Precios con IVA incluido; el desglose se calcula al facturar | Listo |
 | DISP-047 | Descuento por línea en el pedido: la columna existe pero siempre vale 0 | Pendiente |
 | DISP-048 | CI en GitHub Actions (`.github/` no existe) | Pendiente |
 | DISP-049 | Modo sin conexión en la toma de pedido (guardado local y reintento) | Pendiente |

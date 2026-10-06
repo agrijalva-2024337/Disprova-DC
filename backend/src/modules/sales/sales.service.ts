@@ -4,10 +4,8 @@ import { postMovement } from '../collections/account.service.js';
 import { registerMovement } from '../inventory/inventory.service.js';
 import { AppError } from '../../shared/errors/AppError.js';
 import { writeAudit } from '../../shared/audit/writeAudit.js';
+import { desgloseLinea, importeIncluido, redondear } from '../../shared/money/iva.js';
 import type { CreateOrderInput, DeliverOrderInput } from './sales.schema.js';
-
-/** IVA copiado en cada línea al crear el pedido. No se vuelve a leer después. */
-const IVA_RATE = new Prisma.Decimal('0.12');
 
 const OPEN_CREDIT_STATES = ['pendiente', 'confirmado'] as const;
 
@@ -62,29 +60,16 @@ export async function currentPrice(priceListId: number, productUnitId: number) {
 }
 
 /**
- * Importe de UNA línea según lo realmente entregado: precioUnitario x
- * cantidad entregada más la parte proporcional del impuesto de la línea.
- * No usa el total del pedido, así que una entrega parcial vale solo lo
- * entregado. Es la misma fórmula que usa el cargo de cobranza al entregar.
+ * Importe de UNA línea según lo realmente entregado: la parte proporcional
+ * del total congelado, que ya trae el IVA. No se vuelve a sumar el 12% y no
+ * se relee el precio vigente. Es la misma fórmula que usa el cargo de
+ * cobranza al entregar.
  */
 export function importeLineaEntregada(
-  item: { cantidad: Prisma.Decimal; precioUnitario: Prisma.Decimal; impuesto: Prisma.Decimal },
+  item: { cantidad: Prisma.Decimal; totalLinea: Prisma.Decimal },
   cantidadEntregada: Prisma.Decimal,
 ): Prisma.Decimal {
-  if (cantidadEntregada.lessThanOrEqualTo(0)) {
-    return new Prisma.Decimal(0);
-  }
-  const cantidad = new Prisma.Decimal(item.cantidad);
-  if (cantidad.lessThanOrEqualTo(0)) {
-    return new Prisma.Decimal(0);
-  }
-
-  const share = cantidadEntregada.div(cantidad);
-  return money(
-    new Prisma.Decimal(item.precioUnitario)
-      .mul(cantidadEntregada)
-      .add(new Prisma.Decimal(item.impuesto).mul(share)),
-  );
+  return importeIncluido(item, cantidadEntregada);
 }
 
 export type LineaEntregada = { orderItemId: number; cantidadEntregada: Prisma.Decimal };
@@ -94,8 +79,7 @@ export function importeEntregado(
   items: Array<{
     id: number;
     cantidad: Prisma.Decimal;
-    precioUnitario: Prisma.Decimal;
-    impuesto: Prisma.Decimal;
+    totalLinea: Prisma.Decimal;
   }>,
   lines: LineaEntregada[],
 ): Prisma.Decimal {
@@ -229,23 +213,21 @@ export async function createOrder(input: CreateOrderInput, userId: number) {
     const cantidad = new Prisma.Decimal(line.cantidad);
     const precioUnitario = money(new Prisma.Decimal(price.precio));
     const descuento = new Prisma.Decimal(0);
-    const base = money(precioUnitario.mul(cantidad).sub(descuento));
-    const impuesto = money(base.mul(IVA_RATE));
-    const totalLinea = money(base.add(impuesto));
+    const desglose = desgloseLinea({ precioUnitario, cantidad, descuento });
     lines.push({
       productUnitId: unit.id,
       cantidad,
       precioUnitario,
       descuento,
-      impuesto,
-      totalLinea,
+      impuesto: desglose.impuesto,
+      totalLinea: desglose.total,
     });
   }
 
-  const subtotal = money(lines.reduce((sum, line) => sum.add(line.precioUnitario.mul(line.cantidad).sub(line.descuento)), new Prisma.Decimal(0)));
   const descuento = new Prisma.Decimal(0);
-  const impuesto = money(lines.reduce((sum, line) => sum.add(line.impuesto), new Prisma.Decimal(0)));
-  const total = money(subtotal.sub(descuento).add(impuesto));
+  const total = redondear(lines.reduce((sum, line) => sum.add(line.totalLinea), new Prisma.Decimal(0)));
+  const impuesto = redondear(lines.reduce((sum, line) => sum.add(line.impuesto), new Prisma.Decimal(0)));
+  const subtotal = redondear(total.sub(impuesto));
 
   try {
     const order = await prisma.$transaction(async (tx) => {

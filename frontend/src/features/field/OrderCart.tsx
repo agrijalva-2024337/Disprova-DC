@@ -1,4 +1,3 @@
-import type { ReactNode } from 'react'
 import type { CartLine } from './cart.ts'
 import { quetzales } from './format.ts'
 import { Stepper } from './Stepper.tsx'
@@ -15,7 +14,6 @@ export function OrderCart({
   lineas,
   onCantidad,
   onVaciar,
-  subtotal,
   impuesto,
   total,
   condicion,
@@ -27,7 +25,6 @@ export function OrderCart({
   lineas: CartLine[]
   onCantidad: (linea: CartLine, nueva: number) => void
   onVaciar: () => void
-  subtotal: number
   impuesto: number
   total: number
   condicion: 'contado' | 'credito'
@@ -89,14 +86,13 @@ export function OrderCart({
       )}
 
       <div className="mt-auto space-y-2 border-t border-line px-4 py-3">
-        <Row etiqueta="Subtotal" valor={quetzales(subtotal)} />
-        <Row etiqueta="IVA 12%" valor={quetzales(impuesto)} />
-        <div className="flex items-baseline justify-between gap-2 border-t border-line pt-2">
+        <div className="flex items-baseline justify-between gap-2">
           <span className="font-display text-sm font-semibold text-ink">Total</span>
           <span className="font-display text-xl font-semibold tabular-nums text-ink">
             {quetzales(total)}
           </span>
         </div>
+        <p className="text-xs text-muted">IVA incluido: {quetzales(impuesto)}</p>
 
         <div className="flex gap-2 pt-1" role="group" aria-label="Condición de pago">
           <Condicion
@@ -121,15 +117,6 @@ export function OrderCart({
         </button>
       </div>
     </section>
-  )
-}
-
-function Row({ etiqueta, valor, children }: { etiqueta: string; valor?: string; children?: ReactNode }) {
-  return (
-    <div className="flex items-baseline justify-between gap-2 text-sm">
-      <span className="text-muted">{etiqueta}</span>
-      {valor ? <span className="tabular-nums text-ink-soft">{valor}</span> : children}
-    </div>
   )
 }
 

@@ -129,6 +129,12 @@
   color: var(--store-accent);
 }
 
+.iva {
+  margin: -0.35rem 0 0.75rem;
+  font-size: 0.75rem;
+  color: var(--store-muted);
+}
+
 .confirm {
   width: 100%;
   min-height: 2.75rem;

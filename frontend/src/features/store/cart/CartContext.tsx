@@ -1,4 +1,5 @@
 import { createContext, useContext, useMemo, useReducer, type ReactNode } from 'react'
+import { aCentavos, desdeCentavos, totalesCentavos } from '../../../shared/money/iva.ts'
 import type { PublicCatalog } from '../api/publicStore.ts'
 
 /** Cantidad pedida de cada presentación. Solo vive en memoria. */
@@ -42,12 +43,8 @@ function reducer(state: CartState, action: CartAction): CartState {
   }
 }
 
-function money(value: number) {
-  return Math.round(value * 100) / 100
-}
-
-/** Suma precio de lista por cantidad. Una presentación sin precio no entra. */
-function catalogSubtotal(catalog: PublicCatalog, cantidades: CartState) {
+/** Suma el precio de venta (IVA incluido) por cantidad. Una presentación sin precio no entra. */
+function catalogTotales(catalog: PublicCatalog, cantidades: CartState) {
   const precios = new Map<number, string>()
   for (const producto of catalog.productos) {
     for (const unidad of producto.unidades) {
@@ -57,15 +54,15 @@ function catalogSubtotal(catalog: PublicCatalog, cantidades: CartState) {
     }
   }
 
-  let total = 0
+  const lineas = []
   for (const [id, cantidad] of Object.entries(cantidades)) {
     const precio = precios.get(Number(id))
     if (precio === undefined) {
       continue
     }
-    total = money(total + money(Number(precio) * cantidad))
+    lineas.push({ precioCentavos: aCentavos(Number(precio)), cantidad })
   }
-  return total
+  return totalesCentavos(lineas)
 }
 
 export function CartProvider({ children }: { children: ReactNode }) {
@@ -105,7 +102,10 @@ export function useCart() {
     ...cart,
     totalItems,
     subtotal(catalog: PublicCatalog) {
-      return catalogSubtotal(catalog, cart.cantidades)
+      return desdeCentavos(catalogTotales(catalog, cart.cantidades).total)
+    },
+    ivaIncluido(catalog: PublicCatalog) {
+      return desdeCentavos(catalogTotales(catalog, cart.cantidades).impuesto)
     },
   }
 }

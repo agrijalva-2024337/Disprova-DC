@@ -4,6 +4,7 @@ import { AppError } from '../../shared/errors/AppError.js';
 import { writeAudit } from '../../shared/audit/writeAudit.js';
 import { postMovement } from '../collections/account.service.js';
 import { registerMovement } from '../inventory/inventory.service.js';
+import { importeIncluido } from '../../shared/money/iva.js';
 import { LIMITE_POR_DEFECTO, type CreateReturnInput, type ListReturnsQuery } from './returns.schema.js';
 
 function money(value: Prisma.Decimal) {
@@ -186,12 +187,10 @@ export async function acceptReturn(returnId: number, userId: number) {
 
     for (const line of record.items) {
       const cantidad = new Prisma.Decimal(line.cantidad);
-      const share = cantidad.div(line.orderItem.cantidad);
       total = total.add(
-        money(
-          new Prisma.Decimal(line.orderItem.precioUnitario)
-            .mul(cantidad)
-            .add(new Prisma.Decimal(line.orderItem.impuesto).mul(share)),
+        importeIncluido(
+          { cantidad: line.orderItem.cantidad, totalLinea: line.orderItem.totalLinea },
+          cantidad,
         ),
       );
 

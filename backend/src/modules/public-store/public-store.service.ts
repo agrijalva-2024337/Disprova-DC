@@ -3,6 +3,7 @@ import { prisma } from '../../config/prisma.js';
 import { AppError } from '../../shared/errors/AppError.js';
 import { toJson, writeAudit } from '../../shared/audit/writeAudit.js';
 import { DEFAULT_TOKEN_TTL_DAYS, generateClientAccessToken } from '../catalog-public/clientAccessToken.js';
+import { desgloseIva } from '../../shared/money/iva.js';
 import { createOrder, currentPrice } from '../sales/sales.service.js';
 import type { CreateTokenInput, PublicOrderInput } from './public-store.schema.js';
 
@@ -229,6 +230,7 @@ export async function createPublicOrder(
   );
 
   if (created) {
+    const desglose = desgloseIva(order.total);
     await prisma.auditLog.create({
       data: {
         userId,
@@ -240,6 +242,9 @@ export async function createPublicOrder(
           canal: 'web',
           estado: 'borrador',
           via: 'catalogo-publico',
+          total: desglose.total.toFixed(2),
+          subtotal: desglose.subtotal.toFixed(2),
+          impuesto: desglose.impuesto.toFixed(2),
         }),
       },
     });

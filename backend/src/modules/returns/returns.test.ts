@@ -214,8 +214,9 @@ describe('devoluciones', () => {
       where: { clientId: client.id, referenciaTipo: 'return', referenciaId: String(created.body.id) },
     });
     expect(movement.tipo).toBe('abono');
-    expect(new Prisma.Decimal(movement.monto).equals('9.80')).toBe(true);
-    expect((await saldo(client.id)).toString()).toBe(beforeSaldo.sub('9.80').toString());
+    // El precio de lista (Q 8.75) ya incluye IVA; devolver 1 de 2 abona la mitad del total de la línea.
+    expect(new Prisma.Decimal(movement.monto).equals('8.75')).toBe(true);
+    expect((await saldo(client.id)).toString()).toBe(beforeSaldo.sub('8.75').toString());
   });
 
   it('rechazar no toca stock ni saldo', async () => {

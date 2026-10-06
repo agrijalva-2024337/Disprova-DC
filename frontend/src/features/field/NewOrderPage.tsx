@@ -151,7 +151,7 @@ export function NewOrderPage() {
     })
   }, [vendibles, porCategoria, categoriaId, busqueda])
 
-  const { subtotal, impuesto, total } = totales(cart)
+  const { impuesto, total } = totales(cart)
   const previous = previousQuery.data?.[0]
 
   const precioDe = (unidad: ProductUnit) => priceByUnit.get(unidad.id)
@@ -284,7 +284,6 @@ export function NewOrderPage() {
     lineas: cart,
     onCantidad: cambiarLinea,
     onVaciar: () => setCart([]),
-    subtotal,
     impuesto,
     total,
     condicion,

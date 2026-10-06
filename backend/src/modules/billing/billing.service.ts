@@ -3,6 +3,7 @@ import { prisma } from '../../config/prisma.js';
 import { env } from '../../config/env.js';
 import { AppError } from '../../shared/errors/AppError.js';
 import { writeAudit } from '../../shared/audit/writeAudit.js';
+import { desgloseIva } from '../../shared/money/iva.js';
 import { importeEntregado, importeLineaEntregada } from '../sales/sales.service.js';
 import { getFelProvider } from './providers/fel.provider.js';
 import type { CreateInvoiceInput } from './billing.schema.js';
@@ -79,7 +80,9 @@ export async function createInvoiceForOrder(
     ),
   }));
 
-  const total = money(importeEntregado(order.items, lineas));
+  const entregado = importeEntregado(order.items, lineas);
+  const desglose = desgloseIva(entregado);
+  const total = desglose.total;
 
   const serie = input.serie ?? env.fel.serie;
 
@@ -97,7 +100,13 @@ export async function createInvoiceForOrder(
       entidad: 'Invoice',
       entidadId: String(created.id),
       accion: 'create',
-      datosDespues: { orderId: order.id, serie, total: total.toFixed(2) },
+      datosDespues: {
+        orderId: order.id,
+        serie,
+        total: total.toFixed(2),
+        subtotal: desglose.subtotal.toFixed(2),
+        impuesto: desglose.impuesto.toFixed(2),
+      },
     });
     return created;
   });
@@ -127,7 +136,7 @@ export async function createInvoiceForOrder(
           descripcion: item.productUnit.product.nombre,
           cantidad: entregada.toString(),
           precioUnitario: money(item.precioUnitario).toFixed(2),
-          total: importeLineaEntregada(item, entregada).toFixed(2),
+          total: desgloseIva(importeLineaEntregada(item, entregada)).total.toFixed(2),
         };
       })
       .filter((linea): linea is NonNullable<typeof linea> => linea !== null),

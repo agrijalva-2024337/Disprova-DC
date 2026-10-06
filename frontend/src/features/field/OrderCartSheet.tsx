@@ -86,7 +86,6 @@ type ParametrosOrderCart = {
   lineas: CartLine[]
   onCantidad: (linea: CartLine, nueva: number) => void
   onVaciar: () => void
-  subtotal: number
   impuesto: number
   total: number
   condicion: 'contado' | 'credito'

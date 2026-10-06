@@ -1,3 +1,5 @@
+import { aCentavos, desdeCentavos, totalesCentavos } from '../../shared/money/iva.ts'
+
 /**
  * Estado y cuentas del pedido que se lleva el vendedor.
  *
@@ -17,24 +19,25 @@ export type CartLine = {
   cantidad: number
 }
 
-export function money(valor: number): number {
-  return Math.round(valor * 100) / 100
-}
-
 /**
  * Totales del pedido.
  *
- * Se redondea igual que el backend: el IVA se calcula y redondea POR LÍNEA y
- * después se suma. Calcularlo sobre el subtotal completo daba centavos de
- * diferencia contra el total que devuelve el backend, y el vendedor ve cómo
- * el total cambia al confirmar.
+ * El precio ya trae el IVA. El total es la suma de las líneas; el impuesto
+ * se muestra aparte y no se vuelve a sumar. Las cuentas van en centavos,
+ * igual que el backend, para que el total no cambie al confirmar.
  */
 export function totales(lineas: CartLine[]) {
-  const subtotal = money(lineas.reduce((suma, linea) => suma + linea.precio * linea.cantidad, 0))
-  const impuesto = money(
-    lineas.reduce((suma, linea) => suma + money(money(linea.precio * linea.cantidad) * 0.12), 0),
+  const centavos = totalesCentavos(
+    lineas.map((linea) => ({
+      precioCentavos: aCentavos(linea.precio),
+      cantidad: linea.cantidad,
+    })),
   )
-  return { subtotal, impuesto, total: money(subtotal + impuesto) }
+  return {
+    subtotal: desdeCentavos(centavos.subtotal),
+    impuesto: desdeCentavos(centavos.impuesto),
+    total: desdeCentavos(centavos.total),
+  }
 }
 
 /**
