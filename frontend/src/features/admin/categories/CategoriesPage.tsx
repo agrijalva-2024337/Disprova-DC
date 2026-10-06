@@ -4,8 +4,11 @@ import { createCategory, listCategories, updateCategory } from '../api/catalog.t
 import type { Category } from '../api/types.ts'
 import { ApiError } from '../api/http.ts'
 import { AddButton, ModuleHead, SearchBox } from '../ui/ListTools.tsx'
+import { ConfirmDialog } from '../ui/ConfirmDialog.tsx'
+import { Modal } from '../ui/Modal.tsx'
 import { Alert, QueryStatus } from '../ui/Status.tsx'
 import { RecordSheet, RowMoves } from '../ui/RecordSheet.tsx'
+import { useToast } from '../ui/Toast.tsx'
 
 export function CategoriesPage() {
   const queryClient = useQueryClient()
@@ -17,11 +20,13 @@ export function CategoriesPage() {
   const [parentId, setParentId] = useState('')
   const [orden, setOrden] = useState('0')
   const [formError, setFormError] = useState<string | null>(null)
-  const [formSuccess, setFormSuccess] = useState<string | null>(null)
   const [visto, setVisto] = useState<Category | null>(null)
   const [formulario, setFormulario] = useState(false)
   const [editando, setEditando] = useState<Category | null>(null)
+  const [base, setBase] = useState({ nombre: '', parentId: '', orden: '0' })
+  const [aDeshabilitar, setADeshabilitar] = useState<Category | null>(null)
   const [busqueda, setBusqueda] = useState('')
+  const avisos = useToast()
 
   const createMutation = useMutation({
     mutationFn: createCategory,
@@ -32,19 +37,19 @@ export function CategoriesPage() {
       setFormError(null)
       setFormulario(false)
       setEditando(null)
-      setFormSuccess(editando ? 'Categoría actualizada' : 'Categoría creada')
+      avisos.ok('Categoría agregada')
       await queryClient.invalidateQueries({ queryKey: ['categories'] })
     },
     onError: (err) => {
-      setFormSuccess(null)
-      setFormError(err instanceof ApiError ? err.message : 'No se pudo crear la categoría')
+      const mensaje = err instanceof ApiError ? err.message : 'No se pudo crear la categoría'
+      setFormError(mensaje)
+      avisos.error(mensaje)
     },
   })
 
   function onSubmit(event: FormEvent) {
     event.preventDefault()
     setFormError(null)
-    setFormSuccess(null)
     const input = {
       nombre: nombre.trim(),
       parentId: parentId ? Number(parentId) : null,
@@ -57,10 +62,13 @@ export function CategoriesPage() {
           setFormulario(false)
           setEditando(null)
           setNombre('')
+          avisos.ok('Categoría actualizada')
           await queryClient.invalidateQueries({ queryKey: ['categories'] })
         })
         .catch((err) => {
-          setFormError(err instanceof ApiError ? err.message : 'No se pudo guardar la categoría')
+          const mensaje = err instanceof ApiError ? err.message : 'No se pudo guardar la categoría'
+          setFormError(mensaje)
+          avisos.error(mensaje)
         })
       return
     }
@@ -73,11 +81,29 @@ export function CategoriesPage() {
     termino ? category.nombre.toLowerCase().includes(termino) : true,
   )
 
+  function abrirNueva() {
+    const vacio = { nombre: '', parentId: '', orden: '0' }
+    setEditando(null)
+    setNombre(vacio.nombre)
+    setParentId(vacio.parentId)
+    setOrden(vacio.orden)
+    setBase(vacio)
+    setFormError(null)
+    setFormulario(true)
+  }
+
   function editar(category: Category) {
+    const valores = {
+      nombre: category.nombre,
+      parentId: category.parentId ? String(category.parentId) : '',
+      orden: String(category.orden),
+    }
     setEditando(category)
-    setNombre(category.nombre)
-    setParentId(category.parentId ? String(category.parentId) : '')
-    setOrden(String(category.orden))
+    setNombre(valores.nombre)
+    setParentId(valores.parentId)
+    setOrden(valores.orden)
+    setBase(valores)
+    setFormError(null)
     setFormulario(true)
     setVisto(null)
   }
@@ -88,26 +114,24 @@ export function CategoriesPage() {
         title="Categorías"
         text="Organiza el catálogo por familia de producto."
         action={
-          <AddButton
-            onClick={() => {
-              setEditando(null)
-              setNombre('')
-              setParentId('')
-              setOrden('0')
-              setFormulario(true)
-            }}
-          >
-            Agregar categoría
-          </AddButton>
+          <AddButton onOpen={abrirNueva}>Agregar categoría</AddButton>
         }
       />
       <SearchBox value={busqueda} onChange={setBusqueda} placeholder="Buscar categoría" />
 
       {formulario ? (
-      <form onSubmit={onSubmit} className="ficha max-w-xl space-y-3">
-        <h2 className="font-display text-xl">{editando ? `Editar ${editando.nombre}` : 'Nueva categoría'}</h2>
+      <Modal
+        title={editando ? 'Editar categoría' : 'Agregar categoría'}
+        formId="categoria-form"
+        dirty={nombre !== base.nombre || parentId !== base.parentId || orden !== base.orden}
+        saving={createMutation.isPending}
+        onClose={() => {
+          setFormulario(false)
+          setEditando(null)
+        }}
+      >
+      <form id="categoria-form" onSubmit={onSubmit} className="space-y-3">
         {formError ? <Alert tone="error">{formError}</Alert> : null}
-        {formSuccess ? <Alert tone="success">{formSuccess}</Alert> : null}
         <label className="block text-sm">
           <span className="mb-1 block font-medium">Nombre</span>
           <input
@@ -141,17 +165,8 @@ export function CategoriesPage() {
             className="w-full rounded border border-slate-300 px-3 py-2 text-sm"
           />
         </label>
-        <button
-          type="submit"
-          disabled={createMutation.isPending}
-          className="rounded bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-60"
-        >
-          {createMutation.isPending ? 'Guardando…' : 'Guardar'}
-        </button>
-        <button type="button" onClick={() => setFormulario(false)} className="ml-2 min-h-11 rounded-full border border-slate-300 px-4 text-sm">
-          Cancelar
-        </button>
       </form>
+      </Modal>
       ) : null}
 
       <QueryStatus
@@ -194,17 +209,7 @@ export function CategoriesPage() {
                       <RowMoves
                         onView={() => setVisto(category)}
                         onEdit={() => editar(category)}
-                        onDisable={
-                          category.activo
-                            ? () =>
-                                updateCategory(category.id, {
-                                  nombre: category.nombre,
-                                  parentId: category.parentId,
-                                  orden: category.orden,
-                                  activo: false,
-                                }).then(() => queryClient.invalidateQueries({ queryKey: ['categories'] }))
-                            : undefined
-                        }
+                        onDisable={category.activo ? () => setADeshabilitar(category) : undefined}
                       />
                     </td>
                   </tr>
@@ -227,6 +232,32 @@ export function CategoriesPage() {
             </div>
           </dl>
         </RecordSheet>
+      ) : null}
+      {aDeshabilitar ? (
+        <ConfirmDialog
+          title="Deshabilitar categoría"
+          confirmLabel="Deshabilitar"
+          onClose={() => setADeshabilitar(null)}
+          onConfirm={() => {
+            const category = aDeshabilitar
+            updateCategory(category.id, {
+              nombre: category.nombre,
+              parentId: category.parentId,
+              orden: category.orden,
+              activo: false,
+            })
+              .then(async () => {
+                setADeshabilitar(null)
+                avisos.ok('Categoría deshabilitada')
+                await queryClient.invalidateQueries({ queryKey: ['categories'] })
+              })
+              .catch((err) => {
+                avisos.error(err instanceof ApiError ? err.message : 'No se pudo deshabilitar la categoría')
+              })
+          }}
+        >
+          {aDeshabilitar.nombre} deja de usarse en el catálogo. No se borra.
+        </ConfirmDialog>
       ) : null}
     </div>
   )

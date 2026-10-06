@@ -20,11 +20,12 @@ export function ModuleHead({
   )
 }
 
-export function AddButton({ children, onClick }: { children: ReactNode; onClick: () => void }) {
+/** Abre el modal de alta. No alterna un formulario en la página. */
+export function AddButton({ children, onOpen }: { children: ReactNode; onOpen: () => void }) {
   return (
     <button
       type="button"
-      onClick={onClick}
+      onClick={onOpen}
       className="min-h-11 rounded-full bg-slate-900 px-5 text-sm font-medium text-white"
     >
       {children}

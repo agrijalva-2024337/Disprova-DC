@@ -4,8 +4,11 @@ import { createZone, listZones, updateZone } from '../api/territory.ts'
 import type { Zone } from '../api/types.ts'
 import { ApiError } from '../api/http.ts'
 import { AddButton, ModuleHead, SearchBox } from '../ui/ListTools.tsx'
+import { ConfirmDialog } from '../ui/ConfirmDialog.tsx'
+import { Modal } from '../ui/Modal.tsx'
 import { Alert, QueryStatus } from '../ui/Status.tsx'
 import { RecordSheet, RowMoves } from '../ui/RecordSheet.tsx'
+import { useToast } from '../ui/Toast.tsx'
 
 const DAY_OPTIONS = [
   { value: 1, label: 'Lun' },
@@ -33,18 +36,26 @@ export function ZonesPage() {
   const [dias, setDias] = useState<number[]>([1])
   const [activo, setActivo] = useState(true)
   const [formError, setFormError] = useState<string | null>(null)
-  const [formSuccess, setFormSuccess] = useState<string | null>(null)
   const [formulario, setFormulario] = useState(false)
+  const [base, setBase] = useState({ nombre: '', semanaMes: '1', dias: '1', activo: true })
+  const [aDeshabilitar, setADeshabilitar] = useState<Zone | null>(null)
   const [busqueda, setBusqueda] = useState('')
+  const avisos = useToast()
 
   function loadZone(zone: Zone | null) {
+    const valores = {
+      nombre: zone?.nombre ?? '',
+      semanaMes: String(zone?.semanaMes ?? 1),
+      dias: (zone?.diasSemana ?? [1]).slice().sort((a, b) => a - b).join(','),
+      activo: zone?.activo ?? true,
+    }
     setEditing(zone)
-    setNombre(zone?.nombre ?? '')
-    setSemanaMes(String(zone?.semanaMes ?? 1))
+    setNombre(valores.nombre)
+    setSemanaMes(valores.semanaMes)
     setDias(zone?.diasSemana ?? [1])
-    setActivo(zone?.activo ?? true)
+    setActivo(valores.activo)
+    setBase(valores)
     setFormError(null)
-    setFormSuccess(null)
   }
 
   const saveMutation = useMutation({
@@ -58,16 +69,17 @@ export function ZonesPage() {
       return editing ? updateZone(editing.id, input) : createZone(input)
     },
     onSuccess: async () => {
-      const message = editing ? 'Zona actualizada' : 'Zona creada'
+      const eraEdicion = editing !== null
       loadZone(null)
       setFormulario(false)
       setFormError(null)
-      setFormSuccess(message)
+      avisos.ok(eraEdicion ? 'Zona actualizada' : 'Zona agregada')
       await queryClient.invalidateQueries({ queryKey: ['zones'] })
     },
     onError: (err) => {
-      setFormSuccess(null)
-      setFormError(err instanceof ApiError ? err.message : 'No se pudo guardar la zona')
+      const mensaje = err instanceof ApiError ? err.message : 'No se pudo guardar la zona'
+      setFormError(mensaje)
+      avisos.error(mensaje)
     },
   })
 
@@ -84,7 +96,7 @@ export function ZonesPage() {
         text="Semana del mes y días de visita de cada ruta."
         action={
           <AddButton
-            onClick={() => {
+            onOpen={() => {
               loadZone(null)
               setFormulario(true)
             }}
@@ -95,8 +107,24 @@ export function ZonesPage() {
       />
       <SearchBox value={busqueda} onChange={setBusqueda} placeholder="Buscar zona" />
 
-      {formulario || editing ? (
+      {formulario ? (
+      <Modal
+        title={editing ? 'Editar zona' : 'Agregar zona'}
+        formId="zona-form"
+        saving={saveMutation.isPending}
+        dirty={
+          nombre !== base.nombre ||
+          semanaMes !== base.semanaMes ||
+          [...dias].sort((a, b) => a - b).join(',') !== base.dias ||
+          activo !== base.activo
+        }
+        onClose={() => {
+          loadZone(null)
+          setFormulario(false)
+        }}
+      >
       <form
+        id="zona-form"
         onSubmit={(event) => {
           event.preventDefault()
           if (dias.length === 0) {
@@ -106,11 +134,9 @@ export function ZonesPage() {
           setFormError(null)
           saveMutation.mutate()
         }}
-        className="ficha max-w-xl space-y-3"
+        className="space-y-3"
       >
-        <h2 className="text-sm font-semibold">{editing ? `Editar ${editing.nombre}` : 'Nueva zona'}</h2>
         {formError ? <Alert tone="error">{formError}</Alert> : null}
-        {formSuccess ? <Alert tone="success">{formSuccess}</Alert> : null}
         <label className="block text-sm">
           <span className="mb-1 block font-medium">Nombre</span>
           <input
@@ -152,26 +178,8 @@ export function ZonesPage() {
           <input type="checkbox" checked={activo} onChange={(event) => setActivo(event.target.checked)} />
           Activa
         </label>
-        <div className="flex gap-2">
-          <button
-            type="submit"
-            disabled={saveMutation.isPending}
-            className="rounded bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-60"
-          >
-            {saveMutation.isPending ? 'Guardando…' : editing ? 'Guardar cambios' : 'Crear zona'}
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              loadZone(null)
-              setFormulario(false)
-            }}
-            className="rounded border border-slate-300 px-4 py-2 text-sm"
-          >
-            Cancelar
-          </button>
-        </div>
       </form>
+      </Modal>
       ) : null}
 
       <QueryStatus
@@ -217,17 +225,7 @@ export function ZonesPage() {
                         loadZone(zone)
                         setFormulario(true)
                       }}
-                      onDisable={
-                        zone.activo
-                          ? () =>
-                              updateZone(zone.id, {
-                                nombre: zone.nombre,
-                                semanaMes: zone.semanaMes,
-                                diasSemana: zone.diasSemana,
-                                activo: false,
-                              }).then(() => queryClient.invalidateQueries({ queryKey: ['zones'] }))
-                          : undefined
-                      }
+                      onDisable={zone.activo ? () => setADeshabilitar(zone) : undefined}
                     />
                   </td>
                 </tr>
@@ -253,6 +251,32 @@ export function ZonesPage() {
             </div>
           </dl>
         </RecordSheet>
+      ) : null}
+      {aDeshabilitar ? (
+        <ConfirmDialog
+          title="Deshabilitar zona"
+          confirmLabel="Deshabilitar"
+          onClose={() => setADeshabilitar(null)}
+          onConfirm={() => {
+            const zone = aDeshabilitar
+            updateZone(zone.id, {
+              nombre: zone.nombre,
+              semanaMes: zone.semanaMes,
+              diasSemana: zone.diasSemana,
+              activo: false,
+            })
+              .then(async () => {
+                setADeshabilitar(null)
+                avisos.ok('Zona deshabilitada')
+                await queryClient.invalidateQueries({ queryKey: ['zones'] })
+              })
+              .catch((err) => {
+                avisos.error(err instanceof ApiError ? err.message : 'No se pudo deshabilitar la zona')
+              })
+          }}
+        >
+          {aDeshabilitar.nombre} deja de usarse en la ruta. No se borra.
+        </ConfirmDialog>
       ) : null}
     </div>
   )

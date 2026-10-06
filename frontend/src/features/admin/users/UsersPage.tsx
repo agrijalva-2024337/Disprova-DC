@@ -7,8 +7,10 @@ import { Alert, QueryStatus } from '../ui/Status.tsx'
 import { RecordSheet, RowMoves } from '../ui/RecordSheet.tsx'
 import type { AuthUser } from '../api/types.ts'
 import { AddButton, ModuleHead, SearchBox } from '../ui/ListTools.tsx'
-import { CreateUserForm } from './CreateUserForm.tsx'
-import { EditUserForm } from './EditUserForm.tsx'
+import { ConfirmDialog } from '../ui/ConfirmDialog.tsx'
+import { Modal } from '../ui/Modal.tsx'
+import { useToast } from '../ui/Toast.tsx'
+import { UserForm } from './UserForm.tsx'
 import type { CreateUserFormValues, UpdateUserFormValues } from './userFormSchema.ts'
 
 export function UsersPage() {
@@ -18,8 +20,11 @@ export function UsersPage() {
   const [editando, setEditando] = useState<AuthUser | null>(null)
   const [visto, setVisto] = useState<AuthUser | null>(null)
   const [alta, setAlta] = useState(false)
+  const [sucio, setSucio] = useState(false)
+  const [aDeshabilitar, setADeshabilitar] = useState<AuthUser | null>(null)
   const [busqueda, setBusqueda] = useState('')
   const [rolFiltro, setRolFiltro] = useState('')
+  const avisos = useToast()
 
   const usersQuery = useQuery({ queryKey: ['users'], queryFn: () => listUsers() })
   const rolesQuery = useQuery({ queryKey: ['roles'], queryFn: listRoles })
@@ -29,7 +34,12 @@ export function UsersPage() {
     mutationFn: createUser,
     onSuccess: async () => {
       setAlta(false)
+      setSucio(false)
+      avisos.ok('Usuario agregado')
       await queryClient.invalidateQueries({ queryKey: ['users'] })
+    },
+    onError: (err) => {
+      avisos.error(err instanceof ApiError ? err.message : 'No se pudo crear el usuario')
     },
   })
 
@@ -41,9 +51,15 @@ export function UsersPage() {
         roleId: values.roleId,
         activo: values.activo,
       }),
-    onSuccess: async () => {
+    onSuccess: async (_data, variables) => {
       setEditando(null)
+      setADeshabilitar(null)
+      setSucio(false)
+      avisos.ok(variables.values.activo ? 'Usuario actualizado' : 'Usuario deshabilitado')
       await queryClient.invalidateQueries({ queryKey: ['users'] })
+    },
+    onError: (err) => {
+      avisos.error(err instanceof ApiError ? err.message : 'No se pudo guardar el usuario')
     },
   })
 
@@ -76,7 +92,7 @@ export function UsersPage() {
       <ModuleHead
         title="Usuarios"
         text="Quién entra al sistema y con qué permisos."
-        action={<AddButton onClick={() => setAlta((value) => !value)}>Agregar usuario</AddButton>}
+        action={<AddButton onOpen={() => { setEditando(null); setSucio(false); setAlta(true) }}>Agregar usuario</AddButton>}
       />
       <div className="flex flex-wrap items-center gap-3">
         <SearchBox value={busqueda} onChange={setBusqueda} placeholder="Buscar por nombre, usuario o correo" />
@@ -94,16 +110,35 @@ export function UsersPage() {
         </select>
       </div>
 
-      {alta ? (
-      <section className="ficha max-w-xl">
-        <h2 className="text-sm font-semibold">Nuevo usuario</h2>
-        <CreateUserForm
-          roles={roles}
-          onSubmit={(values: CreateUserFormValues) => createMutation.mutate(values)}
-          isPending={createMutation.isPending}
-          error={createError}
-        />
-      </section>
+      {alta || editando ? (
+        <Modal
+          title={editando ? 'Editar usuario' : 'Agregar usuario'}
+          formId="usuario-form"
+          dirty={sucio}
+          saving={createMutation.isPending || updateMutation.isPending}
+          onClose={() => {
+            setAlta(false)
+            setEditando(null)
+            setSucio(false)
+          }}
+        >
+          <UserForm
+            key={editando ? `editar-${editando.id}` : 'crear'}
+            mode={editando ? 'editar' : 'crear'}
+            usuario={editando ?? undefined}
+            roles={roles}
+            formId="usuario-form"
+            onDirtyChange={setSucio}
+            onSubmit={(values) => {
+              if (editando) {
+                updateMutation.mutate({ id: editando.id, values: values as UpdateUserFormValues })
+                return
+              }
+              createMutation.mutate(values as CreateUserFormValues)
+            }}
+            error={editando ? updateError : createError}
+          />
+        </Modal>
       ) : null}
 
       <QueryStatus
@@ -112,23 +147,6 @@ export function UsersPage() {
           usersQuery.isError || rolesQuery.isError ? 'No se pudieron cargar los usuarios' : null
         }
       />
-
-      {editando ? (
-        <section className="rounded-lg border border-slate-200 bg-white p-5">
-          <h2 className="text-sm font-semibold">Editar {editando.nombre}</h2>
-          <div className="mt-4">
-            <EditUserForm
-              key={editando.id}
-              usuario={editando}
-              roles={roles}
-              onSubmit={(values) => updateMutation.mutate({ id: editando.id, values })}
-              onCancel={() => setEditando(null)}
-              isPending={updateMutation.isPending}
-              error={updateError}
-            />
-          </div>
-        </section>
-      ) : null}
 
       {!usersQuery.isLoading && !usersQuery.isError ? (
         <div className="registros">
@@ -183,21 +201,13 @@ export function UsersPage() {
                     <td className="px-3 py-2">
                       <RowMoves
                         onView={() => setVisto(row)}
-                        onEdit={() => setEditando(row)}
-                        onDisable={
-                          row.activo
-                            ? () =>
-                                updateMutation.mutate({
-                                  id: row.id,
-                                  values: {
-                                    nombre: row.nombre,
-                                    email: row.email,
-                                    roleId: row.roleId,
-                                    activo: false,
-                                  },
-                                })
-                            : undefined
-                        }
+                        onEdit={() => {
+                          setAlta(false)
+                          setSucio(false)
+                          setEditando(row)
+                          setVisto(null)
+                        }}
+                        onDisable={row.activo ? () => setADeshabilitar(row) : undefined}
                       />
                     </td>
                   </tr>
@@ -228,6 +238,27 @@ export function UsersPage() {
             </div>
           </dl>
         </RecordSheet>
+      ) : null}
+      {aDeshabilitar ? (
+        <ConfirmDialog
+          title="Deshabilitar usuario"
+          confirmLabel="Deshabilitar"
+          pending={updateMutation.isPending}
+          onClose={() => setADeshabilitar(null)}
+          onConfirm={() =>
+            updateMutation.mutate({
+              id: aDeshabilitar.id,
+              values: {
+                nombre: aDeshabilitar.nombre,
+                email: aDeshabilitar.email,
+                roleId: aDeshabilitar.roleId,
+                activo: false,
+              },
+            })
+          }
+        >
+          {aDeshabilitar.nombre} deja de poder entrar. No se borra.
+        </ConfirmDialog>
       ) : null}
     </div>
   )

@@ -7,6 +7,8 @@ import { createPayment, getAccount, getAging } from '../api/collections.ts'
 import { ApiError } from '../api/http.ts'
 import { getClient } from '../api/territory.ts'
 import { Alert, QueryStatus } from '../ui/Status.tsx'
+import { Modal } from '../ui/Modal.tsx'
+import { useToast } from '../ui/Toast.tsx'
 import type { Payment } from '../api/types.ts'
 import { ApplyPaymentPanel } from './ApplyPaymentPanel.tsx'
 import { paymentFormSchema, type PaymentFormValues } from './paymentFormSchema.ts'
@@ -27,6 +29,9 @@ export function AccountStatementPage() {
   const queryClient = useQueryClient()
   const [showPaymentForm, setShowPaymentForm] = useState(false)
   const [payment, setPayment] = useState<Payment | null>(null)
+  const [aplicarSucio, setAplicarSucio] = useState(false)
+  const [aplicarGuardando, setAplicarGuardando] = useState(false)
+  const avisos = useToast()
 
   const hasClient = Number.isFinite(clientId) && clientId > 0
 
@@ -63,7 +68,11 @@ export function AccountStatementPage() {
       setPayment(created)
       setShowPaymentForm(false)
       form.reset()
+      avisos.ok('Pago registrado')
       await queryClient.invalidateQueries({ queryKey: ['account', clientId] })
+    },
+    onError: (err) => {
+      avisos.error(err instanceof ApiError ? err.message : 'No se pudo registrar el pago')
     },
   })
 
@@ -113,13 +122,17 @@ export function AccountStatementPage() {
           <p className="text-sm text-slate-600">
             {clientQuery.data?.nombreComercial ?? `Cliente ${clientId}`}
           </p>
+          <Link to="/admin/cobranza" className="mt-1 inline-block text-sm text-slate-600 underline">
+            Volver a cobranza
+          </Link>
         </div>
-        <Link
-          to="/admin/cobranza"
-          className="rounded border border-slate-300 px-3 py-1.5 text-sm hover:bg-slate-50"
+        <button
+          type="button"
+          onClick={() => setShowPaymentForm(true)}
+          className="min-h-11 rounded-full bg-slate-900 px-5 text-sm font-medium text-white"
         >
-          Volver a cobranza
-        </Link>
+          Registrar pago
+        </button>
       </div>
 
       <QueryStatus
@@ -148,11 +161,15 @@ export function AccountStatementPage() {
       ) : null}
 
       {showPaymentForm ? (
-        <section className="rounded-lg border border-slate-200 bg-white p-5">
-          <h2 className="text-sm font-semibold">Registrar pago</h2>
-
+        <Modal
+          title="Registrar pago"
+          formId="pago-form"
+          dirty={form.formState.isDirty}
+          saving={paymentMutation.isPending}
+          onClose={() => setShowPaymentForm(false)}
+        >
           {cashSessionError ? (
-            <div className="mt-3 space-y-2 rounded border border-amber-300 bg-amber-50 p-3">
+            <div className="mb-3 space-y-2 rounded border border-amber-300 bg-amber-50 p-3">
               <p className="text-sm text-amber-900">
                 {cashSessionError} Abrí una sesión de caja antes de registrar un pago en efectivo.
               </p>
@@ -166,13 +183,14 @@ export function AccountStatementPage() {
           ) : null}
 
           {paymentError ? (
-            <div className="mt-3">
+            <div className="mb-3">
               <Alert tone="error">{paymentError}</Alert>
             </div>
           ) : null}
 
           <form
-            className="mt-4 grid gap-3 sm:grid-cols-3"
+            id="pago-form"
+            className="grid gap-3 sm:grid-cols-2"
             onSubmit={form.handleSubmit((values) => paymentMutation.mutate(values))}
           >
             <label className="block text-sm">
@@ -200,52 +218,40 @@ export function AccountStatementPage() {
               </select>
             </label>
 
-            <label className="block text-sm">
+            <label className="block text-sm sm:col-span-2">
               <span className="mb-1 block font-medium">Referencia (opcional)</span>
               <input
                 className="w-full rounded border border-slate-300 px-3 py-2 text-sm"
                 {...form.register('referencia')}
               />
             </label>
-
-            <div className="flex gap-2 sm:col-span-3">
-              <button
-                type="submit"
-                disabled={paymentMutation.isPending}
-                className="rounded bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-60"
-              >
-                {paymentMutation.isPending ? 'Registrando…' : 'Registrar pago'}
-              </button>
-              <button
-                type="button"
-                onClick={() => setShowPaymentForm(false)}
-                className="rounded border border-slate-300 px-4 py-2 text-sm hover:bg-slate-50"
-              >
-                Cancelar
-              </button>
-            </div>
           </form>
-        </section>
-      ) : (
-        <button
-          type="button"
-          onClick={() => setShowPaymentForm(true)}
-          className="rounded bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800"
-        >
-          Registrar pago
-        </button>
-      )}
+        </Modal>
+      ) : null}
 
       {payment !== null ? (
-        <ApplyPaymentPanel
-          clientId={clientId}
-          paymentId={payment.id}
-          paymentMonto={payment.monto}
-          onApplied={async () => {
-            setPayment(null)
-            await invalidateCollections()
-          }}
-        />
+        <Modal
+          title="Aplicar pago"
+          size="lg"
+          formId="aplicar-pago"
+          dirty={aplicarSucio}
+          saving={aplicarGuardando}
+          onClose={() => setPayment(null)}
+        >
+          <ApplyPaymentPanel
+            clientId={clientId}
+            paymentId={payment.id}
+            paymentMonto={payment.monto}
+            formId="aplicar-pago"
+            onDirtyChange={setAplicarSucio}
+            onSavingChange={setAplicarGuardando}
+            onApplied={async () => {
+              setPayment(null)
+              avisos.ok('Pago aplicado')
+              await invalidateCollections()
+            }}
+          />
+        </Modal>
       ) : null}
 
       <MovementsTable

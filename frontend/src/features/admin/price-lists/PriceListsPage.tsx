@@ -4,8 +4,11 @@ import { createPriceList, listPriceLists, updatePriceList } from '../api/catalog
 import { ApiError } from '../api/http.ts'
 import type { PriceList } from '../api/types.ts'
 import { AddButton, ModuleHead, SearchBox } from '../ui/ListTools.tsx'
+import { ConfirmDialog } from '../ui/ConfirmDialog.tsx'
+import { Modal } from '../ui/Modal.tsx'
 import { RecordSheet, RowMoves } from '../ui/RecordSheet.tsx'
 import { Alert, QueryStatus } from '../ui/Status.tsx'
+import { useToast } from '../ui/Toast.tsx'
 
 export function PriceListsPage() {
   const queryClient = useQueryClient()
@@ -17,12 +20,16 @@ export function PriceListsPage() {
   const [visto, setVisto] = useState<PriceList | null>(null)
   const [nombre, setNombre] = useState('')
   const [descripcion, setDescripcion] = useState('')
+  const [base, setBase] = useState({ nombre: '', descripcion: '' })
+  const [aDeshabilitar, setADeshabilitar] = useState<PriceList | null>(null)
   const [formError, setFormError] = useState<string | null>(null)
+  const avisos = useToast()
 
   function abrirNuevo() {
     setEditando(null)
     setNombre('')
     setDescripcion('')
+    setBase({ nombre: '', descripcion: '' })
     setFormError(null)
     setFormulario(true)
   }
@@ -31,6 +38,7 @@ export function PriceListsPage() {
     setEditando(list)
     setNombre(list.nombre)
     setDescripcion(list.descripcion ?? '')
+    setBase({ nombre: list.nombre, descripcion: list.descripcion ?? '' })
     setFormError(null)
     setFormulario(true)
     setVisto(null)
@@ -42,12 +50,16 @@ export function PriceListsPage() {
       return editando ? updatePriceList(editando.id, input) : createPriceList(input)
     },
     onSuccess: async () => {
+      const eraEdicion = editando !== null
       setFormulario(false)
       setEditando(null)
+      avisos.ok(eraEdicion ? 'Lista actualizada' : 'Lista agregada')
       await queryClient.invalidateQueries({ queryKey: ['price-lists'] })
     },
     onError: (err) => {
-      setFormError(err instanceof ApiError ? err.message : 'No se pudo guardar la lista')
+      const mensaje = err instanceof ApiError ? err.message : 'No se pudo guardar la lista'
+      setFormError(mensaje)
+      avisos.error(mensaje)
     },
   })
 
@@ -56,7 +68,12 @@ export function PriceListsPage() {
       updatePriceList(list.id, { nombre: list.nombre, descripcion: list.descripcion, activo: false }),
     onSuccess: async () => {
       setVisto(null)
+      setADeshabilitar(null)
+      avisos.ok('Lista deshabilitada')
       await queryClient.invalidateQueries({ queryKey: ['price-lists'] })
+    },
+    onError: (err) => {
+      avisos.error(err instanceof ApiError ? err.message : 'No se pudo deshabilitar la lista')
     },
   })
 
@@ -80,7 +97,7 @@ export function PriceListsPage() {
       <ModuleHead
         title="Listas de precio"
         text="Listas vigentes para mostrador y ruta."
-        action={<AddButton onClick={abrirNuevo}>Agregar lista</AddButton>}
+        action={<AddButton onOpen={abrirNuevo}>Agregar lista</AddButton>}
       />
 
       <div className="flex flex-wrap items-center gap-3">
@@ -97,8 +114,14 @@ export function PriceListsPage() {
       </div>
 
       {formulario ? (
-        <form onSubmit={onSubmit} className="ficha max-w-xl space-y-3">
-          <h2 className="font-display text-xl">{editando ? `Editar ${editando.nombre}` : 'Nueva lista'}</h2>
+        <Modal
+          title={editando ? 'Editar lista' : 'Agregar lista'}
+          formId="lista-form"
+          saving={saveMutation.isPending}
+          dirty={nombre !== base.nombre || descripcion !== base.descripcion}
+          onClose={() => setFormulario(false)}
+        >
+        <form id="lista-form" onSubmit={onSubmit} className="space-y-3">
           {formError ? <Alert tone="error">{formError}</Alert> : null}
           <label className="block text-sm">
             <span className="mb-1 block font-medium">Nombre</span>
@@ -108,19 +131,8 @@ export function PriceListsPage() {
             <span className="mb-1 block font-medium">Descripción</span>
             <input value={descripcion} onChange={(event) => setDescripcion(event.target.value)} />
           </label>
-          <div className="flex gap-2">
-            <button
-              type="submit"
-              disabled={saveMutation.isPending}
-              className="min-h-11 rounded-full bg-slate-900 px-5 text-sm font-medium text-white disabled:opacity-60"
-            >
-              {saveMutation.isPending ? 'Guardando…' : 'Guardar'}
-            </button>
-            <button type="button" onClick={() => setFormulario(false)} className="min-h-11 rounded-full border border-slate-300 px-5 text-sm">
-              Cancelar
-            </button>
-          </div>
         </form>
+        </Modal>
       ) : null}
 
       <QueryStatus
@@ -164,7 +176,7 @@ export function PriceListsPage() {
                       <RowMoves
                         onView={() => setVisto(list)}
                         onEdit={() => abrirEdicion(list)}
-                        onDisable={list.activo ? () => disableMutation.mutate(list) : undefined}
+                        onDisable={list.activo ? () => setADeshabilitar(list) : undefined}
                       />
                     </td>
                   </tr>
@@ -192,6 +204,17 @@ export function PriceListsPage() {
             </div>
           </dl>
         </RecordSheet>
+      ) : null}
+      {aDeshabilitar ? (
+        <ConfirmDialog
+          title="Deshabilitar lista"
+          confirmLabel="Deshabilitar"
+          pending={disableMutation.isPending}
+          onClose={() => setADeshabilitar(null)}
+          onConfirm={() => disableMutation.mutate(aDeshabilitar)}
+        >
+          {aDeshabilitar.nombre} deja de usarse. No se borra.
+        </ConfirmDialog>
       ) : null}
     </div>
   )

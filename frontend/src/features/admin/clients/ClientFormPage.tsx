@@ -2,7 +2,6 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect } from 'react'
 import { useFieldArray, useForm } from 'react-hook-form'
-import { Link, useNavigate, useParams } from 'react-router-dom'
 import { listPriceLists } from '../api/catalog.ts'
 import { ApiError } from '../api/http.ts'
 import {
@@ -40,11 +39,21 @@ const emptyValues: ClientFormValues = {
   contacts: [emptyContact],
 }
 
-export function ClientFormPage() {
-  const { id } = useParams()
-  const clientId = id ? Number(id) : null
+export function ClientForm({
+  id,
+  formId,
+  onDone,
+  onDirtyChange,
+  onSavingChange,
+}: {
+  id?: number
+  formId: string
+  onDone: () => void
+  onDirtyChange: (dirty: boolean) => void
+  onSavingChange?: (saving: boolean) => void
+}) {
+  const clientId = id ?? null
   const isEdit = clientId !== null
-  const navigate = useNavigate()
   const queryClient = useQueryClient()
 
   const zonesQuery = useQuery({ queryKey: ['zones'], queryFn: listZones })
@@ -134,9 +143,17 @@ export function ClientFormPage() {
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['clients'] })
-      navigate('/admin/clientes')
+      onDone()
     },
   })
+
+  useEffect(() => {
+    onDirtyChange(form.formState.isDirty)
+  }, [form.formState.isDirty, onDirtyChange])
+
+  useEffect(() => {
+    onSavingChange?.(saveMutation.isPending)
+  }, [saveMutation.isPending, onSavingChange])
 
   function markPrincipal(index: number) {
     const contacts = form.getValues('contacts')
@@ -165,17 +182,12 @@ export function ClientFormPage() {
         : null
 
   return (
-    <div className="max-w-3xl space-y-6">
-      <div>
-        <Link to="/admin/clientes" className="text-sm text-slate-600 hover:underline">
-          ← Volver a clientes
-        </Link>
-        <h1 className="mt-2 text-xl font-semibold">{isEdit ? 'Editar cliente' : 'Nuevo cliente'}</h1>
-      </div>
+    <>
       {saveError ? <Alert tone="error">{saveError}</Alert> : null}
       <form
+        id={formId}
         onSubmit={form.handleSubmit((values) => saveMutation.mutate(values))}
-        className="ficha space-y-5"
+        className="space-y-5"
       >
         <div className="grid gap-4 sm:grid-cols-2">
           <label className="block text-sm sm:col-span-2">
@@ -301,18 +313,9 @@ export function ClientFormPage() {
             </div>
           ))}
         </div>
-
-        <button
-          type="submit"
-          disabled={saveMutation.isPending}
-          className="rounded bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-60"
-        >
-          {saveMutation.isPending ? 'Guardando…' : isEdit ? 'Guardar cambios' : 'Crear cliente'}
-        </button>
       </form>
 
-      {/* Solo cuando el cliente ya existe: un token sin cliente guardado no sirve. */}
       {isEdit && clientId ? <PublicCatalogSection clientId={clientId} /> : null}
-    </div>
+    </>
   )
 }
