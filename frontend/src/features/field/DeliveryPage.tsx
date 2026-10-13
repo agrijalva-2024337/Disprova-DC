@@ -19,7 +19,9 @@ export function DeliveryPage() {
   const id = Number(orderId)
   const queryClient = useQueryClient()
   const [qty, setQty] = useState<Record<number, number>>({})
+  const [pagado, setPagado] = useState('')
   const [done, setDone] = useState<string | null>(null)
+  const [saldoMsg, setSaldoMsg] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   const ordersQuery = useQuery({ queryKey: ['pending-deliveries'], queryFn: listPendingDeliveries })
@@ -40,6 +42,22 @@ export function DeliveryPage() {
     setQty(next)
   }, [order])
 
+  // Cuánto vale lo que se está entregando en esta visita: cada línea a
+  // proporción de lo entregado sobre lo pedido. Es el cargo que va al libro
+  // mayor y el total contra el que el vendedor compara lo que cobró.
+  const totalEstaEntrega = (order?.items ?? []).reduce((sum, item) => {
+    const entregado = qty[item.id] ?? 0
+    if (entregado <= 0) return sum
+    const porUnidad = Number(item.totalLinea) / Number(item.cantidad || 1)
+    return sum + porUnidad * entregado
+  }, 0)
+
+  const pagadoNum = pagado.trim() === '' ? null : Number(pagado)
+  const pendiente =
+    pagadoNum !== null && Number.isFinite(pagadoNum)
+      ? Math.max(0, totalEstaEntrega - pagadoNum)
+      : null
+
   const mutation = useMutation({
     mutationFn: () =>
       deliverOrder(
@@ -48,15 +66,23 @@ export function DeliveryPage() {
           orderItemId: item.id,
           cantidadEntregada: String(qty[item.id] ?? 0),
         })),
+        pagado.trim() === '' ? undefined : pagado.trim(),
       ),
     onSuccess: async (result) => {
       setError(null)
       setDone(result.order.estado === 'entregado' ? 'Entrega completa' : 'Entrega parcial')
+      const saldo = result.saldoPendiente !== null ? Number(result.saldoPendiente) : null
+      if (saldo !== null && saldo > 0) {
+        setSaldoMsg(`Quedó debiendo ${quetzales(result.saldoPendiente!)}. Se guardó como saldo pendiente.`)
+      } else if (result.cobrado !== null) {
+        setSaldoMsg('Pagó todo. No quedó saldo pendiente.')
+      }
       await queryClient.invalidateQueries({ queryKey: ['pending-deliveries'] })
       await queryClient.invalidateQueries({ queryKey: ['inventory-stock'] })
     },
     onError: (err) => {
       setDone(null)
+      setSaldoMsg(null)
       setError(err instanceof ApiError ? err.message : 'No se pudo registrar la entrega')
     },
   })
@@ -171,14 +197,63 @@ export function DeliveryPage() {
       ) : null}
 
       {order && !done ? (
-        <button
-          type="button"
-          disabled={mutation.isPending}
-          onClick={() => mutation.mutate()}
-          className="mt-4 h-14 w-full rounded-[0.625rem] bg-brand text-lg font-semibold text-white transition-colors hover:bg-brand-deep disabled:opacity-60"
-        >
-          {mutation.isPending ? 'Guardando…' : 'Registrar entrega'}
-        </button>
+        <>
+          <div className="mt-4 rounded-card border border-line bg-surface p-4 shadow-card">
+            <p className="text-sm text-muted">
+              Total de esta entrega
+            </p>
+            <p className="mt-0.5 font-display text-2xl font-semibold text-ink">
+              {quetzales(totalEstaEntrega.toFixed(2))}
+            </p>
+            <label className="mt-3 block text-sm">
+              <span className="mb-1 block font-medium text-ink">
+                ¿Cuánto pagó el cliente hoy?
+              </span>
+              <input
+                type="number"
+                inputMode="decimal"
+                step="0.01"
+                min="0"
+                value={pagado}
+                onChange={(event) => setPagado(event.target.value)}
+                placeholder="0.00"
+                className="h-12 w-full rounded-[0.625rem] border border-line bg-parchment px-3 text-lg text-ink outline-none focus:border-brand"
+              />
+            </label>
+            <p className="mt-2 text-xs text-muted">
+              Dejalo en blanco si todavía no cobrás. Si pagó una parte, el resto
+              queda como saldo pendiente para la próxima.
+            </p>
+            {pendiente !== null ? (
+              <p
+                className={`mt-3 rounded-[0.625rem] px-3 py-2 text-sm font-semibold ${
+                  pendiente > 0
+                    ? 'bg-gold-soft text-ink'
+                    : 'border border-line bg-parchment text-ink-soft'
+                }`}
+              >
+                {pendiente > 0
+                  ? `Queda pendiente: ${quetzales(pendiente.toFixed(2))}`
+                  : 'Pagó todo, no queda saldo.'}
+              </p>
+            ) : null}
+          </div>
+
+          <button
+            type="button"
+            disabled={mutation.isPending}
+            onClick={() => mutation.mutate()}
+            className="mt-4 h-14 w-full rounded-[0.625rem] bg-brand text-lg font-semibold text-white transition-colors hover:bg-brand-deep disabled:opacity-60"
+          >
+            {mutation.isPending ? 'Guardando…' : 'Registrar entrega'}
+          </button>
+        </>
+      ) : null}
+
+      {saldoMsg ? (
+        <p className="mt-4 rounded-card border border-gold/30 bg-gold-soft px-4 py-3 text-base font-semibold text-ink">
+          {saldoMsg}
+        </p>
       ) : null}
     </FieldShell>
   )

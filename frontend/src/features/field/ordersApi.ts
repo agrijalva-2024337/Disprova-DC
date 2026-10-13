@@ -78,13 +78,21 @@ export function confirmOrder(id: number) {
   return apiRequest<FieldOrder>(`/api/orders/${id}/confirm`, { method: 'POST' })
 }
 
+export type DeliverResult = {
+  order: FieldOrder
+  cargo: string
+  cobrado: string | null
+  saldoPendiente: string | null
+}
+
 export function deliverOrder(
   id: number,
   items: Array<{ orderItemId: number; cantidadEntregada: string }>,
+  montoPagado?: string,
 ) {
-  return apiRequest<{ order: FieldOrder }>(`/api/orders/${id}/deliver`, {
+  return apiRequest<DeliverResult>(`/api/orders/${id}/deliver`, {
     method: 'POST',
-    body: { items },
+    body: { items, ...(montoPagado !== undefined ? { montoPagado } : {}) },
   })
 }
 

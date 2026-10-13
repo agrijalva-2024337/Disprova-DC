@@ -492,3 +492,137 @@ describe('NO_PRICE', () => {
     }
   });
 });
+
+/**
+ * Saldo pendiente: al entregar, el vendedor indica cuánto cobró. El sistema
+ * carga la venta y abona lo pagado; lo que falte queda como deuda del cliente
+ * en el libro mayor. Si no se indica pago, el comportamiento no cambia.
+ */
+describe('saldo pendiente en la entrega', () => {
+  const clientIds: number[] = [];
+
+  afterEach(async () => {
+    const ids = clientIds.splice(0, clientIds.length);
+    if (ids.length === 0) return;
+    await prisma.deliveryItem.deleteMany({ where: { delivery: { order: { clientId: { in: ids } } } } });
+    await prisma.delivery.deleteMany({ where: { order: { clientId: { in: ids } } } });
+    await prisma.accountMovement.deleteMany({ where: { clientId: { in: ids } } });
+    await prisma.orderItem.deleteMany({ where: { order: { clientId: { in: ids } } } });
+    await prisma.order.deleteMany({ where: { clientId: { in: ids } } });
+    await prisma.client.deleteMany({ where: { id: { in: ids } } });
+  });
+
+  it('cobra parcial al entregar y deja el resto como saldo pendiente', async () => {
+    const { token, userId } = await loginAsAdmin();
+    const sample = await prisma.client.findFirstOrThrow();
+    const client = await prisma.client.create({
+      data: {
+        nombreComercial: `Saldo ${Date.now()}`,
+        tipoNegocio: 'tienda',
+        zoneId: sample.zoneId,
+        ordenRuta: 96000 + (Date.now() % 900),
+        direccion: 'Calle saldo',
+        priceListId: sample.priceListId,
+      },
+    });
+    clientIds.push(client.id);
+
+    const vehicle = await vehicleOf(userId);
+    const { product, unit } = await unitOf('HIG-001', 'Unidad');
+    await registerMovement({
+      productId: product.id,
+      warehouseId: vehicle.id,
+      tipo: 'entrada',
+      cantidad: '20',
+      userId,
+      referenciaTipo: 'test',
+      referenciaId: 'saldo-test',
+    });
+
+    const created = await request(app)
+      .post('/api/orders')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ clientId: client.id, canal: 'campo', condicionPago: 'contado', items: [{ productUnitId: unit.id, cantidad: '2' }] });
+    expect(created.status).toBe(201);
+    await request(app).post(`/api/orders/${created.body.id}/confirm`).set('Authorization', `Bearer ${token}`);
+
+    const total = Number(created.body.total);
+    const pago = (total / 2).toFixed(2);
+
+    const delivered = await request(app)
+      .post(`/api/orders/${created.body.id}/deliver`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({
+        items: [{ orderItemId: created.body.items[0].id, cantidadEntregada: '2' }],
+        montoPagado: pago,
+      });
+
+    expect(delivered.status).toBe(201);
+    expect(Number(delivered.body.cargo)).toBeCloseTo(total, 2);
+    expect(Number(delivered.body.cobrado)).toBeCloseTo(total / 2, 2);
+    expect(Number(delivered.body.saldoPendiente)).toBeCloseTo(total / 2, 2);
+
+    const movimientos = await prisma.accountMovement.findMany({
+      where: { clientId: client.id, referenciaTipo: 'delivery' },
+      orderBy: { id: 'asc' },
+    });
+    const cargo = movimientos.find((m) => m.tipo === 'cargo');
+    const abono = movimientos.find((m) => m.tipo === 'abono');
+    expect(cargo).toBeTruthy();
+    expect(abono).toBeTruthy();
+    expect(Number(cargo!.saldoResultante)).toBeCloseTo(total, 2);
+    const ultimo = movimientos[movimientos.length - 1];
+    expect(Number(ultimo.saldoResultante)).toBeCloseTo(total / 2, 2);
+
+    const cuenta = await request(app).get(`/api/clients/${client.id}/account`).set('Authorization', `Bearer ${token}`);
+    expect(cuenta.status).toBe(200);
+    expect(Number(cuenta.body.saldoActual)).toBeCloseTo(total / 2, 2);
+  });
+
+
+  it('sin indicar pago, la entrega no mueve el libro mayor en un contado', async () => {
+    const { token, userId } = await loginAsAdmin();
+    const sample = await prisma.client.findFirstOrThrow();
+    const client = await prisma.client.create({
+      data: {
+        nombreComercial: `SinPago ${Date.now()}`,
+        tipoNegocio: 'tienda',
+        zoneId: sample.zoneId,
+        ordenRuta: 95000 + (Date.now() % 900),
+        direccion: 'Calle sin pago',
+        priceListId: sample.priceListId,
+      },
+    });
+    clientIds.push(client.id);
+
+    const vehicle = await vehicleOf(userId);
+    const { product, unit } = await unitOf('BEB-001', 'Unidad');
+    await registerMovement({
+      productId: product.id,
+      warehouseId: vehicle.id,
+      tipo: 'entrada',
+      cantidad: '20',
+      userId,
+      referenciaTipo: 'test',
+      referenciaId: 'sinpago-test',
+    });
+
+    const created = await request(app)
+      .post('/api/orders')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ clientId: client.id, canal: 'campo', condicionPago: 'contado', items: [{ productUnitId: unit.id, cantidad: '1' }] });
+    await request(app).post(`/api/orders/${created.body.id}/confirm`).set('Authorization', `Bearer ${token}`);
+
+    const delivered = await request(app)
+      .post(`/api/orders/${created.body.id}/deliver`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ items: [{ orderItemId: created.body.items[0].id, cantidadEntregada: '1' }] });
+
+    expect(delivered.status).toBe(201);
+    expect(delivered.body.cobrado).toBeNull();
+    expect(delivered.body.saldoPendiente).toBeNull();
+    const movimientos = await prisma.accountMovement.count({ where: { clientId: client.id } });
+    expect(movimientos).toBe(0);
+  });
+});
+

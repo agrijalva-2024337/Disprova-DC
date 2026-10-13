@@ -39,6 +39,14 @@ export const createOrderSchema = z.object({
 export const deliverOrderSchema = z.object({
   recibidoPor: z.string().min(1).nullable().optional(),
   observaciones: z.string().nullable().optional(),
+  /**
+   * Cuánto cobró el vendedor en el acto por lo entregado en esta visita. Es
+   * opcional: si viene, el sistema registra el cargo de la venta y un abono
+   * por este monto, y lo que falte queda como saldo pendiente del cliente.
+   * Si no viene, se mantiene el comportamiento histórico (crédito = deuda
+   * completa, contado = sin movimiento en el libro mayor).
+   */
+  montoPagado: decimalOrZero.optional(),
   items: z
     .array(
       z.object({
