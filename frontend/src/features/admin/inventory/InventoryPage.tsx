@@ -391,6 +391,9 @@ export function InventoryPage() {
                   </option>
                 ))}
             </select>
+            <span className="mt-1 block text-xs text-slate-500">
+              Es un medicamento controlado: se mueve por lote y vencimiento.
+            </span>
           </label>
         ) : null}
         <p className="text-sm text-slate-600">Disponible en origen: {formatQty(disponible)}</p>
@@ -469,6 +472,9 @@ export function InventoryPage() {
                     </option>
                   ))}
               </select>
+              <span className="mt-1 block text-xs text-slate-500">
+                Es un medicamento controlado: el ajuste se aplica a un lote y vencimiento.
+              </span>
             </label>
           ) : null}
           <label className="block text-sm">

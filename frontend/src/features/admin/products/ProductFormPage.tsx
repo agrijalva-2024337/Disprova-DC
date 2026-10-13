@@ -226,11 +226,18 @@ export function ProductForm({
               <span className="text-xs text-red-700">{form.formState.errors.unidadBase.message}</span>
             ) : null}
           </label>
-          <div className="flex items-end gap-4 text-sm">
-            <label className="flex items-center gap-2">
-              <input type="checkbox" {...form.register('controlado')} />
-              Controlado
-            </label>
+          <div className="flex flex-wrap items-start gap-4 text-sm">
+            <div className="min-w-[16rem] flex-1">
+              <label className="flex items-center gap-2">
+                <input type="checkbox" {...form.register('controlado')} />
+                <span className="font-medium">Medicamento controlado</span>
+              </label>
+              <p className="mt-1 text-xs text-slate-500">
+                Se maneja por <span className="font-medium">lote y fecha de vencimiento</span>: al
+                entregar hay que indicar de qué lote sale. Si es un producto normal (abarrotes,
+                bebidas, higiene, etc.), dejá esta casilla sin marcar.
+              </p>
+            </div>
             <label className="flex items-center gap-2">
               <input type="checkbox" {...form.register('activo')} />
               Activo
