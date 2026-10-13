@@ -96,7 +96,7 @@ export const ESQUEMAS: Record<string, any> = {
   },
   CreateClientBody: {
     type: 'object',
-    required: ['nombreComercial', 'tipoNegocio', 'zoneId', 'ordenRuta', 'direccion', 'priceListId'],
+    required: ['nombreComercial', 'tipoNegocio', 'zoneId', 'ordenRuta', 'direccion'],
     description: 'Espejo de `createClientSchema` en sales-territory/sales-territory.schema.ts',
     properties: {
       nombreComercial: { type: 'string' },
@@ -105,7 +105,7 @@ export const ESQUEMAS: Record<string, any> = {
       zoneId: { type: 'integer' },
       ordenRuta: { type: 'integer', description: 'Único dentro de la zona' },
       direccion: { type: 'string' },
-      priceListId: { type: 'integer' },
+      priceListId: { type: 'integer', description: 'Opcional: si falta, se asigna la "Lista general"' },
       limiteCredito: { oneOf: [{ type: 'string' }, { type: 'number' }] },
       plazoDias: { type: 'integer' },
     },

@@ -2,17 +2,8 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect } from 'react'
 import { useFieldArray, useForm } from 'react-hook-form'
-import { listPriceLists } from '../api/catalog.ts'
+import { createClient, createContact, deleteContact, getClient, listZones, updateClient, updateContact } from '../api/territory.ts'
 import { ApiError } from '../api/http.ts'
-import {
-  createClient,
-  createContact,
-  deleteContact,
-  getClient,
-  listZones,
-  updateClient,
-  updateContact,
-} from '../api/territory.ts'
 import { Alert, QueryStatus } from '../ui/Status.tsx'
 import { clientFormSchema, type ClientFormValues } from './clientFormSchema.ts'
 import { PublicCatalogSection } from './PublicCatalogSection.tsx'
@@ -32,9 +23,6 @@ const emptyValues: ClientFormValues = {
   zoneId: 0,
   ordenRuta: 1,
   direccion: '',
-  priceListId: 0,
-  limiteCredito: '0',
-  plazoDias: 0,
   activo: true,
   contacts: [emptyContact],
 }
@@ -57,7 +45,6 @@ export function ClientForm({
   const queryClient = useQueryClient()
 
   const zonesQuery = useQuery({ queryKey: ['zones'], queryFn: listZones })
-  const listsQuery = useQuery({ queryKey: ['price-lists'], queryFn: listPriceLists })
   const clientQuery = useQuery({
     queryKey: ['client', clientId],
     queryFn: () => getClient(clientId!),
@@ -82,9 +69,6 @@ export function ClientForm({
       zoneId: client.zoneId,
       ordenRuta: client.ordenRuta,
       direccion: client.direccion,
-      priceListId: client.priceListId,
-      limiteCredito: String(client.limiteCredito),
-      plazoDias: client.plazoDias,
       activo: client.activo,
       contacts:
         (client.contacts ?? []).length > 0
@@ -109,9 +93,6 @@ export function ClientForm({
         zoneId: values.zoneId,
         ordenRuta: values.ordenRuta,
         direccion: values.direccion,
-        priceListId: values.priceListId,
-        limiteCredito: values.limiteCredito,
-        plazoDias: values.plazoDias,
         activo: values.activo,
       }
       const saved = isEdit && clientId ? await updateClient(clientId, payload) : await createClient(payload)
@@ -234,28 +215,6 @@ export function ClientForm({
             {form.formState.errors.direccion ? (
               <span className="text-xs text-red-700">{form.formState.errors.direccion.message}</span>
             ) : null}
-          </label>
-          <label className="block text-sm">
-            <span className="mb-1 block font-medium">Lista de precios</span>
-            <select className="w-full rounded border border-slate-300 px-3 py-2 text-sm" {...form.register('priceListId')}>
-              <option value={0}>Selecciona…</option>
-              {(listsQuery.data ?? []).map((list) => (
-                <option key={list.id} value={list.id}>
-                  {list.nombre}
-                </option>
-              ))}
-            </select>
-            {form.formState.errors.priceListId ? (
-              <span className="text-xs text-red-700">{form.formState.errors.priceListId.message}</span>
-            ) : null}
-          </label>
-          <label className="block text-sm">
-            <span className="mb-1 block font-medium">Límite de crédito</span>
-            <input className="w-full rounded border border-slate-300 px-3 py-2 text-sm" {...form.register('limiteCredito')} />
-          </label>
-          <label className="block text-sm">
-            <span className="mb-1 block font-medium">Plazo (días)</span>
-            <input type="number" className="w-full rounded border border-slate-300 px-3 py-2 text-sm" {...form.register('plazoDias')} />
           </label>
           <label className="flex items-end gap-2 text-sm">
             <input type="checkbox" {...form.register('activo')} />
