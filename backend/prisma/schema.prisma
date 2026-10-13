@@ -86,14 +86,11 @@ model AuditLog {
 // --- Catálogo ---
 
 model Category {
-  id       Int     @id @default(autoincrement())
+  id       Int       @id @default(autoincrement())
   nombre   String
-  parentId Int?    @map("parent_id")
-  orden    Int     @default(0)
-  activo   Boolean @default(true)
+  orden    Int       @default(0)
+  activo   Boolean   @default(true)
 
-  parent   Category?  @relation("CategoryTree", fields: [parentId], references: [id], onDelete: Restrict)
-  children Category[] @relation("CategoryTree")
   products Product[]
 
   @@index([activo], map: "categories_activo_idx")

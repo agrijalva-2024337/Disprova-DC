@@ -40,7 +40,7 @@ import {
  *       required: true
  *       content:
  *         application/json:
- *           schema: { type: object, required: [nombre], properties: { nombre: { type: string }, parentId: { type: integer, nullable: true }, orden: { type: integer }, activo: { type: boolean } } }
+ *           schema: { type: object, required: [nombre], properties: { nombre: { type: string }, orden: { type: integer }, activo: { type: boolean } } }
  *     responses:
  *       201: { description: "Categoría creada." }
  *       403: { description: "Solo admin." }

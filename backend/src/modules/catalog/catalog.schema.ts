@@ -46,7 +46,6 @@ const productImageInputSchema = z.object({
 
 export const createCategorySchema = z.object({
   nombre: z.string().min(1),
-  parentId: z.number().int().positive().nullable().optional(),
   orden: z.number().int().optional(),
   activo: z.boolean().optional(),
 });

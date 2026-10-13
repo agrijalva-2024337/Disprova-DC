@@ -17,13 +17,12 @@ export function CategoriesPage() {
     queryFn: listCategories,
   })
   const [nombre, setNombre] = useState('')
-  const [parentId, setParentId] = useState('')
   const [orden, setOrden] = useState('0')
   const [formError, setFormError] = useState<string | null>(null)
   const [visto, setVisto] = useState<Category | null>(null)
   const [formulario, setFormulario] = useState(false)
   const [editando, setEditando] = useState<Category | null>(null)
-  const [base, setBase] = useState({ nombre: '', parentId: '', orden: '0' })
+  const [base, setBase] = useState({ nombre: '', orden: '0' })
   const [aDeshabilitar, setADeshabilitar] = useState<Category | null>(null)
   const [busqueda, setBusqueda] = useState('')
   const avisos = useToast()
@@ -32,7 +31,6 @@ export function CategoriesPage() {
     mutationFn: createCategory,
     onSuccess: async () => {
       setNombre('')
-      setParentId('')
       setOrden('0')
       setFormError(null)
       setFormulario(false)
@@ -52,7 +50,6 @@ export function CategoriesPage() {
     setFormError(null)
     const input = {
       nombre: nombre.trim(),
-      parentId: parentId ? Number(parentId) : null,
       orden: Number(orden) || 0,
       activo: true,
     }
@@ -82,10 +79,9 @@ export function CategoriesPage() {
   )
 
   function abrirNueva() {
-    const vacio = { nombre: '', parentId: '', orden: '0' }
+    const vacio = { nombre: '', orden: '0' }
     setEditando(null)
     setNombre(vacio.nombre)
-    setParentId(vacio.parentId)
     setOrden(vacio.orden)
     setBase(vacio)
     setFormError(null)
@@ -95,12 +91,10 @@ export function CategoriesPage() {
   function editar(category: Category) {
     const valores = {
       nombre: category.nombre,
-      parentId: category.parentId ? String(category.parentId) : '',
       orden: String(category.orden),
     }
     setEditando(category)
     setNombre(valores.nombre)
-    setParentId(valores.parentId)
     setOrden(valores.orden)
     setBase(valores)
     setFormError(null)
@@ -123,7 +117,7 @@ export function CategoriesPage() {
       <Modal
         title={editando ? 'Editar categoría' : 'Agregar categoría'}
         formId="categoria-form"
-        dirty={nombre !== base.nombre || parentId !== base.parentId || orden !== base.orden}
+        dirty={nombre !== base.nombre || orden !== base.orden}
         saving={createMutation.isPending}
         onClose={() => {
           setFormulario(false)
@@ -140,21 +134,6 @@ export function CategoriesPage() {
             className="w-full rounded border border-slate-300 px-3 py-2 text-sm"
             required
           />
-        </label>
-        <label className="block text-sm">
-          <span className="mb-1 block font-medium">Categoría padre (opcional)</span>
-          <select
-            value={parentId}
-            onChange={(event) => setParentId(event.target.value)}
-            className="w-full rounded border border-slate-300 px-3 py-2 text-sm"
-          >
-            <option value="">Ninguna</option>
-            {categories.map((category) => (
-              <option key={category.id} value={category.id}>
-                {category.nombre}
-              </option>
-            ))}
-          </select>
         </label>
         <label className="block text-sm">
           <span className="mb-1 block font-medium">Orden</span>
@@ -186,7 +165,6 @@ export function CategoriesPage() {
             <thead className="bg-slate-50 text-slate-600">
               <tr>
                 <th className="px-3 py-2 font-medium">Nombre</th>
-                <th className="px-3 py-2 font-medium">Padre</th>
                 <th className="px-3 py-2 font-medium">Orden</th>
                 <th className="px-3 py-2 font-medium">Estado</th>
                 <th className="px-3 py-2 font-medium">Acciones</th>
@@ -194,7 +172,6 @@ export function CategoriesPage() {
             </thead>
             <tbody>
               {visibles.map((category) => {
-                const parent = categories.find((item) => item.id === category.parentId)
                 return (
                   <tr
                     key={category.id}
@@ -202,7 +179,6 @@ export function CategoriesPage() {
                     onDoubleClick={() => setVisto(category)}
                   >
                     <td className="px-3 py-2">{category.nombre}</td>
-                    <td className="px-3 py-2">{parent?.nombre ?? '—'}</td>
                     <td className="px-3 py-2">{category.orden}</td>
                     <td className="px-3 py-2">{category.activo ? 'Activa' : 'Inactiva'}</td>
                     <td className="px-3 py-2">
@@ -242,7 +218,6 @@ export function CategoriesPage() {
             const category = aDeshabilitar
             updateCategory(category.id, {
               nombre: category.nombre,
-              parentId: category.parentId,
               orden: category.orden,
               activo: false,
             })

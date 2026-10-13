@@ -41,7 +41,6 @@ export function isPublicStoreError(error: unknown): error is PublicStoreError {
 export type PublicCategory = {
   id: number
   nombre: string
-  parentId: number | null
   orden: number
   activo: boolean
 }
