@@ -1,15 +1,18 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
-import { createTemplate, deactivateTemplate, listTemplates } from '../api/messaging.ts'
+import { createTemplate, deactivateTemplate, listTemplates, updateTemplate } from '../api/messaging.ts'
 import { ApiError } from '../api/http.ts'
 import {
   ALLOWED_TEMPLATE_VARIABLES,
   type MessageCanal,
+  type MessageTemplate,
   type MessageTemplateInput,
 } from '../api/types.ts'
 import { AddButton, ModuleHead, SearchBox } from '../ui/ListTools.tsx'
+import { ConfirmDialog } from '../ui/ConfirmDialog.tsx'
+import { Modal } from '../ui/Modal.tsx'
 import { Alert, QueryStatus } from '../ui/Status.tsx'
+import { useToast } from '../ui/Toast.tsx'
 
 const variables = ALLOWED_TEMPLATE_VARIABLES.map((name) => `{${name}}`)
 const variableRegex = /\{([A-Za-z0-9_]+)\}/g
@@ -30,25 +33,42 @@ const vacio: MessageTemplateInput = { nombre: '', canal: 'wa_link', cuerpo: '' }
 
 export function TemplatesPage() {
   const queryClient = useQueryClient()
+  const avisos = useToast()
   const [form, setForm] = useState<MessageTemplateInput>(vacio)
-  const [alta, setAlta] = useState(false)
+  const [base, setBase] = useState<MessageTemplateInput>(vacio)
+  const [editando, setEditando] = useState<MessageTemplate | null>(null)
+  const [abierto, setAbierto] = useState(false)
+  const [aDesactivar, setADesactivar] = useState<MessageTemplate | null>(null)
   const [busqueda, setBusqueda] = useState('')
 
   const templatesQuery = useQuery({ queryKey: ['message-templates'], queryFn: listTemplates })
 
-  const createMutation = useMutation({
-    mutationFn: createTemplate,
+  const saveMutation = useMutation({
+    mutationFn: (input: MessageTemplateInput) =>
+      editando ? updateTemplate(editando.id, input) : createTemplate(input),
     onSuccess: async () => {
+      const eraEdicion = editando !== null
       setForm(vacio)
-      setAlta(false)
+      setBase(vacio)
+      setEditando(null)
+      setAbierto(false)
+      avisos.ok(eraEdicion ? 'Plantilla actualizada' : 'Plantilla agregada')
       await queryClient.invalidateQueries({ queryKey: ['message-templates'] })
+    },
+    onError: (err) => {
+      avisos.error(err instanceof ApiError ? err.message : 'No se pudo guardar la plantilla')
     },
   })
 
   const deactivateMutation = useMutation({
     mutationFn: deactivateTemplate,
     onSuccess: async () => {
+      setADesactivar(null)
+      avisos.ok('Plantilla desactivada')
       await queryClient.invalidateQueries({ queryKey: ['message-templates'] })
+    },
+    onError: (err) => {
+      avisos.error(err instanceof ApiError ? err.message : 'No se pudo desactivar la plantilla')
     },
   })
 
@@ -56,24 +76,57 @@ export function TemplatesPage() {
   const puedeCrear =
     form.nombre.trim() !== '' && form.cuerpo.trim() !== '' && desconocidas.length === 0
 
-  const errorCrear = createMutation.isError
-    ? createMutation.error instanceof ApiError
-      ? createMutation.error.message
-      : 'No se pudo crear la plantilla'
+  const errorGuardar = saveMutation.isError
+    ? saveMutation.error instanceof ApiError
+      ? saveMutation.error.message
+      : 'No se pudo guardar la plantilla'
     : null
+
+  function abrirNueva() {
+    setEditando(null)
+    setForm(vacio)
+    setBase(vacio)
+    setAbierto(true)
+  }
+
+  function abrirEdicion(template: MessageTemplate) {
+    const valores = { nombre: template.nombre, canal: template.canal, cuerpo: template.cuerpo }
+    setEditando(template)
+    setForm(valores)
+    setBase(valores)
+    setAbierto(true)
+  }
 
   return (
     <div className="space-y-6">
       <ModuleHead
         title="Plantillas"
         text="Los textos que se mandan por WhatsApp. El cuerpo solo puede usar las variables permitidas."
-        action={<AddButton onClick={() => setAlta((value) => !value)}>Agregar plantilla</AddButton>}
+        action={<AddButton onOpen={abrirNueva}>Agregar plantilla</AddButton>}
       />
       <SearchBox value={busqueda} onChange={setBusqueda} placeholder="Buscar plantilla" />
 
-      {alta ? (
-      <section className="ficha max-w-2xl">
-        <h2 className="text-sm font-semibold">Nueva plantilla</h2>
+      {abierto ? (
+      <Modal
+        title={editando ? 'Editar plantilla' : 'Agregar plantilla'}
+        size="lg"
+        formId="plantilla-form"
+        saving={saveMutation.isPending}
+        dirty={form.nombre !== base.nombre || form.canal !== base.canal || form.cuerpo !== base.cuerpo}
+        onClose={() => {
+          setAbierto(false)
+          setEditando(null)
+          setForm(vacio)
+        }}
+      >
+      <form
+        id="plantilla-form"
+        onSubmit={(event) => {
+          event.preventDefault()
+          if (!puedeCrear) return
+          saveMutation.mutate({ ...form, nombre: form.nombre.trim() })
+        }}
+      >
 
         <div className="mt-4 grid gap-3 sm:grid-cols-2">
           <label className="block text-sm">
@@ -121,30 +174,13 @@ export function TemplatesPage() {
           </p>
         ) : null}
 
-        {errorCrear ? (
+        {errorGuardar ? (
           <div className="mt-3">
-            <Alert tone="error">{errorCrear}</Alert>
+            <Alert tone="error">{errorGuardar}</Alert>
           </div>
         ) : null}
-
-        <div className="mt-4 flex flex-wrap items-center gap-3">
-          <button
-            type="button"
-            onClick={() => createMutation.mutate({ ...form, nombre: form.nombre.trim() })}
-            disabled={createMutation.isPending || !puedeCrear}
-            className="rounded bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-60"
-          >
-            {createMutation.isPending ? 'Guardando…' : 'Crear plantilla'}
-          </button>
-
-          <Link
-            to="/admin/mensajeria/enlaces"
-            className="rounded border border-slate-300 px-4 py-2 text-sm hover:bg-slate-50"
-          >
-            Ir a los enlaces de hoy
-          </Link>
-        </div>
-      </section>
+      </form>
+      </Modal>
       ) : null}
 
       <QueryStatus
@@ -195,16 +231,24 @@ export function TemplatesPage() {
                       )}
                     </td>
                     <td className="px-3 py-2">
-                      {template.activo ? (
+                      <div className="flex flex-wrap gap-2">
                         <button
                           type="button"
-                          onClick={() => deactivateMutation.mutate(template.id)}
-                          disabled={deactivateMutation.isPending}
-                          className="rounded border border-slate-300 px-2 py-1 text-xs hover:bg-slate-50 disabled:opacity-60"
+                          onClick={() => abrirEdicion(template)}
+                          className="rounded-full border border-slate-300 px-3 py-1 text-xs font-medium"
                         >
-                          Desactivar
+                          Editar
                         </button>
-                      ) : null}
+                        {template.activo ? (
+                          <button
+                            type="button"
+                            onClick={() => setADesactivar(template)}
+                            className="rounded-full border border-slate-300 px-3 py-1 text-xs font-medium"
+                          >
+                            Desactivar
+                          </button>
+                        ) : null}
+                      </div>
                     </td>
                   </tr>
                 ))
@@ -212,6 +256,17 @@ export function TemplatesPage() {
             </tbody>
           </table>
         </div>
+      ) : null}
+      {aDesactivar ? (
+        <ConfirmDialog
+          title="Desactivar plantilla"
+          confirmLabel="Desactivar"
+          pending={deactivateMutation.isPending}
+          onClose={() => setADesactivar(null)}
+          onConfirm={() => deactivateMutation.mutate(aDesactivar.id)}
+        >
+          {aDesactivar.nombre} deja de usarse en los mensajes. No se borra.
+        </ConfirmDialog>
       ) : null}
     </div>
   )

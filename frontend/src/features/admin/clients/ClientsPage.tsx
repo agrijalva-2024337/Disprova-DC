@@ -4,10 +4,14 @@ import { Link } from 'react-router-dom'
 import { disableClient, listClients, listZones } from '../api/territory.ts'
 import { ApiError } from '../api/http.ts'
 import type { Client } from '../api/types.ts'
-import { SearchBox } from '../ui/ListTools.tsx'
+import { AddButton, SearchBox } from '../ui/ListTools.tsx'
+import { ConfirmDialog } from '../ui/ConfirmDialog.tsx'
+import { Modal } from '../ui/Modal.tsx'
 import { QueryStatus } from '../ui/Status.tsx'
 import { RecordSheet, RowMoves } from '../ui/RecordSheet.tsx'
+import { useToast } from '../ui/Toast.tsx'
 import { ClientMessaging } from '../messaging/ClientMessaging.tsx'
+import { ClientForm } from './ClientFormPage.tsx'
 import { PublicCatalogSection } from './PublicCatalogSection.tsx'
 
 const tipoLabel: Record<string, string> = {
@@ -23,17 +27,26 @@ export function ClientsPage() {
   const [busqueda, setBusqueda] = useState('')
   const [mensajeriaClientId, setMensajeriaClientId] = useState<number | null>(null)
   const [abierto, setAbierto] = useState<Client | null>(null)
+  const [formulario, setFormulario] = useState<number | 'nuevo' | null>(null)
+  const [sucio, setSucio] = useState(false)
+  const [guardando, setGuardando] = useState(false)
   const [accionError, setAccionError] = useState<string | null>(null)
+  const [aDeshabilitar, setADeshabilitar] = useState<Client | null>(null)
+  const avisos = useToast()
   const clientsQuery = useQuery({ queryKey: ['clients'], queryFn: listClients })
   const disableMutation = useMutation({
     mutationFn: disableClient,
     onSuccess: async () => {
       setAbierto(null)
+      setADeshabilitar(null)
       setAccionError(null)
+      avisos.ok('Cliente deshabilitado')
       await queryClient.invalidateQueries({ queryKey: ['clients'] })
     },
     onError: (err) => {
-      setAccionError(err instanceof ApiError ? err.message : 'No se pudo deshabilitar el cliente')
+      const mensaje = err instanceof ApiError ? err.message : 'No se pudo deshabilitar el cliente'
+      setAccionError(mensaje)
+      avisos.error(mensaje)
     },
   })
   const zonesQuery = useQuery({ queryKey: ['zones'], queryFn: listZones })
@@ -62,12 +75,14 @@ export function ClientsPage() {
           <h1 className="text-xl font-semibold">Clientes</h1>
           <p className="text-sm text-slate-600">Puntos de la ruta, crédito y contactos.</p>
         </div>
-        <Link
-          to="/admin/clientes/nuevo"
-          className="rounded bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800"
+        <AddButton
+          onOpen={() => {
+            setSucio(false)
+            setFormulario('nuevo')
+          }}
         >
           Agregar cliente
-        </Link>
+        </AddButton>
       </div>
 
       <div className="flex flex-wrap items-end gap-3">
@@ -137,8 +152,12 @@ export function ClientsPage() {
                     <td className="px-3 py-2">
                       <RowMoves
                         onView={() => setAbierto(client)}
-                        editTo={`/admin/clientes/${client.id}`}
-                        onDisable={client.activo ? () => disableMutation.mutate(client.id) : undefined}
+                        onEdit={() => {
+                          setSucio(false)
+                          setFormulario(client.id)
+                          setAbierto(null)
+                        }}
+                        onDisable={client.activo ? () => setADeshabilitar(client) : undefined}
                       />
                       <button
                         type="button"
@@ -191,14 +210,59 @@ export function ClientsPage() {
             </div>
           </dl>
           <div className="mt-4 flex flex-wrap gap-2">
-            <Link to={`/admin/clientes/${abierto.id}`} className="rounded-full bg-slate-900 px-4 py-2 text-sm text-white">
-              Editar ficha
+            <Link to={`/admin/clientes/${abierto.id}`} className="text-sm text-slate-600 underline">
+              Ver ficha
             </Link>
+            <button
+              type="button"
+              onClick={() => {
+                setSucio(false)
+                setFormulario(abierto.id)
+                setAbierto(null)
+              }}
+              className="rounded-full bg-slate-900 px-4 py-2 text-sm text-white"
+            >
+              Editar cliente
+            </button>
           </div>
           <div className="mt-6">
             <PublicCatalogSection clientId={abierto.id} />
           </div>
         </RecordSheet>
+      ) : null}
+      {aDeshabilitar ? (
+        <ConfirmDialog
+          title="Deshabilitar cliente"
+          confirmLabel="Deshabilitar"
+          pending={disableMutation.isPending}
+          onClose={() => setADeshabilitar(null)}
+          onConfirm={() => disableMutation.mutate(aDeshabilitar.id)}
+        >
+          {aDeshabilitar.nombreComercial} deja de aparecer en la ruta. No se borra.
+        </ConfirmDialog>
+      ) : null}
+      {formulario !== null ? (
+        <Modal
+          title={formulario === 'nuevo' ? 'Agregar cliente' : 'Editar cliente'}
+          size="lg"
+          formId="cliente-form"
+          dirty={sucio}
+          saving={guardando}
+          onClose={() => setFormulario(null)}
+        >
+          <ClientForm
+            key={formulario}
+            id={formulario === 'nuevo' ? undefined : formulario}
+            formId="cliente-form"
+            onDirtyChange={setSucio}
+            onSavingChange={setGuardando}
+            onDone={() => {
+              const eraNuevo = formulario === 'nuevo'
+              setFormulario(null)
+              avisos.ok(eraNuevo ? 'Cliente agregado' : 'Cliente actualizado')
+            }}
+          />
+        </Modal>
       ) : null}
     </div>
   )

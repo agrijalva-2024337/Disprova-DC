@@ -1,5 +1,5 @@
 import { useMutation, useQuery } from '@tanstack/react-query'
-import { useMemo } from 'react'
+import { useEffect, useMemo } from 'react'
 import { useForm } from 'react-hook-form'
 import { listOrders } from '../../field/ordersApi.ts'
 import { applyPayment } from '../api/collections.ts'
@@ -22,12 +22,18 @@ export function ApplyPaymentPanel({
   clientId,
   paymentId,
   paymentMonto,
+  formId,
   onApplied,
+  onDirtyChange,
+  onSavingChange,
 }: {
   clientId: number
   paymentId: number
   paymentMonto: string
+  formId: string
   onApplied: () => Promise<void>
+  onDirtyChange: (dirty: boolean) => void
+  onSavingChange: (saving: boolean) => void
 }) {
   const ordersQuery = useQuery({
     queryKey: ['client-orders', clientId],
@@ -68,9 +74,16 @@ export function ApplyPaymentPanel({
   const restante = Number(paymentMonto) - suma
   const sePasa = restante < -0.001
 
+  useEffect(() => {
+    onDirtyChange(form.formState.isDirty)
+  }, [form.formState.isDirty, onDirtyChange])
+
+  useEffect(() => {
+    onSavingChange(applyMutation.isPending)
+  }, [applyMutation.isPending, onSavingChange])
+
   return (
-    <section className="rounded-lg border border-slate-200 bg-white p-5">
-      <h2 className="text-sm font-semibold">Aplicar el pago a pedidos</h2>
+    <div>
       <p className="text-sm text-slate-600">
         El pago {paymentId} de Q{money(paymentMonto)} quedó registrado. Distribuyelo entre los
         pedidos pendientes del cliente.
@@ -94,6 +107,7 @@ export function ApplyPaymentPanel({
         </p>
       ) : (
         <form
+          id={formId}
           className="mt-4 space-y-3"
           onSubmit={form.handleSubmit((values) => applyMutation.mutate(values.montos))}
         >
@@ -124,13 +138,6 @@ export function ApplyPaymentPanel({
                 Aplicando: <span className="font-semibold tabular-nums">Q{money(suma)}</span> de Q
                 {money(paymentMonto)}
               </p>
-              <button
-                type="submit"
-                disabled={applyMutation.isPending || suma <= 0}
-                className="rounded bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-60"
-              >
-                {applyMutation.isPending ? 'Aplicando…' : 'Aplicar pago'}
-              </button>
             </div>
             <p
               className={`text-sm ${
@@ -144,6 +151,6 @@ export function ApplyPaymentPanel({
           </div>
         </form>
       )}
-    </section>
+    </div>
   )
 }

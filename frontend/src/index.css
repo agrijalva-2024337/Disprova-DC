@@ -56,7 +56,10 @@ h1,
 
 .ficha input,
 .ficha select,
-.ficha textarea {
+.ficha textarea,
+.modal-campos input:not([type='checkbox']):not([type='radio']),
+.modal-campos select,
+.modal-campos textarea {
   width: 100%;
   min-height: 2.75rem;
   border-radius: 0.9rem;

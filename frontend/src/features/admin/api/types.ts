@@ -18,7 +18,6 @@ export type LoginResponse = {
 export type Category = {
   id: number
   nombre: string
-  parentId: number | null
   orden: number
   activo: boolean
 }
@@ -77,7 +76,6 @@ export type PriceListItem = {
 
 export type CategoryInput = {
   nombre: string
-  parentId?: number | null
   orden?: number
   activo?: boolean
 }

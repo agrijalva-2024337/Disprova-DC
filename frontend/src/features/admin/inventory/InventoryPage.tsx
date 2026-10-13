@@ -12,7 +12,9 @@ import {
 } from '../api/inventory.ts'
 import { useAuth } from '../auth/AuthContext.tsx'
 import { SearchBox } from '../ui/ListTools.tsx'
+import { Modal } from '../ui/Modal.tsx'
 import { Alert, QueryStatus } from '../ui/Status.tsx'
+import { useToast } from '../ui/Toast.tsx'
 
 function asNumber(value: string) {
   const parsed = Number(value)
@@ -79,13 +81,14 @@ export function InventoryPage() {
   const [productId, setProductId] = useState('')
   const [openKey, setOpenKey] = useState<string | null>(null)
   const [busqueda, setBusqueda] = useState('')
+  const [panel, setPanel] = useState<'traslado' | 'ajuste' | null>(null)
+  const avisos = useToast()
 
   const [originId, setOriginId] = useState('')
   const [destId, setDestId] = useState('')
   const [transferProductId, setTransferProductId] = useState('')
   const [batchId, setBatchId] = useState('')
   const [transferQty, setTransferQty] = useState('')
-  const [transferMessage, setTransferMessage] = useState<string | null>(null)
   const [transferError, setTransferError] = useState<string | null>(null)
 
   const [adjustProductId, setAdjustProductId] = useState('')
@@ -93,7 +96,6 @@ export function InventoryPage() {
   const [adjustBatchId, setAdjustBatchId] = useState('')
   const [adjustQty, setAdjustQty] = useState('')
   const [motivo, setMotivo] = useState('')
-  const [adjustMessage, setAdjustMessage] = useState<string | null>(null)
   const [adjustError, setAdjustError] = useState<string | null>(null)
 
   const filters = {
@@ -136,13 +138,15 @@ export function InventoryPage() {
     mutationFn: transferStock,
     onSuccess: async () => {
       setTransferError(null)
-      setTransferMessage('Traslado registrado')
       setTransferQty('')
+      setPanel(null)
+      avisos.ok('Traslado registrado')
       await refreshStock()
     },
     onError: (err) => {
-      setTransferMessage(null)
-      setTransferError(err instanceof ApiError ? err.message : 'No se pudo trasladar')
+      const mensaje = err instanceof ApiError ? err.message : 'No se pudo trasladar'
+      setTransferError(mensaje)
+      avisos.error(mensaje)
     },
   })
 
@@ -150,14 +154,16 @@ export function InventoryPage() {
     mutationFn: adjustStock,
     onSuccess: async () => {
       setAdjustError(null)
-      setAdjustMessage('Ajuste registrado')
       setAdjustQty('')
       setMotivo('')
+      setPanel(null)
+      avisos.ok('Ajuste registrado')
       await refreshStock()
     },
     onError: (err) => {
-      setAdjustMessage(null)
-      setAdjustError(err instanceof ApiError ? err.message : 'No se pudo ajustar')
+      const mensaje = err instanceof ApiError ? err.message : 'No se pudo ajustar'
+      setAdjustError(mensaje)
+      avisos.error(mensaje)
     },
   })
 
@@ -168,9 +174,29 @@ export function InventoryPage() {
 
   return (
     <div className="space-y-8">
-      <div>
-        <h1 className="text-xl font-semibold">Inventario</h1>
-        <p className="text-sm text-slate-600">Existencias por producto y bodega.</p>
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h1 className="text-xl font-semibold">Inventario</h1>
+          <p className="text-sm text-slate-600">Existencias por producto y bodega.</p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={() => setPanel('traslado')}
+            className="min-h-11 rounded-full bg-slate-900 px-5 text-sm font-medium text-white"
+          >
+            Traslado
+          </button>
+          {isAdmin ? (
+            <button
+              type="button"
+              onClick={() => setPanel('ajuste')}
+              className="min-h-11 rounded-full border border-slate-300 bg-white px-5 text-sm font-medium"
+            >
+              Ajuste manual
+            </button>
+          ) : null}
+        </div>
       </div>
 
       <div className="flex flex-wrap items-end gap-3">
@@ -287,10 +313,18 @@ export function InventoryPage() {
         </div>
       ) : null}
 
+      {panel === 'traslado' ? (
+      <Modal
+        title="Traslado"
+        formId="traslado-form"
+        saving={transferMutation.isPending}
+        dirty={originId !== '' || destId !== '' || transferProductId !== '' || transferQty !== '' || batchId !== ''}
+        onClose={() => setPanel(null)}
+      >
       <form
+        id="traslado-form"
         onSubmit={(event) => {
           event.preventDefault()
-          setTransferMessage(null)
           setTransferError(null)
           transferMutation.mutate({
             productId: Number(transferProductId),
@@ -300,11 +334,9 @@ export function InventoryPage() {
             cantidad: transferQty,
           })
         }}
-        className="max-w-xl space-y-3 rounded-lg border border-slate-200 bg-white p-4"
+        className="space-y-3"
       >
-        <h2 className="text-sm font-semibold">Traslado</h2>
         {transferError ? <Alert tone="error">{transferError}</Alert> : null}
-        {transferMessage ? <Alert tone="success">{transferMessage}</Alert> : null}
         <label className="block text-sm">
           <span className="mb-1 block font-medium">Producto</span>
           <select
@@ -374,21 +406,23 @@ export function InventoryPage() {
             <span className="text-xs text-red-700">Supera lo disponible ({formatQty(disponible)}).</span>
           ) : null}
         </label>
-        <button
-          type="submit"
-          disabled={transferMutation.isPending}
-          className="rounded bg-slate-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-60"
-        >
-          {transferMutation.isPending ? 'Trasladando…' : 'Trasladar'}
-        </button>
       </form>
+      </Modal>
+      ) : null}
 
-      {isAdmin ? (
+      {isAdmin && panel === 'ajuste' ? (
+        <Modal
+          title="Ajuste manual"
+          formId="ajuste-form"
+          saving={adjustMutation.isPending}
+          dirty={adjustProductId !== '' || adjustWarehouseId !== '' || adjustQty !== '' || motivo !== '' || adjustBatchId !== ''}
+          onClose={() => setPanel(null)}
+        >
         <form
+          id="ajuste-form"
           onSubmit={(event) => {
             event.preventDefault()
             setAdjustError(null)
-            setAdjustMessage(null)
             adjustMutation.mutate({
               productId: Number(adjustProductId),
               warehouseId: Number(adjustWarehouseId),
@@ -397,11 +431,9 @@ export function InventoryPage() {
               motivo: motivo.trim(),
             })
           }}
-          className="max-w-xl space-y-3 rounded-lg border border-slate-200 bg-white p-4"
+          className="space-y-3"
         >
-          <h2 className="text-sm font-semibold">Ajuste manual</h2>
           {adjustError ? <Alert tone="error">{adjustError}</Alert> : null}
-          {adjustMessage ? <Alert tone="success">{adjustMessage}</Alert> : null}
           <label className="block text-sm">
             <span className="mb-1 block font-medium">Producto</span>
             <select required value={adjustProductId} onChange={(event) => setAdjustProductId(event.target.value)} className="w-full rounded border border-slate-300 px-3 py-2">
@@ -447,10 +479,8 @@ export function InventoryPage() {
             <span className="mb-1 block font-medium">Motivo</span>
             <input required value={motivo} onChange={(event) => setMotivo(event.target.value)} className="w-full rounded border border-slate-300 px-3 py-2" />
           </label>
-          <button type="submit" disabled={adjustMutation.isPending} className="rounded bg-slate-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-60">
-            {adjustMutation.isPending ? 'Guardando…' : 'Registrar ajuste'}
-          </button>
         </form>
+        </Modal>
       ) : null}
     </div>
   )

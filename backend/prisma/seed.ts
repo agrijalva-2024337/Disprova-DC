@@ -23,7 +23,6 @@ async function main() {
   await prisma.productImage.deleteMany();
   await prisma.productUnit.deleteMany();
   await prisma.product.deleteMany();
-  await prisma.category.deleteMany({ where: { parentId: { not: null } } });
   await prisma.category.deleteMany();
   await prisma.auditLog.deleteMany();
   await prisma.user.deleteMany();
@@ -96,7 +95,6 @@ async function main() {
   const catHigiene = await prisma.category.create({
     data: {
       nombre: 'Higiene personal',
-      parentId: catMedicamentos.id,
       orden: 2,
       activo: true,
     },

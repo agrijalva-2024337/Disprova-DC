@@ -3,9 +3,9 @@ import { LoginPage } from './features/admin/auth/LoginPage.tsx'
 import { CategoriesPage } from './features/admin/categories/CategoriesPage.tsx'
 import { AdminLayout } from './features/admin/layout/AdminLayout.tsx'
 import { PriceListsPage } from './features/admin/price-lists/PriceListsPage.tsx'
-import { ProductFormPage } from './features/admin/products/ProductFormPage.tsx'
+import { ProductDetailPage } from './features/admin/products/ProductDetailPage.tsx'
 import { ProductsPage } from './features/admin/products/ProductsPage.tsx'
-import { ClientFormPage } from './features/admin/clients/ClientFormPage.tsx'
+import { ClientDetailPage } from './features/admin/clients/ClientDetailPage.tsx'
 import { ClientsPage } from './features/admin/clients/ClientsPage.tsx'
 import { OrderDetailPage } from './features/admin/orders/OrderDetailPage.tsx'
 import { OrdersPage } from './features/admin/orders/OrdersPage.tsx'
@@ -44,8 +44,8 @@ export default function App() {
         <Route index element={<DashboardPage />} />
         <Route path="categorias" element={<CategoriesPage />} />
         <Route path="productos" element={<ProductsPage />} />
-        <Route path="productos/nuevo" element={<ProductFormPage />} />
-        <Route path="productos/:id" element={<ProductFormPage />} />
+        <Route path="productos/nuevo" element={<Navigate to="/admin/productos" replace />} />
+        <Route path="productos/:id" element={<ProductDetailPage />} />
         <Route path="listas-precio" element={<PriceListsPage />} />
         <Route path="inventario" element={<InventoryPage />} />
         <Route path="inventario/:productId" element={<KardexPage />} />
@@ -53,8 +53,8 @@ export default function App() {
         <Route path="pedidos" element={<OrdersPage />} />
         <Route path="pedidos/:id" element={<OrderDetailPage />} />
         <Route path="clientes" element={<ClientsPage />} />
-        <Route path="clientes/nuevo" element={<ClientFormPage />} />
-        <Route path="clientes/:id" element={<ClientFormPage />} />
+        <Route path="clientes/nuevo" element={<Navigate to="/admin/clientes" replace />} />
+        <Route path="clientes/:id" element={<ClientDetailPage />} />
         <Route path="usuarios" element={<UsersPage />} />
         <Route path="perfil" element={<ProfilePage />} />
         <Route path="facturacion" element={<InvoicesPage />} />

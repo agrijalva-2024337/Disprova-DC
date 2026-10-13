@@ -5,7 +5,9 @@ import { ApiError } from '../api/http.ts'
 import { listOrders } from '../../field/ordersApi.ts'
 import type { InvoiceEstado } from '../api/types.ts'
 import { SearchBox } from '../ui/ListTools.tsx'
+import { Modal } from '../ui/Modal.tsx'
 import { Alert, QueryStatus } from '../ui/Status.tsx'
+import { useToast } from '../ui/Toast.tsx'
 
 const money = (value: string) => Number(value).toFixed(2)
 
@@ -26,8 +28,10 @@ const estadoClasses: Record<InvoiceEstado, string> = {
 export function InvoicesPage() {
   const [estado, setEstado] = useState<InvoiceEstado | ''>('')
   const [orderId, setOrderId] = useState('')
+  const [emitir, setEmitir] = useState(false)
   const [busqueda, setBusqueda] = useState('')
   const queryClient = useQueryClient()
+  const avisos = useToast()
 
   const invoicesQuery = useQuery({
     queryKey: ['invoices', estado],
@@ -44,7 +48,12 @@ export function InvoicesPage() {
     mutationFn: (id: number) => createInvoiceForOrder(id),
     onSuccess: async () => {
       setOrderId('')
+      setEmitir(false)
+      avisos.ok('Factura emitida')
       await queryClient.invalidateQueries({ queryKey: ['invoices'] })
+    },
+    onError: (err) => {
+      avisos.error(err instanceof ApiError ? err.message : 'No se pudo emitir la factura')
     },
   })
 
@@ -74,12 +83,21 @@ export function InvoicesPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-xl font-semibold">Facturación</h1>
-        <p className="text-sm text-slate-600">
-          Las facturas se emiten al entregar el pedido, no desde acá. Esta pantalla es para
-          consultarlas y para emitir alguna a mano si hizo falta.
-        </p>
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h1 className="text-xl font-semibold">Facturación</h1>
+          <p className="text-sm text-slate-600">
+            Las facturas se emiten al entregar el pedido, no desde acá. Esta pantalla es para
+            consultarlas y para emitir alguna a mano si hizo falta.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => setEmitir(true)}
+          className="min-h-11 rounded-full bg-slate-900 px-5 text-sm font-medium text-white"
+        >
+          Emitir factura
+        </button>
       </div>
 
       <div className="flex flex-wrap items-end gap-3 rounded-lg border border-slate-200 bg-white p-4">
@@ -97,34 +115,48 @@ export function InvoicesPage() {
             <option value="error">Con error</option>
           </select>
         </label>
-
-        <label className="block min-w-72 text-sm">
-          <span className="mb-1 block font-medium">Emitir factura de un pedido</span>
-          <select
-            value={orderId}
-            onChange={(event) => setOrderId(event.target.value)}
-            className="w-full rounded border border-slate-300 px-3 py-2 text-sm"
-          >
-            <option value="">Elegí un pedido entregado</option>
-            {facturables.map((order) => (
-              <option key={order.id} value={order.id}>
-                {order.numero} · {order.client?.nombreComercial ?? `Cliente ${order.clientId}`}
-              </option>
-            ))}
-          </select>
-        </label>
-
-        <button
-          type="button"
-          onClick={() => createMutation.mutate(Number(orderId))}
-          disabled={createMutation.isPending || orderId === ''}
-          className="rounded bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-60"
-        >
-          {createMutation.isPending ? 'Emitiendo…' : 'Emitir factura'}
-        </button>
       </div>
 
-      {createError ? <Alert tone="error">{createError}</Alert> : null}
+      {emitir ? (
+        <Modal
+          title="Emitir factura"
+          formId="factura-form"
+          saving={createMutation.isPending}
+          dirty={orderId !== ''}
+          onClose={() => {
+            setEmitir(false)
+            setOrderId('')
+          }}
+        >
+          <form
+            id="factura-form"
+            className="space-y-3"
+            onSubmit={(event) => {
+              event.preventDefault()
+              if (orderId === '') return
+              createMutation.mutate(Number(orderId))
+            }}
+          >
+            {createError ? <Alert tone="error">{createError}</Alert> : null}
+            <label className="block text-sm">
+              <span className="mb-1 block font-medium">Pedido entregado</span>
+              <select
+                value={orderId}
+                onChange={(event) => setOrderId(event.target.value)}
+                className="w-full rounded border border-slate-300 px-3 py-2 text-sm"
+                required
+              >
+                <option value="">Elegí un pedido entregado</option>
+                {facturables.map((order) => (
+                  <option key={order.id} value={order.id}>
+                    {order.numero} · {order.client?.nombreComercial ?? `Cliente ${order.clientId}`}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </form>
+        </Modal>
+      ) : null}
 
       {invoicesQuery.isSuccess && estado === '' && pendientes > 0 ? (
         <Alert tone="info">{mensajePendientes}</Alert>

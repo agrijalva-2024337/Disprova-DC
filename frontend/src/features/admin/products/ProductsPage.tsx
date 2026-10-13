@@ -4,8 +4,13 @@ import { Link } from 'react-router-dom'
 import { listCategories, listProducts, updateProduct } from '../api/catalog.ts'
 import type { Product } from '../api/types.ts'
 import { ApiError } from '../api/http.ts'
+import { AddButton } from '../ui/ListTools.tsx'
+import { ConfirmDialog } from '../ui/ConfirmDialog.tsx'
+import { Modal } from '../ui/Modal.tsx'
 import { Alert, QueryStatus } from '../ui/Status.tsx'
 import { RecordSheet, RowMoves } from '../ui/RecordSheet.tsx'
+import { useToast } from '../ui/Toast.tsx'
+import { ProductForm } from './ProductFormPage.tsx'
 
 const PAGE_SIZE = 10
 
@@ -16,6 +21,10 @@ export function ProductsPage() {
   const [pendingId, setPendingId] = useState<number | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
   const [visto, setVisto] = useState<Product | null>(null)
+  const [formulario, setFormulario] = useState<number | 'nuevo' | null>(null)
+  const [sucio, setSucio] = useState(false)
+  const [guardando, setGuardando] = useState(false)
+  const avisos = useToast()
 
   const productsQuery = useQuery({
     queryKey: ['products'],
@@ -31,10 +40,13 @@ export function ProductsPage() {
     onSuccess: async () => {
       setPendingId(null)
       setActionError(null)
+      avisos.ok('Producto desactivado')
       await queryClient.invalidateQueries({ queryKey: ['products'] })
     },
     onError: (err) => {
-      setActionError(err instanceof ApiError ? err.message : 'No se pudo desactivar el producto')
+      const mensaje = err instanceof ApiError ? err.message : 'No se pudo desactivar el producto'
+      setActionError(mensaje)
+      avisos.error(mensaje)
     },
   })
 
@@ -70,12 +82,14 @@ export function ProductsPage() {
           <h1 className="text-xl font-semibold">Productos</h1>
           <p className="text-sm text-slate-600">Catálogo con presentaciones y precios base.</p>
         </div>
-        <Link
-          to="/admin/productos/nuevo"
-          className="rounded bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800"
+        <AddButton
+          onOpen={() => {
+            setSucio(false)
+            setFormulario('nuevo')
+          }}
         >
           Agregar producto
-        </Link>
+        </AddButton>
       </div>
 
       <div className="flex flex-wrap items-center gap-3">
@@ -139,7 +153,11 @@ export function ProductsPage() {
                     <td className="px-3 py-2">
                       <RowMoves
                         onView={() => setVisto(product)}
-                        editTo={`/admin/productos/${product.id}`}
+                        onEdit={() => {
+                          setSucio(false)
+                          setFormulario(product.id)
+                          setVisto(null)
+                        }}
                         onDisable={product.activo ? () => setPendingId(product.id) : undefined}
                         disableLabel="Desactivar"
                       />
@@ -196,39 +214,58 @@ export function ProductsPage() {
               <dd>{visto.activo ? 'Activo' : 'Inactivo'}</dd>
             </div>
           </dl>
-          <Link to={`/admin/productos/${visto.id}`} className="mt-4 inline-block rounded-full bg-slate-900 px-4 py-2 text-sm text-white">
-            Editar ficha
+          <Link to={`/admin/productos/${visto.id}`} className="mt-4 inline-block text-sm text-slate-600 underline">
+            Ver ficha
           </Link>
+          <button
+            type="button"
+            onClick={() => {
+              setSucio(false)
+              setFormulario(visto.id)
+              setVisto(null)
+            }}
+            className="mt-4 ml-3 rounded-full bg-slate-900 px-4 py-2 text-sm text-white"
+          >
+            Editar producto
+          </button>
         </RecordSheet>
       ) : null}
 
       {pendingProduct ? (
-        <div className="fixed inset-0 z-10 flex items-center justify-center bg-slate-900/40 px-4">
-          <div className="w-full max-w-md space-y-4 rounded-lg bg-white p-5 shadow-lg">
-            <h2 className="text-base font-semibold">Desactivar producto</h2>
-            <p className="text-sm text-slate-600">
-              ¿Confirmas desactivar <strong>{pendingProduct.nombre}</strong> ({pendingProduct.sku})?
-              Dejará de aparecer como disponible en el catálogo activo.
-            </p>
-            <div className="flex justify-end gap-2">
-              <button
-                type="button"
-                onClick={() => setPendingId(null)}
-                className="rounded border border-slate-300 px-3 py-1.5 text-sm"
-              >
-                Cancelar
-              </button>
-              <button
-                type="button"
-                disabled={deactivateMutation.isPending}
-                onClick={() => deactivateMutation.mutate(pendingProduct.id)}
-                className="rounded bg-red-700 px-3 py-1.5 text-sm text-white hover:bg-red-800 disabled:opacity-60"
-              >
-                {deactivateMutation.isPending ? 'Desactivando…' : 'Desactivar'}
-              </button>
-            </div>
-          </div>
-        </div>
+        <ConfirmDialog
+          title="Desactivar producto"
+          confirmLabel="Desactivar"
+          pending={deactivateMutation.isPending}
+          onClose={() => setPendingId(null)}
+          onConfirm={() => deactivateMutation.mutate(pendingProduct.id)}
+        >
+          ¿Confirmas desactivar {pendingProduct.nombre} ({pendingProduct.sku})? Dejará de aparecer
+          como disponible en el catálogo activo.
+        </ConfirmDialog>
+      ) : null}
+
+      {formulario !== null ? (
+        <Modal
+          title={formulario === 'nuevo' ? 'Agregar producto' : 'Editar producto'}
+          size="lg"
+          formId="producto-form"
+          dirty={sucio}
+          saving={guardando}
+          onClose={() => setFormulario(null)}
+        >
+          <ProductForm
+            key={formulario}
+            id={formulario === 'nuevo' ? undefined : formulario}
+            formId="producto-form"
+            onDirtyChange={setSucio}
+            onSavingChange={setGuardando}
+            onDone={() => {
+              const eraNuevo = formulario === 'nuevo'
+              setFormulario(null)
+              avisos.ok(eraNuevo ? 'Producto agregado' : 'Producto actualizado')
+            }}
+          />
+        </Modal>
       ) : null}
     </div>
   )

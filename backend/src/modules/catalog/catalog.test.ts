@@ -26,7 +26,7 @@ describe('POST /api/catalog/products', () => {
 
   it('crea un producto como admin', async () => {
     const token = await loginAsAdmin();
-    const category = await prisma.category.findFirst({ where: { parentId: null } });
+    const category = await prisma.category.findFirst();
     expect(category).not.toBeNull();
 
     const sku = `TEST-${Date.now()}`;
@@ -50,7 +50,7 @@ describe('POST /api/catalog/products', () => {
 
   it('rechaza crear un producto con un campo requerido faltante', async () => {
     const token = await loginAsAdmin();
-    const category = await prisma.category.findFirst({ where: { parentId: null } });
+    const category = await prisma.category.findFirst();
     expect(category).not.toBeNull();
 
     const response = await request(app)
@@ -128,7 +128,7 @@ describe('presentaciones e imágenes', () => {
 
   it('desactiva el producto en vez de borrarlo y conserva el histórico', async () => {
     const token = await loginAsAdmin();
-    const category = await prisma.category.findFirstOrThrow({ where: { parentId: null } });
+    const category = await prisma.category.findFirstOrThrow();
     const auth = { Authorization: `Bearer ${token}` };
     const sku = `BORRADO-${Date.now()}`;
 

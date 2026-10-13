@@ -2,7 +2,6 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect } from 'react'
 import { useFieldArray, useForm } from 'react-hook-form'
-import { Link, useNavigate, useParams } from 'react-router-dom'
 import { createProduct, getProduct, listCategories, updateProduct } from '../api/catalog.ts'
 import { ApiError } from '../api/http.ts'
 import { Alert, QueryStatus } from '../ui/Status.tsx'
@@ -22,11 +21,21 @@ const emptyValues: ProductFormValues = {
   images: [],
 }
 
-export function ProductFormPage() {
-  const { id } = useParams()
-  const isEdit = Boolean(id)
-  const productId = id ? Number(id) : null
-  const navigate = useNavigate()
+export function ProductForm({
+  id,
+  formId,
+  onDone,
+  onDirtyChange,
+  onSavingChange,
+}: {
+  id?: number
+  formId: string
+  onDone: () => void
+  onDirtyChange: (dirty: boolean) => void
+  onSavingChange?: (saving: boolean) => void
+}) {
+  const isEdit = id != null
+  const productId = id ?? null
   const queryClient = useQueryClient()
 
   const categoriesQuery = useQuery({
@@ -117,9 +126,17 @@ export function ProductFormPage() {
       if (productId) {
         await queryClient.invalidateQueries({ queryKey: ['product', productId] })
       }
-      navigate('/admin/productos')
+      onDone()
     },
   })
+
+  useEffect(() => {
+    onDirtyChange(form.formState.isDirty)
+  }, [form.formState.isDirty, onDirtyChange])
+
+  useEffect(() => {
+    onSavingChange?.(saveMutation.isPending)
+  }, [saveMutation.isPending, onSavingChange])
 
   const saveError =
     saveMutation.error instanceof ApiError
@@ -143,14 +160,7 @@ export function ProductFormPage() {
   }
 
   return (
-    <div className="max-w-3xl space-y-6">
-      <div>
-        <Link to="/admin/productos" className="text-sm text-slate-600 hover:underline">
-          ← Volver a productos
-        </Link>
-        <h1 className="mt-2 text-xl font-semibold">{isEdit ? 'Editar producto' : 'Nuevo producto'}</h1>
-      </div>
-
+    <>
       {categoriesQuery.isError ? (
         <Alert tone="error">
           {categoriesQuery.error instanceof ApiError
@@ -161,8 +171,9 @@ export function ProductFormPage() {
       {saveError ? <Alert tone="error">{saveError}</Alert> : null}
 
       <form
+        id={formId}
         onSubmit={form.handleSubmit((values) => saveMutation.mutate(values))}
-        className="ficha space-y-5"
+        className="space-y-5"
       >
         <div className="grid gap-4 sm:grid-cols-2">
           <label className="block text-sm">
@@ -308,15 +319,7 @@ export function ProductFormPage() {
         <div className="space-y-3 rounded border border-slate-200 p-4">
           <ProductImagesField control={form.control} />
         </div>
-
-        <button
-          type="submit"
-          disabled={saveMutation.isPending}
-          className="rounded bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-60"
-        >
-          {saveMutation.isPending ? 'Guardando…' : isEdit ? 'Guardar cambios' : 'Crear producto'}
-        </button>
       </form>
-    </div>
+    </>
   )
 }
