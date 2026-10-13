@@ -5,6 +5,7 @@ import { useFieldArray, useForm } from 'react-hook-form'
 import { createProduct, getProduct, listCategories, updateProduct } from '../api/catalog.ts'
 import { ApiError } from '../api/http.ts'
 import { Alert, QueryStatus } from '../ui/Status.tsx'
+import { BarcodeScannerButton } from './BarcodeScannerButton.tsx'
 import { ProductImagesField } from './ProductImagesField.tsx'
 import { productFormSchema, type ProductFormValues } from './productFormSchema.ts'
 
@@ -295,6 +296,14 @@ export function ProductForm({
                   <input
                     className="w-full rounded border border-slate-300 px-3 py-2 text-sm"
                     {...form.register(`units.${index}.codigoBarras`)}
+                  />
+                  <BarcodeScannerButton
+                    onDetected={(codigo) =>
+                      form.setValue(`units.${index}.codigoBarras`, codigo, {
+                        shouldDirty: true,
+                        shouldValidate: true,
+                      })
+                    }
                   />
                 </label>
                 <label className="block text-sm">
