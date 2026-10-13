@@ -738,10 +738,49 @@ export async function deliverOrder(orderId: number, input: DeliverOrderInput, us
       include: { items: true },
     });
 
-    if (order.condicionPago === 'credito') {
+    // Movimientos en el libro mayor del cliente.
+    //
+    // Dos formas de cobrar, sin romper el historial:
+    //  - Si el vendedor indica `montoPagado` (lo cobró en el acto), se registra
+    //    el CARGO por lo entregado y un ABONO por lo pagado. Lo que falte queda
+    //    como saldo pendiente del cliente, se vea o no la condición de pago.
+    //  - Si no viene `montoPagado`, se conserva el comportamiento anterior:
+    //    solo el crédito deja deuda completa; el contado no mueve el libro.
+    const cargo = importeEntregado(order.items, deliveryLines);
+    if (input.montoPagado !== undefined) {
+      const pagado = money(new Prisma.Decimal(input.montoPagado));
+      if (pagado.greaterThan(cargo)) {
+        throw new AppError(
+          'El monto pagado no puede ser mayor a lo entregado',
+          422,
+          'PAYMENT_EXCEEDS_DELIVERED',
+        );
+      }
+      if (cargo.greaterThan(0)) {
+        await postMovement(tx, {
+          clientId: order.clientId,
+          tipo: 'cargo',
+          referenciaTipo: 'delivery',
+          referenciaId: String(delivery.id),
+          monto: cargo,
+          fecha: new Date(),
+          userId,
+        });
+      }
+      if (pagado.greaterThan(0)) {
+        await postMovement(tx, {
+          clientId: order.clientId,
+          tipo: 'abono',
+          referenciaTipo: 'delivery',
+          referenciaId: String(delivery.id),
+          monto: pagado,
+          fecha: new Date(),
+          userId,
+        });
+      }
+    } else if (order.condicionPago === 'credito') {
       // Cargo de esta visita sobre lo REALMENTE entregado: la fórmula vive
       // en importeEntregado y la comparte también la facturación.
-      const cargo = importeEntregado(order.items, deliveryLines);
       if (cargo.greaterThan(0)) {
         await postMovement(tx, {
           clientId: order.clientId,
@@ -776,11 +815,28 @@ export async function deliverOrder(orderId: number, input: DeliverOrderInput, us
           orderItemId: line.orderItemId,
           cantidadEntregada: line.cantidadEntregada.toString(),
         })),
-        cargo: order.condicionPago === 'credito' ? importeEntregado(order.items, deliveryLines).toFixed(2) : null,
+        cargo:
+          input.montoPagado !== undefined
+            ? cargo.toFixed(2)
+            : order.condicionPago === 'credito'
+              ? cargo.toFixed(2)
+              : null,
+        cobrado: input.montoPagado !== undefined ? money(new Prisma.Decimal(input.montoPagado)).toFixed(2) : null,
+        saldoPendiente:
+          input.montoPagado !== undefined
+            ? cargo.minus(new Prisma.Decimal(input.montoPagado)).toFixed(2)
+            : null,
       },
     });
 
-    return { order: updated, delivery };
+    // Lo que el vendedor ve al terminar: cuánto cobró y cuánto quedó debiendo
+    // el cliente. Cuando no se indicó pago, el saldo pendiente es null (no se
+    // tocó el libro mayor salvo el crédito histórico, que no se acá no se expone).
+    const cobrado = input.montoPagado !== undefined ? money(new Prisma.Decimal(input.montoPagado)) : null;
+    const saldoPendiente =
+      cobrado !== null ? money(cargo.minus(cobrado)) : null;
+
+    return { order: updated, delivery, cargo, cobrado, saldoPendiente };
   });
 }
 
