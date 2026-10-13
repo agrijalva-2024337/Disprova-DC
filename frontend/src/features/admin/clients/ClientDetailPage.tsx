@@ -86,12 +86,6 @@ export function ClientDetailPage() {
           <dd>{client.nit || '—'}</dd>
         </div>
         <div>
-          <dt className="text-slate-500">Crédito</dt>
-          <dd>
-            {client.limiteCredito} · {client.plazoDias} días
-          </dd>
-        </div>
-        <div>
           <dt className="text-slate-500">Estado</dt>
           <dd>{client.activo ? 'Activo' : 'Deshabilitado'}</dd>
         </div>

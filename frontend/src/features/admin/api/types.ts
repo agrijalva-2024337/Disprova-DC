@@ -163,7 +163,7 @@ export type ClientInput = {
   zoneId: number
   ordenRuta: number
   direccion: string
-  priceListId: number
+  priceListId?: number
   limiteCredito?: string
   plazoDias?: number
   activo?: boolean

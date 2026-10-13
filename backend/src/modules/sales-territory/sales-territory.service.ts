@@ -47,6 +47,25 @@ function decimalOrNull(value: string | number | null | undefined) {
   return String(value);
 }
 
+/**
+ * Resuelve la lista de precios por defecto ("Lista general"). Si no viene
+ * `priceListId` al crear un cliente, se le asigna esta para no romper la FK.
+ * La crea si todavía no existe.
+ */
+async function listaGeneralId(tx: Prisma.TransactionClient): Promise<number> {
+  const existente = await tx.priceList.findFirst({
+    where: { nombre: 'Lista general' },
+    orderBy: { id: 'asc' },
+  });
+  if (existente) {
+    return existente.id;
+  }
+  const creada = await tx.priceList.create({
+    data: { nombre: 'Lista general', activo: true },
+  });
+  return creada.id;
+}
+
 export async function listZones() {
   return prisma.zone.findMany({ where: { activo: true }, orderBy: { id: 'asc' } });
 }
@@ -158,9 +177,11 @@ export async function getClient(id: number) {
 export async function createClient(input: CreateClientInput, userId: number) {
   try {
     return await prisma.$transaction(async (tx) => {
+      const priceListId = input.priceListId ?? (await listaGeneralId(tx));
       const created = await tx.client.create({
         data: {
           ...input,
+          priceListId,
           lat: decimalOrNull(input.lat),
           lng: decimalOrNull(input.lng),
           limiteCredito: input.limiteCredito === undefined ? undefined : String(input.limiteCredito),

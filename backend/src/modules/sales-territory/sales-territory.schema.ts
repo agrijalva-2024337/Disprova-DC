@@ -38,7 +38,13 @@ export const createClientSchema = z.object({
   direccion: z.string().min(1),
   lat: decimalValue.nullable().optional(),
   lng: decimalValue.nullable().optional(),
-  priceListId: z.number().int().positive(),
+  // Opcional a propósito: el negocio maneja un único precio, así que si no se
+  // indica, el servicio asigna la "Lista general". Se conserva el campo para no
+  // romper los clientes y pedidos históricos.
+  priceListId: z.number().int().positive().optional(),
+  // Campos de crédito que el negocio ya no usa. Siguen siendo opcionales y, si
+  // no vienen, quedan en su valor por defecto (0). No se borran las columnas
+  // para no perder el historial.
   limiteCredito: decimalValue.optional(),
   plazoDias: z.number().int().min(0).optional(),
   activo: z.boolean().optional(),
